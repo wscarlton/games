@@ -1,0 +1,3498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RuneSaga — Generations</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@700;900&display=swap');
+
+:root{
+  --bg0:#07070e;--bg1:#0c0c18;--bg2:#111120;--bg3:#161630;
+  --border:#1e1e38;--border2:#2a2a48;--border3:#3a3a5a;
+  --txt:#c8cce8;--txt2:#7880a0;--txt3:#4a5070;
+  --amber:#f0a828;--amber2:#c07810;--violet:#9050e8;--violet2:#6030b0;
+  --cyan:#30d0c0;--green:#40e078;--red:#e04040;--red2:#a02020;
+  --gold:#d4a017;--shield:#4878f0;
+  --legacy:#d4a017;--salvage:#30c0a0;
+
+  /* Responsive chrome sizing (JS keeps these in sync) */
+  --header-h:44px;
+  --footer-h:44px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg0);color:var(--txt);
+  font-family:'Rajdhani',sans-serif;font-size:14px;
+  background-image:
+    radial-gradient(ellipse at 20% 50%,rgba(80,30,160,.08) 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 20%,rgba(30,80,160,.06) 0%,transparent 40%);
+}
+
+#game{display:grid;grid-template-rows:44px 1fr 44px;height:100dvh;}
+#header{
+  background:var(--bg1);border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;gap:12px;padding:0 14px;
+  position:relative;z-index:10;
+}
+#header::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--violet2) 30%,var(--amber2) 70%,transparent);
+}
+#main{display:grid;grid-template-columns:248px 1fr 260px;overflow:hidden;}
+#footer{
+  background:var(--bg1);border-top:1px solid var(--border2);
+  display:flex;align-items:center;gap:10px;padding:0 14px;
+}
+
+.panel{
+  background:var(--bg1);overflow-y:auto;padding:10px 12px;border-right:1px solid var(--border);
+  -webkit-overflow-scrolling:touch;
+}
+#right-panel{border-right:none;border-left:1px solid var(--border);}
+#center-panel{display:flex;flex-direction:column;overflow:hidden;border:none;padding:0;}
+#center-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#log-wrap{
+  height:170px;background:var(--bg0);border-top:1px solid var(--border);
+  display:flex;flex-direction:column;
+}
+#log-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:4px 10px;border-bottom:1px solid var(--border);
+  background:var(--bg1);flex-shrink:0;
+}
+#combat-log{
+  flex:1;overflow-y:auto;padding:5px 10px;
+  font-family:'Share Tech Mono',monospace;font-size:11px;line-height:1.55;
+  -webkit-overflow-scrolling:touch;
+}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg0)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* Typography */
+.logo{
+  font-family:'Orbitron',sans-serif;font-size:12px;font-weight:900;
+  color:var(--violet);letter-spacing:2px;
+  text-shadow:0 0 12px rgba(144,80,232,.5);
+}
+.sec-title{
+  font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:var(--txt3);border-bottom:1px solid var(--border);
+  padding-bottom:5px;margin:10px 0 7px;
+}
+.sec-title:first-child{margin-top:2px;}
+.wave-num{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:var(--cyan);}
+
+/* Stats */
+.srow{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
+.sl{color:var(--txt2);font-size:12px;}
+.sv{color:var(--txt);font-weight:700;font-size:12px;}
+.sdp{color:var(--green);font-size:11px;}
+.sdn{color:var(--red);font-size:11px;}
+
+/* Bars */
+.bar-wrap{margin:5px 0 2px;}
+.bar{height:11px;background:var(--bg3);border-radius:2px;overflow:visible;position:relative;border:1px solid var(--border);}
+.bar-fill{height:100%;border-radius:1px;transition:width .2s;}
+.bar-hp .bar-fill{background:linear-gradient(90deg,#1a8040,var(--green));}
+.bar-shield-ovl{height:100%;position:absolute;top:0;background:rgba(72,120,240,.6);border-radius:1px;border-right:2px solid var(--shield);transition:all .2s;}
+.bar-xp{height:3px;background:var(--bg3);border-radius:1px;margin-top:2px;}
+.bar-xp-fill{height:100%;background:linear-gradient(90deg,var(--violet2),var(--violet));border-radius:1px;transition:width .4s;}
+.bar-txt{font-size:10px;color:var(--txt3);text-align:center;margin-top:1px;font-family:'Share Tech Mono',monospace;}
+
+/* Status Badges */
+.sbadge{
+  display:inline-flex;align-items:center;gap:2px;
+  padding:1px 6px;border-radius:2px;font-size:10px;font-weight:700;margin:2px 1px;
+  font-family:'Rajdhani',sans-serif;letter-spacing:.5px;cursor:default;
+}
+.sb-bleed{background:rgba(200,40,40,.2);color:#ff7070;border:1px solid rgba(200,40,40,.4);}
+.sb-poison{background:rgba(40,180,40,.15);color:#70d870;border:1px solid rgba(40,180,40,.35);}
+.sb-shield{background:rgba(72,120,240,.2);color:#78a8ff;border:1px solid rgba(72,120,240,.4);}
+.sb-weak{background:rgba(180,140,30,.2);color:#e8c048;border:1px solid rgba(180,140,30,.4);}
+.sb-vulnerable{background:rgba(220,100,30,.2);color:#f08840;border:1px solid rgba(220,100,30,.4);}
+.sb-rage{background:rgba(220,60,20,.2);color:#ff7040;border:1px solid rgba(220,60,20,.5);}
+.sb-slow{background:rgba(80,80,180,.2);color:#9090d8;border:1px solid rgba(80,80,180,.4);}
+.sb-stun{background:rgba(220,200,30,.2);color:#e8d840;border:1px solid rgba(220,200,30,.4);}
+.sb-tempo{background:rgba(144,80,232,.2);color:#c080ff;border:1px solid rgba(144,80,232,.4);}
+.sb-regen{background:rgba(40,200,80,.15);color:#50e880;border:1px solid rgba(40,200,80,.35);}
+
+/* Tags */
+.tag{display:inline-block;padding:1px 7px;border-radius:2px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:1px;}
+.t-Bleed{background:rgba(200,40,40,.15);color:#ff8080;border:1px solid rgba(200,40,40,.3);}
+.t-Poison{background:rgba(40,180,40,.12);color:#70d870;border:1px solid rgba(40,180,40,.3);}
+.t-Shield,.t-Bulwark{background:rgba(72,120,240,.15);color:#80a8ff;border:1px solid rgba(72,120,240,.3);}
+.t-Crit{background:rgba(240,168,40,.15);color:var(--amber);border:1px solid rgba(240,168,40,.3);}
+.t-Tempo{background:rgba(144,80,232,.15);color:#c080ff;border:1px solid rgba(144,80,232,.3);}
+.t-Arcane{background:rgba(60,120,240,.15);color:#80b0ff;border:1px solid rgba(60,120,240,.3);}
+.t-Thorns{background:rgba(160,160,40,.15);color:#d0d060;border:1px solid rgba(160,160,40,.3);}
+.t-Execute{background:rgba(220,40,40,.15);color:#ff5050;border:1px solid rgba(220,40,40,.3);}
+.t-Sustain{background:rgba(40,180,80,.12);color:#60e090;border:1px solid rgba(40,180,80,.3);}
+.t-Axiom{background:rgba(200,60,255,.15);color:#e070ff;border:1px solid rgba(200,60,255,.4);}
+
+/* Genetic trait badge */
+.gtrait{
+  display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;
+  font-size:10px;font-weight:700;margin:2px;
+  background:linear-gradient(135deg,rgba(60,20,80,.5),rgba(80,30,120,.4));
+  border:1px solid rgba(160,80,220,.5);color:#d090ff;cursor:default;
+}
+
+/* Boon Cards */
+.boon-card{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:10px;
+  cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;position:relative;
+}
+.boon-card:hover{transform:translateY(-3px);}
+.rc-common{border-color:#3a3a5a;}
+.rc-common:hover{border-color:#6060a0;box-shadow:0 4px 16px rgba(80,80,160,.25);}
+.rc-uncommon{border-color:#2a5a2a;}
+.rc-uncommon:hover{border-color:#50a050;box-shadow:0 4px 16px rgba(60,160,60,.25);}
+.rc-rare{border-color:#2a2a7a;}
+.rc-rare:hover{border-color:#4040d0;box-shadow:0 4px 20px rgba(60,80,200,.3);}
+.rc-epic{border-color:#5a2a7a;}
+.rc-epic:hover{border-color:#9050c0;box-shadow:0 4px 20px rgba(160,60,220,.35);}
+.rc-legendary{border-color:#7a5a00;background:#13110a;}
+.rc-legendary:hover{border-color:var(--gold);box-shadow:0 4px 24px rgba(212,160,23,.35);}
+.rc-axiom{border-color:#7a20b0;background:#100a1a;box-shadow:0 0 12px rgba(144,40,200,.2);}
+.rc-axiom:hover{border-color:#c040ff;box-shadow:0 4px 24px rgba(180,60,255,.4);}
+.boon-rar{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.rar-common{color:var(--txt3);}
+.rar-uncommon{color:#50b050;}
+.rar-rare{color:#5060d8;}
+.rar-epic{color:#a040c0;}
+.rar-legendary{color:var(--gold);}
+.rar-axiom{color:#d050ff;}
+.boon-name{font-weight:700;font-size:13px;margin-bottom:3px;}
+.boon-desc{font-size:11px;color:var(--txt2);line-height:1.45;}
+
+/* Enemy Cards */
+.enemy-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:9px 11px;margin:5px 0;
+  display:flex;align-items:flex-start;gap:10px;
+}
+.enemy-card.ec-elite{border-color:var(--amber2);background:#141008;}
+.eicon{width:38px;height:38px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.einfo{flex:1;min-width:0;}
+.ename{font-weight:700;font-size:13px;}
+.etrait{font-size:10.5px;color:var(--txt3);margin-top:2px;font-style:italic;}
+.estats{font-size:10.5px;color:var(--txt3);margin-top:1px;font-family:'Share Tech Mono',monospace;}
+.ehpbar{height:5px;background:var(--bg3);border-radius:2px;margin-top:5px;overflow:hidden;}
+.ehpfill{height:100%;background:linear-gradient(90deg,var(--red2),var(--red));border-radius:2px;transition:width .25s;}
+
+/* Wave trait cards */
+.trait-card{
+  background:var(--bg2);border:1px solid #1a2a3a;border-left:3px solid var(--cyan);
+  border-radius:4px;padding:7px 10px;margin:4px 0;display:flex;gap:8px;
+}
+.ticon{font-size:18px;flex-shrink:0;line-height:1;}
+.tname{font-weight:700;font-size:12px;color:var(--cyan);}
+.tdesc{font-size:11px;color:var(--txt2);margin-top:1px;}
+
+/* Shop */
+.shop-btn{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:7px 8px;cursor:pointer;text-align:center;
+  transition:all .12s;display:flex;flex-direction:column;gap:2px;
+}
+.shop-btn:hover:not(.sb-disabled){border-color:var(--amber);background:#1a1508;}
+.sb-disabled{opacity:.4;cursor:not-allowed;}
+.sb-name{font-weight:700;font-size:12px;}
+.sb-cost{font-size:11px;color:var(--gold);font-family:'Share Tech Mono',monospace;}
+.sb-desc{font-size:9.5px;color:var(--txt3);}
+
+/* Buttons */
+.btn{
+  padding:7px 16px;border:none;border-radius:3px;cursor:pointer;
+  font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;
+  transition:all .12s;
+}
+.btn:hover{transform:translateY(-1px);}
+.btn-primary{background:linear-gradient(135deg,var(--violet2),var(--violet));color:#fff;box-shadow:0 2px 12px rgba(144,80,232,.3);}
+.btn-primary:hover{box-shadow:0 4px 20px rgba(144,80,232,.5);}
+.btn-amber{background:linear-gradient(135deg,var(--amber2),var(--amber));color:#000;}
+.btn-amber:hover{box-shadow:0 4px 16px rgba(240,168,40,.4);}
+.btn-danger{background:linear-gradient(135deg,#6a1818,var(--red2));color:#fff;}
+.btn-green{background:linear-gradient(135deg,#1a4a28,#2a7a40);color:#fff;}
+.btn-gold{background:linear-gradient(135deg,#7a4a00,var(--gold));color:#000;}
+.btn-gold:hover{box-shadow:0 4px 16px rgba(212,160,23,.4);}
+.btn-salvage{background:linear-gradient(135deg,#0a3a30,#1a6050);color:var(--salvage);border:1px solid var(--salvage);}
+.btn-sm{padding:4px 10px;font-size:11px;}
+.btn-ghost{background:var(--bg2);border:1px solid var(--border2);color:var(--txt2);}
+
+/* Log colors */
+.lhit{color:var(--txt);}
+.lcrit{color:var(--amber);font-weight:700;}
+.lmiss{color:var(--txt3);font-style:italic;}
+.ldeath{color:var(--red);font-weight:700;}
+.lstatus{color:#a070d8;}
+.lheal{color:var(--green);}
+.lshield{color:#78a8ff;}
+.laxiom{color:#e070ff;font-style:italic;}
+.lwave{color:var(--cyan);font-weight:700;display:block;background:rgba(48,208,192,.05);padding:2px 4px;margin:3px 0;border-radius:2px;}
+
+/* Diff pips */
+.diff-pip{width:10px;height:10px;border-radius:1px;background:var(--bg3);border:1px solid var(--border2);}
+.diff-pip.dp-on{background:var(--red);border-color:var(--red);box-shadow:0 0 4px rgba(224,64,64,.5);}
+
+/* Inventory items */
+.inv-item{width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:default;border:1px solid;}
+.ii-common{border-color:#3a3a5a;background:var(--bg2);}
+.ii-uncommon{border-color:#2a5a2a;background:#091209;}
+.ii-rare{border-color:#2a2a6a;background:#090920;}
+.ii-epic{border-color:#5a2a7a;background:#12091a;}
+.ii-legendary{border-color:var(--gold);background:#13110a;}
+.ii-axiom{border-color:#9020c0;background:#0f0818;box-shadow:0 0 6px rgba(160,40,200,.3);}
+
+/* Retire banner */
+.retire-banner{background:linear-gradient(135deg,#0a0a18,#12081e);border:1px solid var(--gold);border-radius:6px;padding:14px;margin:10px 0;}
+.retire-banner-title{font-family:'Orbitron',sans-serif;font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px;letter-spacing:1px;}
+
+/* ── LEGACY SCREEN ── */
+#legacy-screen{
+  position:fixed;inset:0;background:var(--bg0);z-index:100;display:none;flex-direction:column;
+  background-image:radial-gradient(ellipse at 30% 40%,rgba(212,160,23,.06) 0%,transparent 50%);
+}
+#legacy-header{
+  background:var(--bg1);border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;gap:16px;padding:0 16px;height:48px;flex-shrink:0;position:relative;
+}
+#legacy-header::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold) 50%,transparent);
+}
+.legacy-tabs{display:flex;gap:4px;}
+.ltab{
+  padding:6px 14px;border-radius:3px;cursor:pointer;font-weight:700;font-size:12px;letter-spacing:.5px;
+  transition:all .15s;color:var(--txt3);border:1px solid transparent;
+}
+.ltab:hover{color:var(--txt2);background:var(--bg2);}
+.ltab.active{color:var(--gold);border-color:rgba(212,160,23,.3);background:rgba(212,160,23,.08);}
+#legacy-body{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+#legacy-content{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
+
+/* Hero cards in legacy */
+.hero-card{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:12px;cursor:pointer;
+  transition:all .15s;position:relative;
+}
+.hero-card:hover{border-color:var(--border3);transform:translateY(-2px);}
+.hero-card.hc-dead{opacity:.6;border-color:rgba(200,40,40,.3);}
+.hero-card.hc-parent-a{border-color:#4878f0;box-shadow:0 0 10px rgba(72,120,240,.25);}
+.hero-card.hc-parent-b{border-color:var(--violet);box-shadow:0 0 10px rgba(144,80,232,.25);}
+.hc-gen{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--txt3);text-transform:uppercase;}
+.hc-name{font-weight:700;font-size:14px;margin:3px 0;}
+.hc-stats{font-size:10.5px;color:var(--txt3);font-family:'Share Tech Mono',monospace;}
+
+/* EV bars */
+.ev-bar{height:4px;background:var(--bg3);border-radius:2px;margin-top:2px;overflow:hidden;}
+.ev-fill{height:100%;border-radius:2px;transition:width .4s;}
+
+/* Family tree nodes */
+.tree-node{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:8px 10px;
+  position:absolute;cursor:pointer;transition:all .15s;min-width:100px;text-align:center;
+}
+.tree-node:hover{border-color:var(--border3);z-index:5;}
+.tree-node.tn-retired{border-color:rgba(212,160,23,.4);}
+.tree-node.tn-spent{border-color:rgba(120,120,160,.35);opacity:.85;}
+.tree-node.tn-dead{border-color:rgba(200,40,40,.3);opacity:.7;}
+.tree-node.tn-selected{border-color:var(--gold);box-shadow:0 0 12px rgba(212,160,23,.3);z-index:6;}
+
+/* Breeding preview */
+.child-preview{background:linear-gradient(135deg,#0a0820,#120a30);border:1px solid rgba(144,80,232,.4);border-radius:6px;padding:14px;}
+
+/* Imprint card */
+.imprint-card{background:var(--bg2);border:1px solid rgba(200,60,255,.3);border-radius:5px;padding:10px;cursor:pointer;transition:all .15s;margin:5px 0;}
+.imprint-card:hover{border-color:rgba(200,60,255,.6);background:#120a1e;transform:translateY(-2px);}
+
+/* Animations */
+@keyframes pulse2{0%,100%{opacity:1}50%{opacity:.5}}
+.pulse{animation:pulse2 1.2s infinite;}
+@keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.slide-in{animation:slideIn .25s ease;}
+
+/* Overlay */
+#overlay{position:fixed;inset:0;background:rgba(4,4,10,.95);display:flex;align-items:center;justify-content:center;z-index:200;}
+.ov-box{
+  background:var(--bg1);border:1px solid var(--border2);border-radius:8px;padding:32px;max-width:480px;width:92%;text-align:center;
+}
+.ov-box::before{
+  content:'';display:block;height:2px;
+  background:linear-gradient(90deg,transparent,var(--violet),var(--amber),transparent);
+  margin-bottom:24px;border-radius:1px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE LAYOUT + DRAWERS
+   ───────────────────────────────────────────────────────────── */
+#main{
+  grid-template-columns: clamp(210px, 22vw, 280px) 1fr clamp(220px, 24vw, 320px);
+}
+.mobile-only{display:none;}
+.hero-toggle{}
+.diff-wrap{
+  display:flex;align-items:center;gap:6px;
+  padding:4px 8px;border:1px solid var(--border2);
+  border-radius:3px;background:var(--bg2);
+  color:var(--txt2);
+}
+.diff-wrap .diff-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);font-weight:700;}
+.diff-wrap input[type="range"]{width:120px;accent-color:var(--amber);}
+.diff-wrap .diff-val{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--gold);min-width:48px;text-align:right;}
+
+#drawer-backdrop{
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.55);
+  z-index:45;
+}
+@media (max-width: 980px){
+  #main{grid-template-columns:1fr;}
+  .mobile-only{display:inline-flex;}
+  #hero-panel, #right-panel{
+    position:fixed;
+    top:calc(var(--header-h) + env(safe-area-inset-top));
+    bottom:calc(var(--footer-h) + env(safe-area-inset-bottom));
+    width:min(88vw, 360px);
+    z-index:50;
+    background:var(--bg1);
+    overflow-y:auto;
+    box-shadow:0 0 24px rgba(0,0,0,.55);
+    transition:transform .18s ease;
+    border-right:none;
+  }
+  #hero-panel{
+    left:0;
+    transform:translateX(-105%);
+    border-right:1px solid var(--border2);
+  }
+  #right-panel{
+    right:0;
+    left:auto;
+    transform:translateX(105%);
+    border-left:1px solid var(--border2);
+  }
+  body.drawer-hero #hero-panel{transform:translateX(0);}
+  body.drawer-right #right-panel{transform:translateX(0);}
+  body.drawer-hero #drawer-backdrop,
+  body.drawer-right #drawer-backdrop{display:block;}
+  #center-panel{border-left:none;border-right:none;}
+}
+@media (max-width: 720px){
+  #game{grid-template-rows:auto 1fr auto;}
+  #header{
+    flex-wrap:wrap;
+    row-gap:6px;
+    height:auto;
+    padding:6px 10px;
+    padding-top:calc(6px + env(safe-area-inset-top));
+  }
+  #footer{
+    flex-wrap:wrap;
+    row-gap:6px;
+    height:auto;
+    padding:6px 10px;
+    padding-bottom:calc(6px + env(safe-area-inset-bottom));
+  }
+  #log-wrap{height:140px;}
+  .btn{padding:7px 12px;}
+  #legacy-content{padding:14px;}
+}
+@media (max-width: 600px){
+  /* Phone portrait: show hero panel above center content */
+  .hero-toggle{display:none !important;}
+  #main{display:flex;flex-direction:column;}
+  #hero-panel{
+    position:relative !important;
+    top:auto !important;bottom:auto !important;left:auto !important;right:auto !important;
+    width:100% !important;
+    transform:none !important;
+    box-shadow:none !important;
+    border-right:none !important;
+    border-left:none !important;
+    border-bottom:1px solid var(--border);
+    max-height:34vh;
+    overflow-y:auto;
+  }
+  /* Right panel stays a drawer (opened via 📚 Build) */
+  #right-panel{width:min(92vw, 380px);}
+  #center-panel{border-left:none;border-right:none;}
+  .diff-wrap input[type="range"]{width:90px;}
+}
+@media (max-width: 420px){
+  #log-wrap{height:120px;}
+  #combat-log{font-size:10px;}
+}
+@media (max-width: 980px){
+  #legacy-header{
+    flex-wrap:wrap;
+    height:auto;
+    padding:10px 12px;
+    gap:10px;
+  }
+  .legacy-tabs{
+    width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding:2px 0;
+  }
+  .legacy-tabs .ltab{
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COLLAPSIBLE COMBAT LOG
+   ───────────────────────────────────────────────────────────── */
+#log-wrap.collapsed{height:34px;}
+#log-wrap.collapsed #combat-log{display:none;}
+#log-wrap.collapsed #log-head{border-bottom:none;}
+
+
+/* ── TACTICS (pre-wave prep; cost paid when you start the wave) ── */
+.tactic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;}
+.tactic-card{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:10px;cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;position:relative;}
+.tactic-card:hover{transform:translateY(-2px);border-color:var(--amber);box-shadow:0 6px 18px rgba(0,0,0,.25);}
+.tactic-card.sel{border-color:rgba(212,160,23,.7);box-shadow:0 0 14px rgba(212,160,23,.22);}
+.tactic-card.disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;}
+.tactic-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.tactic-name{font-weight:700;font-size:12px;}
+.tactic-cost{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--gold);white-space:nowrap;}
+.tactic-desc{font-size:10.5px;color:var(--txt2);line-height:1.35;margin-top:4px;}
+.tactic-note{font-size:10px;color:var(--txt3);margin-top:6px;}
+.tactic-pill{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid rgba(240,168,40,.35);background:rgba(240,168,40,.08);font-size:10px;color:var(--amber);}
+
+
+/* ── V5: Breeding Actions + Bloodline Aspects ── */
+.breed-actions{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
+.ba-btn{background:var(--bg2);border:1px solid var(--border2);color:var(--txt2);}
+.ba-btn.active{border-color:rgba(212,160,23,.55);box-shadow:0 0 10px rgba(212,160,23,.18);color:var(--txt);}
+.ba-btn.disabled{opacity:.45;cursor:not-allowed;}
+.breed-subpanel{background:rgba(20,18,40,.65);border:1px solid var(--border2);border-radius:6px;padding:10px;margin-top:8px;}
+.choice-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid rgba(144,80,232,.35);background:rgba(144,80,232,.10);cursor:pointer;font-size:11px;color:var(--txt2);}
+.choice-pill.active{border-color:rgba(212,160,23,.6);background:rgba(212,160,23,.10);color:var(--txt);}
+.aspect-row{display:flex;align-items:center;gap:8px;margin:6px 0;}
+.aspect-bar{flex:1;height:6px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.aspect-fill{height:100%;}
+
+</style>
+</head>
+<body>
+
+<!-- ─── RUN SCREEN ──────────────────────────────────────────── -->
+<div id="game">
+  <div id="header">
+    <span class="logo">ᚠ RUNESAGA</span>
+    <div style="width:1px;height:20px;background:var(--border2)"></div>
+    <span class="wave-num" id="hdr-wave">Wave 1/12</span>
+    <span style="font-size:11px;color:var(--txt3)" id="hdr-lvl">Lv.1</span>
+    <div style="display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--gold)">ᛋ<span id="hdr-gold">0</span></div>
+    <div style="display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--salvage)">ᚱ<span id="hdr-salvage">0</span></div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-sm mobile-only hero-toggle" onclick="toggleDrawer('hero')">🧬 Hero</button>
+      <button class="btn btn-sm mobile-only" onclick="toggleDrawer('right')">📚 Build</button>
+
+      <div class="diff-wrap" title="Difficulty multiplier (enemy stats)">
+        <span class="diff-label">DIFF</span>
+        <input id="diff-slider" type="range" min="0" max="2" step="0.1" value="1" oninput="onDifficultyInput(this.value)">
+        <span class="diff-val" id="diff-val">x1.0</span>
+      </div>
+
+      <button class="btn btn-sm" id="btn-speed" onclick="cycleSpeed()">1× Speed</button>
+      <button class="btn btn-sm btn-gold" onclick="showLegacy()">ᛟ Hero Hall</button>
+      <button class="btn btn-sm btn-danger" onclick="confirmReset()">New Run</button>
+    </div>
+  </div>
+  <div id="main">
+    <div class="panel" id="hero-panel"><div id="hero-content"></div></div>
+    <div id="center-panel" class="panel" style="border-right:none">
+      <div id="center-content" style="flex:1;overflow-y:auto"></div>
+      <div id="log-wrap">
+        <div id="log-head">
+          <span style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--txt3)">COMBAT LOG</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-sm btn-ghost" id="btn-log-toggle" onclick="toggleCombatLog()">Collapse</button>
+            <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border2);color:var(--txt3);font-size:10px;padding:2px 8px" onclick="clearLog()">Clear</button>
+          </div>
+        </div>
+        <div id="combat-log"></div>
+      </div>
+    </div>
+    <div class="panel" id="right-panel"><div id="right-content"></div></div>
+  </div>
+  <div id="footer">
+    <div id="ftr-btns" style="display:flex;gap:8px;align-items:center"></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-sm btn-ghost mobile-only" onclick="toggleCombatLog()">🗒 Log</button>
+    </div>
+    <div id="ftr-info" style="margin-left:auto;font-size:11px;color:var(--txt3);font-family:'Share Tech Mono',monospace"></div>
+  </div>
+</div>
+
+<!-- Drawer backdrop for mobile panels -->
+<div id="drawer-backdrop" onclick="closeDrawers()" aria-hidden="true"></div>
+
+<!-- ─── LEGACY SCREEN ──────────────────────────────────────── -->
+<div id="legacy-screen">
+  <div id="legacy-header">
+    <span style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:var(--gold);letter-spacing:2px;text-shadow:0 0 12px rgba(212,160,23,.4)">ᛟ HERO HALL</span>
+    <div style="width:1px;height:20px;background:var(--border2)"></div>
+    <div class="legacy-tabs">
+      <div class="ltab active" id="ltab-pool" onclick="setLegacyTab('pool')">Chosen of the Hall</div>
+      <div class="ltab" id="ltab-breed" onclick="setLegacyTab('breed')">Breeding</div>
+      <div class="ltab" id="ltab-fallen" onclick="setLegacyTab('fallen')">Fallen Saga</div>
+      <div class="ltab" id="ltab-tree" onclick="setLegacyTab('tree')">Family Tree</div>
+      <div class="ltab" id="ltab-upgrades" onclick="setLegacyTab('upgrades')">Runesmith</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:14px;align-items:center;font-size:12px;font-family:'Share Tech Mono',monospace">
+      <span style="color:var(--gold)">ᛋ <span id="leg-essence">0</span> Essence</span>
+      <span style="color:var(--salvage)">ᚱ <span id="leg-salvage">0</span> Relics</span>
+      <button class="btn btn-sm btn-danger" onclick="hideLegacy()">✕ Return to Run</button>
+    </div>
+  </div>
+  <div id="legacy-body">
+    <div id="legacy-content"></div>
+  </div>
+</div>
+
+<!-- ─── OVERLAY (start screen / retire / imprint) ────────── -->
+<div id="overlay" style="display:none">
+  <div class="ov-box" id="overlay-content"></div>
+</div>
+
+<script>
+// ═══ SEEDED RNG ═══
+let _rng=1;
+function seedRng(s){_rng=(typeof s==='string'?hashStr(s):(+s||Date.now()))>>>0||1;}
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0||1;}
+function rng(){_rng^=_rng<<13;_rng^=_rng>>>17;_rng^=_rng<<5;return(_rng>>>0)/4294967296;}
+function ri(mn,mx){return Math.floor(rng()*(mx-mn+1))+mn;}
+function rpick(a){return a[Math.floor(rng()*a.length)];}
+function rshuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function rwgt(items,wfn){const ws=items.map(wfn),t=ws.reduce((a,b)=>a+b,0);let r=rng()*t;for(let i=0;i<items.length;i++){r-=ws[i];if(r<=0)return items[i];}return items[items.length-1];}
+
+// ═══ EV SYSTEM ═══
+const EV_FACTORS={hp:.6,atk:.08,def:.05,spd:.2,crit:.0012,eva:.0008,acc:.001,ls:.0006};
+const BASE_STATS={maxHP:100,atk:15,def:6,spd:45,critChance:.08,critDmg:1.75,evasion:.04,accuracy:.88,lifesteal:0};
+const EV_KEYS=['hp','atk','def','spd','crit','eva','acc','ls'];
+const EV_CAP_BASE=60;
+function evCap(){return Math.min(100,EV_CAP_BASE+(META.upgrades.evCap||0)*10);}
+function evDerived(evs){
+  return{
+    maxHP:BASE_STATS.maxHP+Math.floor((evs.hp||0)*EV_FACTORS.hp),
+    atk:Math.round((BASE_STATS.atk+(evs.atk||0)*EV_FACTORS.atk)*10)/10,
+    def:Math.round((BASE_STATS.def+(evs.def||0)*EV_FACTORS.def)*10)/10,
+    spd:Math.round(BASE_STATS.spd+(evs.spd||0)*EV_FACTORS.spd),
+    critChance:Math.min(.9,BASE_STATS.critChance+(evs.crit||0)*EV_FACTORS.crit),
+    critDmg:BASE_STATS.critDmg,
+    evasion:Math.min(.6,BASE_STATS.evasion+(evs.eva||0)*EV_FACTORS.eva),
+    accuracy:Math.min(.99,BASE_STATS.accuracy+(evs.acc||0)*EV_FACTORS.acc),
+    lifesteal:Math.min(.4,BASE_STATS.lifesteal+(evs.ls||0)*EV_FACTORS.ls),
+  };
+}
+function emptyEVs(){return{hp:0,atk:0,def:0,spd:0,crit:0,eva:0,acc:0,ls:0};}
+
+// ═══ GENETIC TRAITS ═══
+const GTRAITS={
+  serrated:{name:'Serrated',icon:'🗡',desc:'On hit: 22% chance to apply 1 Bleed (2s).',color:'#ff7070'},
+  aegis:{name:'Aegis Born',icon:'🛡',desc:'Battle start: gain 8 Shield.',color:'#80a8ff'},
+  skirmisher:{name:'Skirmisher',icon:'💨',desc:'+8 SPD when below 50% HP.',color:'#80d0ff'},
+  venomkiss:{name:'Venomkiss',icon:'☠',desc:'Poison ticks deal +1 extra damage.',color:'#70d870'},
+  gambler:{name:'Gambler',icon:'🎲',desc:'+5% Crit Chance, −2 DEF.',color:'#e8c048'},
+  spite:{name:'Spite',icon:'🌵',desc:'Reflect 8% of damage taken as true dmg.',color:'#d0d060'},
+  ironblood:{name:'Iron Blood',icon:'⚙',desc:'+5 DEF.',color:'#90a8c8'},
+  swift_born:{name:'Swift Born',icon:'⚡',desc:'+8 SPD.',color:'#c080ff'},
+  lucky:{name:'Lucky Strike',icon:'🍀',desc:'+4% Crit Chance.',color:'#60e090'},
+  resilient:{name:'Resilient',icon:'❤',desc:'+25 Max HP.',color:'#80e080'},
+  predatory:{name:'Predatory',icon:'🐆',desc:'+3 ATK when below 50% HP.',color:'#f08040'},
+  vampiric_b:{name:'Vampiric Blood',icon:'🧛',desc:'+3% Lifesteal.',color:'#d070d8'},
+  tenacious:{name:'Tenacious',icon:'🔰',desc:'Below 25% HP: take 40% less damage.',color:'#60b8ff'},
+  executioner_b:{name:"Executor's Blood",icon:'💀',desc:'+15% dmg to enemies below 30% HP.',color:'#ff5050'},
+};
+const GTRAIT_KEYS=Object.keys(GTRAITS);
+const TRAIT_MAX_BASE=3;
+
+// ═══ STATUS DEFS ═══
+const STATUS={
+  bleed:{name:'Bleed',icon:'🩸',cls:'sb-bleed',desc:'DoT: (3+stacks) dmg/sec'},
+  poison:{name:'Poison',icon:'☠',cls:'sb-poison',desc:'DoT: (2+stacks) dmg/sec'},
+  shield:{name:'Shield',icon:'🛡',cls:'sb-shield',desc:'Absorbs damage'},
+  weak:{name:'Weak',icon:'💔',cls:'sb-weak',desc:'-25% damage dealt'},
+  vulnerable:{name:'Vuln',icon:'🎯',cls:'sb-vulnerable',desc:'+30% damage taken'},
+  rage:{name:'Rage',icon:'🔥',cls:'sb-rage',desc:'+4 ATK per stack'},
+  slow:{name:'Slow',icon:'🐌',cls:'sb-slow',desc:'-30% Speed'},
+  stun:{name:'Stun',icon:'💫',cls:'sb-stun',desc:'Cannot act'},
+  tempo:{name:'Tempo',icon:'⚡',cls:'sb-tempo',desc:'+3 SPD per stack'},
+  regen:{name:'Regen',icon:'💚',cls:'sb-regen',desc:'Heals HP per sec'},
+};
+
+// ═══ BOONS ═══
+const BOONS=[
+  {id:'iron_skin',name:'Iron Skin',rarity:'common',tags:['Bulwark'],icon:'🛡',desc:'+22 Defense.',effects:[{t:'stat',s:'def',v:22}]},
+  {id:'battle_fury',name:'Battle Fury',rarity:'common',tags:['Crit'],icon:'⚔',desc:'+14 Attack.',effects:[{t:'stat',s:'atk',v:14}]},
+  {id:'thick_blood',name:'Thick Blood',rarity:'common',tags:['Sustain'],icon:'❤',desc:'+65 Max HP.',effects:[{t:'stat',s:'maxHP',v:65},{t:'stat',s:'hp',v:65}]},
+  {id:'sharp_edge',name:'Sharp Edge',rarity:'common',tags:['Crit'],icon:'🗡',desc:'+9% Crit Chance.',effects:[{t:'stat',s:'critChance',v:.09}]},
+  {id:'swift_strikes',name:'Swift Strikes',rarity:'common',tags:['Tempo'],icon:'💨',desc:'+18 Speed.',effects:[{t:'stat',s:'spd',v:18}]},
+  {id:'blood_sense',name:'Blood Sense',rarity:'common',tags:['Bleed'],icon:'🩸',desc:'Attacks apply 1 Bleed (3s).',effects:[{t:'onHit',ef:'status',st:'bleed',sk:1,dur:3}]},
+  {id:'toxic_touch',name:'Toxic Touch',rarity:'common',tags:['Poison'],icon:'☠',desc:'Attacks apply 1 Poison (4s).',effects:[{t:'onHit',ef:'status',st:'poison',sk:1,dur:4}]},
+  {id:'vampiric',name:'Vampiric',rarity:'common',tags:['Sustain'],icon:'🧛',desc:'+8% Lifesteal.',effects:[{t:'stat',s:'lifesteal',v:.08}]},
+  {id:'bulwark_start',name:'Bulwark',rarity:'common',tags:['Bulwark','Shield'],icon:'🔰',desc:'Start each battle with 35 Shield.',effects:[{t:'onBattleStart',ef:'shield',amt:35}]},
+  {id:'dodge_step',name:'Dodge Step',rarity:'common',tags:['Tempo'],icon:'💃',desc:'+9% Evasion.',effects:[{t:'stat',s:'evasion',v:.09}]},
+  {id:'steady_aim',name:'Steady Aim',rarity:'common',tags:['Crit'],icon:'🎯',desc:'+25% Crit Damage.',effects:[{t:'stat',s:'critDmg',v:.25}]},
+  {id:'reinforced',name:'Reinforced',rarity:'common',tags:['Bulwark'],icon:'🏰',desc:'+12 Defense, +20 Max HP.',effects:[{t:'stat',s:'def',v:12},{t:'stat',s:'maxHP',v:20},{t:'stat',s:'hp',v:20}]},
+  {id:'honed_reflex',name:'Honed Reflex',rarity:'common',tags:['Tempo','Crit'],icon:'⚡',desc:'+12 Speed, +5% Crit Chance.',effects:[{t:'stat',s:'spd',v:12},{t:'stat',s:'critChance',v:.05}]},
+
+  {id:'hemorrhage',name:'Hemorrhage',rarity:'uncommon',tags:['Bleed'],icon:'💢',desc:'Bleed deals 70% more damage.',effects:[{t:'passive',k:'bleedMult',v:1.70}]},
+  {id:'virulent',name:'Virulent',rarity:'uncommon',tags:['Poison'],icon:'🧪',desc:'Poison deals 70% more damage.',effects:[{t:'passive',k:'poisonMult',v:1.70}]},
+  {id:'shield_bash',name:'Shield Bash',rarity:'uncommon',tags:['Bulwark','Thorns'],icon:'💥',desc:'When Shield breaks, deal 22 true dmg.',effects:[{t:'passive',k:'shieldBash',v:22}]},
+  {id:'crit_surge',name:'Critical Surge',rarity:'uncommon',tags:['Crit'],icon:'⚡',desc:'Crits apply Vulnerable (3s) to enemy.',effects:[{t:'onCrit',ef:'statusEnemy',st:'vulnerable',sk:1,dur:3}]},
+  {id:'tempo_rise',name:'Tempo Rise',rarity:'uncommon',tags:['Tempo'],icon:'🌀',desc:'Each kill grants +1 Tempo stack.',effects:[{t:'onKill',ef:'status',st:'tempo',sk:1,dur:9999}]},
+  {id:'executioner',name:'Executioner',rarity:'uncommon',tags:['Execute'],icon:'💀',desc:'+28% damage to enemies below 30% HP.',effects:[{t:'passive',k:'executioner',v:.28}]},
+  {id:'thorns',name:'Thorns',rarity:'uncommon',tags:['Thorns'],icon:'🌵',desc:'Reflect 22% of damage taken.',effects:[{t:'passive',k:'thorns',v:.22}]},
+  {id:'battle_trance',name:'Battle Trance',rarity:'uncommon',tags:['Tempo'],icon:'🔁',desc:'Every 5th attack deals +90% bonus dmg.',effects:[{t:'passive',k:'trance',v:5}]},
+  {id:'twin_strike',name:'Twin Strike',rarity:'uncommon',tags:['Tempo','Crit'],icon:'⚔',desc:'22% chance to attack twice per swing.',effects:[{t:'passive',k:'twin',v:.22}]},
+  {id:'bleed_weak',name:'Bleeding Edge',rarity:'uncommon',tags:['Bleed'],icon:'🗡',desc:'Bleed also applies Weak to target.',effects:[{t:'passive',k:'bleedWeak',v:true}]},
+  {id:'poison_slow',name:'Numbing Toxin',rarity:'uncommon',tags:['Poison'],icon:'🐌',desc:'Applying Poison also Slows the enemy.',effects:[{t:'passive',k:'poisonSlow',v:true}]},
+  {id:'guard_mark',name:"Guardian's Mark",rarity:'uncommon',tags:['Bulwark','Sustain'],icon:'✨',desc:'+45 Max HP, +10 Defense.',effects:[{t:'stat',s:'maxHP',v:45},{t:'stat',s:'hp',v:45},{t:'stat',s:'def',v:10}]},
+
+  {id:'necrotic',name:'Necrotic Touch',rarity:'rare',tags:['Poison'],icon:'🧟',desc:'Each Poison stack reduces enemy DEF by 3.',effects:[{t:'passive',k:'necroticPoison',v:3}]},
+  {id:'vanguard',name:'Vanguard',rarity:'rare',tags:['Bulwark','Shield'],icon:'🛡',desc:'Taking damage grants 10 Shield.',effects:[{t:'onDmg',ef:'shield',amt:10}]},
+  {id:'rampage',name:'Rampage',rarity:'rare',tags:['Execute','Tempo'],icon:'😤',desc:'Each kill grants +7 ATK (this battle).',effects:[{t:'onKill',ef:'tempStat',s:'atk',v:7}]},
+  {id:'soul_rend',name:'Soul Rend',rarity:'rare',tags:['Arcane'],icon:'👻',desc:'22% of damage bypasses enemy Defense.',effects:[{t:'passive',k:'defpen',v:.22}]},
+  {id:'overwhelming',name:'Overwhelming Force',rarity:'rare',tags:['Crit','Arcane'],icon:'💪',desc:'Crits ignore 55% of enemy Defense.',effects:[{t:'passive',k:'critDefpen',v:.55}]},
+  {id:'predator',name:'Predator Instinct',rarity:'rare',tags:['Execute','Sustain'],icon:'🐆',desc:'+22% ATK when below 50% HP.',effects:[{t:'passive',k:'predator',v:.22}]},
+  {id:'crimson_tide',name:'Crimson Tide',rarity:'rare',tags:['Bleed'],icon:'🌊',desc:'Bleed also Slows the target.',effects:[{t:'passive',k:'bleedSlow',v:true}]},
+  {id:'arcane_surge',name:'Arcane Surge',rarity:'rare',tags:['Arcane'],icon:'🔮',desc:'Every 4th attack: +90% magic dmg (ignores DEF).',effects:[{t:'passive',k:'arcane',v:4}]},
+  {id:'living_armor',name:'Living Armor',rarity:'rare',tags:['Sustain'],icon:'💚',desc:'Regen 3% Max HP per second.',effects:[{t:'passive',k:'regen',v:.03}]},
+  {id:'berserker',name:"Berserker's Heart",rarity:'rare',tags:['Execute','Tempo'],icon:'💢',desc:'Below 30% HP: +40% ATK, +20% SPD.',effects:[{t:'passive',k:'berserk',atk:.40,spd:.20,thr:.30}]},
+
+  {id:'death_mark',name:'Death Mark',rarity:'epic',tags:['Execute','Bleed'],icon:'☠',desc:'On kill, next attack deals +160% bonus dmg.',effects:[{t:'onKill',ef:'flag',f:'deathMark',v:1}]},
+  {id:'plague_lord',name:'Plague Lord',rarity:'epic',tags:['Poison'],icon:'☣',desc:'Applying Poison spreads 1 stack to all enemies.',effects:[{t:'passive',k:'plagueLord',v:true}]},
+  {id:'void_strike',name:'Void Strike',rarity:'epic',tags:['Arcane'],icon:'🌀',desc:'Every 8th attack deals 3× damage (ignores DEF).',effects:[{t:'passive',k:'void',v:8}]},
+  {id:'apex_predator',name:'Apex Predator',rarity:'epic',tags:['Execute'],icon:'🦁',desc:'Each kill grants permanent +6 ATK.',effects:[{t:'onKill',ef:'permStat',s:'atk',v:6}]},
+  {id:'undying',name:'Undying',rarity:'epic',tags:['Sustain'],icon:'🔄',desc:'Once per battle, revive with 35% HP.',effects:[{t:'passive',k:'undying',v:true}]},
+
+  {id:'chain_lightning',name:'Chain Lightning',rarity:'legendary',tags:['Arcane','Tempo'],icon:'⚡',desc:'Crits splash 55% dmg to a random other enemy.',effects:[{t:'onCrit',ef:'splash',v:.55}]},
+  {id:'eternal_hunger',name:'Eternal Hunger',rarity:'legendary',tags:['Sustain','Execute'],icon:'🌑',desc:'+30% Lifesteal. Overhealing becomes Shield.',effects:[{t:'stat',s:'lifesteal',v:.30},{t:'passive',k:'overhealShield',v:true}]},
+
+  {id:'ax_opening',name:'RUNE: Opening Strike',rarity:'axiom',tags:['Axiom','Crit'],icon:'💫',desc:'First hit each battle always crits.',effects:[{t:'passive',k:'axiomOpen',v:true}]},
+  {id:'ax_aegis',name:'RUNE: Aegis Protocol',rarity:'axiom',tags:['Axiom','Shield','Sustain'],icon:'💎',desc:'Overhealing becomes Shield.',effects:[{t:'passive',k:'overhealShield',v:true}]},
+  {id:'ax_crimson',name:'RUNE: Crimson Law',rarity:'axiom',tags:['Axiom','Bleed'],icon:'🩸',desc:'Applying Bleed also applies Weak.',effects:[{t:'passive',k:'axiomCrimson',v:true}]},
+  {id:'ax_ghost',name:'RUNE: Ghost Step',rarity:'axiom',tags:['Axiom','Tempo'],icon:'👻',desc:'When you dodge, gain +2 Tempo stacks.',effects:[{t:'onDodge',ef:'status',st:'tempo',sk:2,dur:9999}]},
+  {id:'ax_echo',name:'RUNE: Echo Strike',rarity:'axiom',tags:['Axiom','Tempo'],icon:'🔁',desc:'Every 3rd attack repeats at 50% power.',effects:[{t:'passive',k:'axiomEcho',v:3}]},
+  {id:'ax_iron_law',name:'RUNE: Iron Law',rarity:'axiom',tags:['Axiom','Bulwark'],icon:'⚖',desc:'20% of your Defense adds to Attack.',effects:[{t:'passive',k:'axiomIronLaw',v:.20}]},
+  {id:'ax_harvest',name:'RUNE: Soul Harvest',rarity:'axiom',tags:['Axiom','Sustain'],icon:'⚗',desc:'Kills restore 20% Max HP.',effects:[{t:'onKill',ef:'healPct',v:.20}]},
+  {id:'ax_wrath',name:'RUNE: Wrath Engine',rarity:'axiom',tags:['Axiom','Crit'],icon:'🔥',desc:'Crits grant Rage stacks (+4 ATK each, max 15).',effects:[{t:'onCrit',ef:'status',st:'rage',sk:1,dur:9999,mx:15}]},
+  {id:'ax_fortress',name:'RUNE: Fortress Mind',rarity:'axiom',tags:['Axiom','Bulwark','Shield'],icon:'🏯',desc:'Shield absorbs entire hits, not just damage.',effects:[{t:'passive',k:'axiomFortress',v:true}]},
+  {id:'ax_kinetic',name:'RUNE: Kinetic Edge',rarity:'axiom',tags:['Axiom','Crit','Tempo'],icon:'💠',desc:'Every 10 SPD = +2% Crit Chance.',effects:[{t:'passive',k:'axiomKinetic',v:true}]},
+  {id:'ax_plague',name:'RUNE: Plague Vector',rarity:'axiom',tags:['Axiom','Poison','Bleed'],icon:'🦠',desc:'Status effects last 60% longer.',effects:[{t:'passive',k:'axiomPlague',v:1.6}]},
+  {id:'ax_mirror',name:'RUNE: Mirror Law',rarity:'axiom',tags:['Axiom','Thorns'],icon:'🪞',desc:'30% of damage taken is reflected as true dmg.',effects:[{t:'passive',k:'axiomMirror',v:.30}]},
+
+{id:'precision_optics', name:'Precision Optics',      rarity:'common',  tags:['Crit'],                icon:'🔭',desc:'+8% Accuracy.', effects:[{t:'stat',s:'accuracy',v:.08}]},
+{id:'cleaving_arc',     name:'Cleaving Arc',          rarity:'uncommon',tags:['Execute','Tempo'],     icon:'🪓',desc:'On hit: splash 35% damage to a random other enemy.', effects:[{t:'onHit',ef:'splash',v:.35}]},
+{id:'frost_touch',      name:'Frost Touch',           rarity:'uncommon',tags:['Tempo'],              icon:'❄️',desc:'On hit: apply Slow (2s).', effects:[{t:'onHit',ef:'statusEnemy',st:'slow',sk:1,dur:2}]},
+{id:'sunder_blows',     name:'Sunder Blows',          rarity:'uncommon',tags:['Arcane'],             icon:'🪨',desc:'On hit: reduce enemy DEF by 2 (stacks, battle).', effects:[{t:'passive',k:'shred',v:2}]},
+{id:'sniper_protocol',  name:'Sniper Protocol',       rarity:'uncommon',tags:['Crit'],               icon:'🎯',desc:'Attacks target the lowest-HP enemy.', effects:[{t:'passive',k:'targetLowest',v:true}]},
+{id:'ward_protocol',    name:'Ward Protocol',         rarity:'rare',    tags:['Bulwark'],            icon:'🧿',desc:'Once per battle, the first debuff applied to you is negated.', effects:[{t:'passive',k:'wardDebuff',v:true}]},
+{id:'antitoxin_glands', name:'Antitoxin Glands',      rarity:'rare',    tags:['Sustain'],            icon:'🧬',desc:'Take 40% less Bleed/Poison damage.', effects:[{t:'passive',k:'dotResist',v:.60}]},
+{id:'stunning_crits',   name:'Stunning Crits',        rarity:'rare',    tags:['Crit'],               icon:'💫',desc:'Crits have 18% chance to Stun (1s).', effects:[{t:'passive',k:'stunCrit',v:.18}]},
+{id:'second_wind',      name:'Second Wind',           rarity:'rare',    tags:['Sustain'],            icon:'🌬️',desc:'Once per battle, dropping below 30% HP heals 20% Max HP.', effects:[{t:'passive',k:'secondWind',v:.20}]},
+];
+
+// ═══ ENEMY ARCHETYPES ═══
+const ARCHETYPES=[
+  {id:'bruiser',name:'Bruiser',icon:'💪',col:'#a03020',base:{hp:80,atk:14,def:8,spd:40,cc:.05,cd:1.5},scl:{hp:28,atk:5,def:3,spd:2},trait:'Relentless',td:'Immune to Slow.',beh:'steady'},
+  {id:'striker',name:'Striker',icon:'⚡',col:'#806010',base:{hp:48,atk:16,def:4,spd:70,cc:.22,cd:2.0},scl:{hp:12,atk:6,def:1,spd:5},trait:'Keen Edge',td:'+25% Crit Chance.',beh:'fast'},
+  {id:'tank',name:'Tank',icon:'🛡',col:'#305080',base:{hp:120,atk:10,def:22,spd:25,cc:.03,cd:1.5},scl:{hp:38,atk:3,def:5,spd:1},trait:'Iron Will',td:'First hit against it is negated.',beh:'steady'},
+  {id:'shaman',name:'Shaman',icon:'🔮',col:'#702080',base:{hp:58,atk:12,def:6,spd:45,cc:.08,cd:1.5},scl:{hp:15,atk:4,def:2,spd:2},trait:'Hex',td:'Every 3rd attack applies Weak.',beh:'caster'},
+  {id:'swarm',name:'Swarm',icon:'🐜',col:'#406020',base:{hp:20,atk:8,def:2,spd:62,cc:.05,cd:1.5},scl:{hp:6,atk:3,def:1,spd:3},trait:'Swarming',td:'Spawns in groups of 3.',beh:'fast'},
+  {id:'assassin',name:'Assassin',icon:'🗡',col:'#301840',base:{hp:38,atk:22,def:3,spd:58,cc:.28,cd:2.2},scl:{hp:10,atk:8,def:1,spd:4},trait:'Ambush',td:'First attack deals 2× damage.',beh:'burst'},
+  {id:'leech',name:'Leech',icon:'🧛',col:'#402040',base:{hp:64,atk:13,def:5,spd:42,cc:.08,cd:1.5},scl:{hp:18,atk:4,def:2,spd:2},trait:'Vampiric',td:'Heals 30% of damage dealt.',beh:'sustain',ls:.30},
+  {id:'bombardier',name:'Bombardier',icon:'💣',col:'#6a4000',base:{hp:68,atk:30,def:10,spd:20,cc:.10,cd:2.0},scl:{hp:20,atk:10,def:3,spd:1},trait:'Overcharge',td:'Every 3rd attack deals 2× damage.',beh:'slow'},
+
+  {id:'archer',name:'Archer',icon:'🏹',col:'#305a6a',base:{hp:44,atk:15,def:3,spd:62,cc:.16,cd:1.8},scl:{hp:14,atk:5,def:1,spd:3},trait:'Piercing Shot',td:'Every 4th attack ignores most Defense.',beh:'fast'},
+  {id:'warden',name:'Warden',icon:'🧿',col:'#5a4a10',base:{hp:76,atk:11,def:12,spd:34,cc:.05,cd:1.6},scl:{hp:22,atk:3,def:3,spd:1},trait:'Banner',td:'Battle start: grants Shield to allies.',beh:'steady'},
+  {id:'frost',name:'Frostbinder',icon:'❄️',col:'#204070',base:{hp:58,atk:12,def:6,spd:44,cc:.08,cd:1.6},scl:{hp:16,atk:4,def:2,spd:2},trait:'Frostbite',td:'Every 3rd attack applies Slow.',beh:'caster'},
+];
+
+// ═══ WAVE TRAITS ═══
+const WAVE_TRAITS=[
+  {id:'armored',name:'Armored',icon:'🏰',desc:'Enemies gain +25% Defense.',apply(es){es.forEach(e=>e.def=Math.floor(e.def*1.25));}},
+  {id:'frenzied',name:'Frenzied',icon:'😤',desc:'Enemies gain +20% Speed.',apply(es){es.forEach(e=>e.spd=Math.floor(e.spd*1.20));}},
+  {id:'toxic_air',name:'Toxic Air',icon:'☣',desc:'All units take 1 dmg/sec.',apply(es,h,Gx){Gx.waveFlags.toxicAir=true;}},
+  {id:'glass',name:'Glass Cannon',icon:'🔪',desc:'Enemies: -25% HP, +30% ATK.',apply(es){es.forEach(e=>{e.hp=e.maxHP=Math.floor(e.hp*.75);e.atk=Math.floor(e.atk*1.30);});}},
+  {id:'blessed',name:'Blessed',icon:'✨',desc:'Enemies start with 20% HP as Shield.',apply(es){es.forEach(e=>addShieldToUnit(e,Math.floor(e.hp*.20)));}},
+  {id:'enraged',name:'Enraged',icon:'😡',desc:'Enemies gain +15 ATK when ally dies.',apply(es,h,Gx){Gx.waveFlags.enraged=true;}},
+  {id:'regenerating',name:'Regenerating',icon:'💚',desc:'Enemies regen 2% HP/sec.',apply(es,h,Gx){Gx.waveFlags.eRegen=.02;}},
+  {id:'elite_wave',name:'Elite',icon:'⭐',desc:'One enemy becomes Elite (+65% stats).',apply(es){if(es.length){const e=es[0];e.elite=true;e.hp=e.maxHP=Math.floor(e.hp*1.65);e.atk=Math.floor(e.atk*1.65);e.def=Math.floor(e.def*1.5);e.name='Elite '+e.name;}}},
+  {id:'quickened',name:'Quickened',icon:'💨',desc:'Enemies +15% SPD, +10% Crit Chance.',apply(es){es.forEach(e=>{e.spd=Math.floor(e.spd*1.15);e.cc=Math.min(.8,(e.cc||.05)+.10);});}},
+  {id:'echo_atk',name:'Echo Barrage',icon:'🔊',desc:'Enemies 25% chance to attack twice.',apply(es,h,Gx){Gx.waveFlags.eEcho=true;}},
+  {id:'reinforcements',name:'Reinforcements',icon:'🚨',desc:'+1 additional enemy joins the wave.',apply(es,h,Gx){if(es.length<8){const arch=rpick(ARCHETYPES);es.push(mkEnemy(arch,Gx.wave,false));}}},
+  {id:'marked_prey',name:'Marked Prey',icon:'🎯',desc:'Battle start: hero becomes Vulnerable (3s). Enemies gain +10% Crit Chance.',apply(es,h,Gx){es.forEach(e=>{e.cc=Math.min(.8,(e.cc||.05)+.10);});Gx.waveFlags.heroStartVuln=3;}},
+];
+
+
+// ═══ META PERSISTENT STATE ═══
+const META_KEY='axiom_meta_v3';
+let META={
+  legacyEssence:0,
+  salvage:0,
+  retiredPool:[],
+  fallenLedger:[],
+  family:{},
+  upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
+  unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),
+  nextHeroId:1,
+};
+
+function saveMeta(){
+  const m={...META,unlockedTraits:[...META.unlockedTraits]};
+  try{localStorage.setItem(META_KEY,JSON.stringify(m));}catch(e){}
+}
+function loadMeta(){
+  try{
+    const raw=localStorage.getItem(META_KEY);
+    if(!raw)return;
+    const m=JSON.parse(raw);
+    META={...META,...m};
+    META.unlockedTraits=new Set(m.unlockedTraits||[]);
+  }catch(e){}
+}
+function exportSave(){
+  const m={...META,unlockedTraits:[...META.unlockedTraits]};
+  return btoa(JSON.stringify(m));
+}
+function importSave(str){
+  try{const m=JSON.parse(atob(str));META={...META,...m};META.unlockedTraits=new Set(m.unlockedTraits||[]);saveMeta();return true;}
+  catch(e){return false;}
+}
+function poolMax(){return 6+(META.upgrades.poolSize||0)*2;}
+
+// ─── BREED USES (fertility) ───────────────────────────────────────────────────
+function getBreedUses(rec){
+  if(!rec) return {left:0,max:0};
+  const isRet = META && Array.isArray(META.retiredPool) ? META.retiredPool.includes(rec.id) : false;
+  const retiredLike = !!(rec.runResult && (rec.runResult.outcome==='retired' || rec.runResult.outcome==='victory'));
+  const fallbackMax = (isRet || retiredLike) ? 1 : 0;
+  const mx = (typeof rec.breedUsesMax==='number' && rec.breedUsesMax>0) ? rec.breedUsesMax : fallbackMax;
+  const lf = (typeof rec.breedUsesLeft==='number') ? rec.breedUsesLeft : mx;
+  return {left:Math.max(0,lf), max:Math.max(0,mx)};
+}
+function assignBreedUses(rec,max){
+  if(!rec) return;
+  const m = Math.max(0,Math.min(2,Math.floor(max)));
+  rec.breedUsesMax = m;
+  rec.breedUsesLeft = m;
+}
+function calcBreedUsesForRetire(){
+  // 1 or 2 uses; later waves slightly increase chance of 2
+  const w = (G && typeof G.wave==='number') ? G.wave : 1;
+  if(G && G.phase==='VICTORY') return 2;
+  let p2 = 0.25 + Math.min(0.25, Math.max(0, (w-4))*0.04); // 25% → up to 50%
+  p2 += (META.upgrades.nursery||0)*0.15;
+  p2 = Math.min(0.85, Math.max(0.05, p2));
+  return (rng() < p2) ? 2 : 1;
+}
+function removeFromRetiredPoolById(id){
+  META.retiredPool = META.retiredPool.filter(x=>x!==id);
+  const i = BREED_SELECTED.indexOf(id);
+  if(i>=0) BREED_SELECTED.splice(i,1);
+}
+function removeFromRetiredPool(evt,id){
+  if(evt){evt.stopPropagation();evt.preventDefault();}
+  removeFromRetiredPoolById(id);
+  saveMeta();
+  if(typeof setLegacyTab==='function') setLegacyTab('pool');
+}
+function consumeBreedUse(id){
+  const rec = META.family[id];
+  if(!rec) return;
+  const u = getBreedUses(rec);
+  rec.breedUsesMax = u.max;
+  rec.breedUsesLeft = Math.max(0, u.left-1);
+  if(rec.breedUsesLeft<=0){
+    removeFromRetiredPoolById(id);
+  }
+}
+
+// ═══ HERO RECORD ═══
+function mkHeroId(){return 'H'+(META.nextHeroId++);}
+function mkHeroRecord(name,gen,parentIds,evs,traits){
+  return {id:mkHeroId(),name,gen,parentIds:parentIds||[],evs:{...evs},traits:[...traits],runResult:null,breedUsesMax:0,breedUsesLeft:0};
+}
+
+// ═══ NAME GENERATION ═══
+const NAME_PREFIXES=['Hrafn', 'Skjold', 'Eirik', 'Sigr', 'Bjorn', 'Ulf', 'Astrid', 'Freya', 'Thora', 'Odin', 'Vidar', 'Helga', 'Runa', 'Frost', 'Skadi', 'Leif', 'Dag', 'Inga', 'Yng', 'Kari', 'Tor', 'Gunn', 'Rolf', 'Hild', 'Aske'];
+const NAME_SUFFIXES=['son', 'dottir', 'skald', 'bjorn', 'ulf', 'hild', 'gard', 'heim', 'rune', 'brand', 'vald', 'grim', 'bane', 'born', 'mark', 'ward', 'frost', 'storm', 'spear', 'shield'];
+const EPITHETS={Bleed:'the Bloodmarked',Poison:'the Serpent-Touched',Crit:'the Keen-Eyed',Tempo:'the Stormswift',Bulwark:'the Shieldbound',Arcane:'the Seer',Thorns:'the Thorned',Execute:'the Wolf-Sworn',Sustain:'the Iron-Hearted',Axiom:'the Runebound'};
+function genName(gen,topTag,parentNames){
+  if(gen===0)return rpick(NAME_PREFIXES)+''+rpick(NAME_SUFFIXES);
+  const ep=EPITHETS[topTag]||'the Ascendant';
+  const base=parentNames&&parentNames[0]?parentNames[0].split(' ')[0]:rpick(NAME_PREFIXES);
+  return `${base} ${ep}`;
+}
+
+// Imprint chance
+function imprintChance(){return Math.min(.75,.15+(META.upgrades.imprintChance||0)*.15);}
+// Mutation chance
+function mutationRate(){return Math.min(.20,.04+(META.upgrades.mutationRate||0)*.03);}
+
+// ═══ GAME STATE ═══
+let G=null;
+
+// UI state
+const UI_KEY='axiom_ui_v1';
+let UI={logCollapsed:false,difficulty:1};
+function loadUI(){try{const r=localStorage.getItem(UI_KEY);if(r)UI={...UI,...JSON.parse(r)};}catch(e){}}
+function saveUI(){try{localStorage.setItem(UI_KEY,JSON.stringify(UI));}catch(e){}}
+
+function clampNum(v,min,max){
+  const n=Number(v);
+  if(Number.isNaN(n))return min;
+  return Math.max(min,Math.min(max,n));
+}
+function currentDifficulty(){
+  if(G && typeof G.difficulty==='number')return G.difficulty;
+  return (typeof UI.difficulty==='number')?UI.difficulty:1;
+}
+function setDifficulty(v){
+  UI.difficulty=clampNum(v,0,2);
+  saveUI();
+  updateDifficultyUI();
+}
+function onDifficultyInput(v,src){
+  // src is optional ('start' when called from start overlay)
+  setDifficulty(v);
+  const sv=document.getElementById('start-diff-val');
+  if(sv)sv.textContent='x'+Number(UI.difficulty??1).toFixed(1);
+}
+function updateDifficultyUI(){
+  const d=currentDifficulty();
+  const s=document.getElementById('diff-slider');
+  const v=document.getElementById('diff-val');
+  if(v)v.textContent='x'+Number(d).toFixed(1);
+  if(s){
+    s.value=Number(d);
+    // lock during an active run (keeps difficulty consistent)
+    s.disabled=!!G;
+    s.style.opacity=s.disabled?0.7:1;
+  }
+  const sd=document.getElementById('start-diff');
+  if(sd){
+    sd.value=Number(UI.difficulty??1);
+    const sv=document.getElementById('start-diff-val');
+    if(sv)sv.textContent='x'+Number(UI.difficulty??1).toFixed(1);
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// TACTICS (pre-wave prep; cost paid when you start the wave)
+// ─────────────────────────────────────────────────────────────
+const TACTICS=[
+  {id:'t_focus_threat',  name:'Focus: Threat',   icon:'🎯', cost:12, kind:'target', mode:'threat', desc:'Hero targets the highest ATK enemy first.'},
+  {id:'t_focus_wounded', name:'Focus: Wounded',  icon:'🩸', cost:10, kind:'target', mode:'wounded', desc:'Hero targets the lowest HP% enemy first.'},
+  {id:'t_fortify',       name:'Fortify',         icon:'🛡', cost:11, kind:'start',  desc:'+30 Shield and Regen for 8s at battle start.'},
+  {id:'t_ambush',        name:'Ambush',          icon:'🗡', cost:14, kind:'start',  desc:'Your first attack deals double damage.'},
+  {id:'t_sabotage',      name:'Sabotage',        icon:'🧨', cost:12, kind:'start',  desc:'Enemies start with -15% Defense.'},
+  {id:'t_flare',         name:'Flare',           icon:'🔥', cost:12, kind:'start',  desc:'Enemies start Vulnerable for 3s.'},
+  {id:'t_greed',         name:'Greed',           icon:'🪙', cost:8,  kind:'econ',   desc:'+30% gold for this wave.'},
+];
+const TACTIC_BY_ID=Object.fromEntries(TACTICS.map(t=>[t.id,t]));
+
+function genTacticOffers(){
+  // 3 random options each wave (keeps the loop fresh without hiding the core shop)
+  const pool=[...TACTICS];
+  G.tacticOffers=rshuffle(pool).slice(0,3);
+}
+function selectPendingTactic(id){
+  const t=TACTIC_BY_ID[id];
+  if(!t) return;
+  G.pendingTactic=id;
+  G.pendingTacticPaid=false;
+  addLog(`🧠 Planned tactic: ${t.icon} ${t.name} (cost ᛋ${t.cost} on start)`,'lstatus');
+  renderAll();
+}
+function clearPendingTactic(){
+  G.pendingTactic=null;G.pendingTacticPaid=false;
+  renderAll();
+}
+function commitPendingTactic(){
+  // called when starting a wave (charges gold once)
+  G.activeTactic=null;
+  G.waveGoldMult=1;
+  if(!G.pendingTactic) return true;
+  const t=TACTIC_BY_ID[G.pendingTactic];
+  if(!t){G.pendingTactic=null;G.pendingTacticPaid=false;return true;}
+  if(!G.pendingTacticPaid){
+    if(G.gold < t.cost){
+      addLog(`ᛋ${t.cost} required to use tactic: ${t.icon} ${t.name}`,'lstatus');
+      return false;
+    }
+    G.gold -= t.cost;
+    G.pendingTacticPaid=true;
+    addLog(`🧠 Tactic engaged: ${t.icon} ${t.name} (ᛋ${t.cost})`,'laxiom');
+  }
+  G.activeTactic=G.pendingTactic;
+  G.pendingTactic=null;
+  G.pendingTacticPaid=false;
+  return true;
+}
+function applyBattleStartTactics(){
+  const t=TACTIC_BY_ID[G.activeTactic];
+  if(!t) return;
+  const h=G.hero;
+  if(t.id==='t_fortify'){
+    addShieldToUnit(h,30);
+    h.statuses.regen={stacks:1,value:6,dur:8};
+    addLog(`  🛡 Fortify: +30 Shield, Regen (8s)`,'lstatus');
+  } else if(t.id==='t_ambush'){
+    h.flags.tacticAmbush=true;
+    addLog(`  🗡 Ambush: first strike empowered`,'lstatus');
+  } else if(t.id==='t_sabotage'){
+    G.enemies.filter(e=>!e.dead).forEach(e=>{e.def=Math.max(0,Math.floor(e.def*0.85));});
+    addLog(`  🧨 Sabotage: enemies DEF reduced`,'lstatus');
+  } else if(t.id==='t_flare'){
+    G.enemies.filter(e=>!e.dead).forEach(e=>applyStatus(e,'vulnerable',1,3));
+    addLog(`  🔥 Flare: enemies Vulnerable (3s)`,'lstatus');
+  } else if(t.id==='t_greed'){
+    G.waveGoldMult=1.30;
+    addLog(`  🪙 Greed: +30% gold this wave`,'lstatus');
+  }
+}
+function tacticTargetMode(){
+  const t=TACTIC_BY_ID[G.activeTactic];
+  return (t && t.kind==='target') ? t.mode : null;
+}
+
+
+function newHero(evs,traits,record){
+  const derived=evDerived(evs);
+  const h={
+    ...derived,
+    hp:derived.maxHP,
+    statuses:{},actionMeter:0,atkCount:0,
+    tempStats:{},permStats:{},flags:{},
+    usedUndying:false,
+    evs:{...evs},
+    traits:[...traits],
+    record:record||null,
+  };
+  applyGeneticTraitStats(h);
+  return h;
+}
+function applyGeneticTraitStats(h){
+  for(const tk of (h.traits||[])){
+    if(tk==='ironblood')h.def+=5;
+    if(tk==='swift_born')h.spd+=8;
+    if(tk==='lucky')h.critChance=Math.min(.9,h.critChance+.04);
+    if(tk==='resilient'){h.maxHP+=25;h.hp=h.maxHP;}
+    if(tk==='gambler'){h.critChance=Math.min(.9,h.critChance+.05);h.def=Math.max(0,h.def-2);}
+    if(tk==='vampiric_b')h.lifesteal=Math.min(.4,h.lifesteal+.03);
+  }
+}
+
+function initGame(seedVal,evs,traits,parentRecord){
+  seedRng(seedVal||Date.now());
+  const rec=parentRecord||mkHeroRecord(genName(0,null,null),0,[],evs||emptyEVs(),traits||[]);
+  G={
+    phase:'WAVE_PREVIEW',
+    difficulty:(typeof UI.difficulty==='number'?UI.difficulty:1),
+    hero:newHero(evs||emptyEVs(),traits||[],rec),
+    wave:1,maxWaves:12,
+    gold:30,xp:0,xpNeeded:80,level:1,
+    boons:[],draft:[],rerollCost:10,
+    enemies:[],waveTraits:[],waveFlags:{},waveGold:0,
+    bossWaves:[6,12],
+    speed:1,tick:0,interval:null,statusTick:0,
+    seed:seedVal,
+    retireAvailable:false,
+    retireWaves:[3,5,8,10,12],
+    runBoons:[],
+    pendingTactic:null,pendingTacticPaid:false,activeTactic:null,tacticOffers:[],waveGoldMult:1,
+  };
+  updateMetaHeader();
+  genWave();
+  renderAll();
+  updateDifficultyUI();
+}
+function startFirstHero(seedVal){
+  const rec=mkHeroRecord(genName(0,null,null),0,[],emptyEVs(),[]);
+  META.family[rec.id]=rec;
+  saveMeta();
+  initGame(seedVal||null,emptyEVs(),[],rec);
+}
+
+// ═══ WAVE GENERATION ═══
+function genWave(){
+  G.enemies=buildEnemies(G.wave);
+  G.waveTraits=pickWaveTraits(G.wave);
+  G.waveFlags={};G.waveGold=0;
+  G.waveGoldMult=1;
+  G.activeTactic=null;
+  G.pendingTactic=null;
+  G.pendingTacticPaid=false;
+  genTacticOffers();
+  G.retireAvailable=G.retireWaves.includes(G.wave);
+  G.phase='WAVE_PREVIEW';
+}
+function buildEnemies(wave){
+  const isBoss=G.bossWaves.includes(wave);
+  let count=Math.min(1+Math.floor(wave/3),isBoss?5:4);
+  const out=[];
+  if(isBoss){out.push(mkEnemy(rpick(ARCHETYPES.filter(a=>['bruiser','tank','bombardier'].includes(a.id))),wave,true));}
+  while(out.length<count)out.push(mkEnemy(rpick(ARCHETYPES),wave,false));
+  const exp=[];
+  for(const e of out){
+    exp.push(e);
+    if(e.archId==='swarm'){
+      for(let i=1;i<3;i++){
+        const c={...JSON.parse(JSON.stringify(e)),id:e.id+'_'+i,actionMeter:rng()*.5};
+        exp.push(c);
+      }
+    }
+  }
+  return exp.slice(0,8);
+}
+function mkEnemy(arch,wave,boss){
+  const w=wave-1,b=arch.base,s=arch.scl;
+  const mult=(G && typeof G.difficulty==='number')?G.difficulty:1;
+
+  const baseHP=b.hp+s.hp*w;
+  const hp=Math.max(1,Math.floor(baseHP*mult));
+  const atk=Math.max(1,Math.floor((b.atk+s.atk*w)*mult));
+  const def=Math.max(0,Math.floor((b.def+s.def*w)*mult));
+  const spdMult=0.6+0.4*mult;const spd=Math.max(5,Math.floor((b.spd+s.spd*w)*spdMult));
+
+  return{id:arch.id+'_'+ri(1000,9999),archId:arch.id,name:arch.name,icon:arch.icon,col:arch.col,
+    hp,maxHP:hp,atk,def,spd,
+    cc:arch.id==='striker'?Math.min(.7,b.cc+.25+.003*w):b.cc,cd:b.cd,
+    lifesteal:arch.ls||0,trait:arch.trait,td:arch.td,beh:arch.beh,
+    statuses:{},actionMeter:rng()*.5,
+    _firstAtkDone:false,_hexCtr:0,_chargeCtr:0,_tankGuard:true,
+    elite:boss||false,dead:false};
+}
+function addShieldToUnit(unit,amt){
+  if(!unit.statuses.shield)unit.statuses.shield={stacks:1,value:0,dur:9999};
+  unit.statuses.shield.value+=amt;
+}
+function pickWaveTraits(wave){
+  if(wave<=2)return[];
+  const n=wave<=4?1:(rng()<.45?2:1);
+  return rshuffle([...WAVE_TRAITS]).slice(0,n);
+}
+function applyWaveTraitsToEnemies(){
+  G.waveFlags={};
+  G.waveTraits.forEach(t=>t.apply(G.enemies,G.hero,G));
+}
+
+// ═══ PASSIVE HELPERS ═══
+function passive(k){for(const b of G.boons)for(const e of b.effects)if(e.t==='passive'&&e.k===k)return e.v??true;return null;}
+function hasP(k){return passive(k)!==null;}
+function hasTrait(tk){return G.hero.traits&&G.hero.traits.includes(tk);}
+
+function effectiveStats(){
+  const h=G.hero;
+  const s={atk:h.atk+(h.permStats.atk||0),def:h.def,spd:h.spd,critChance:h.critChance,critDmg:h.critDmg,lifesteal:h.lifesteal,evasion:h.evasion,accuracy:h.accuracy};
+  const il=passive('axiomIronLaw');if(il)s.atk+=Math.floor(s.def*il);
+  if(hasP('axiomKinetic'))s.critChance+=h.spd*.002;
+  return s;
+}
+
+function heroAtk(){
+  const h=G.hero,es=effectiveStats();
+  let a=es.atk+(h.tempStats.atk||0);
+  const rage=h.statuses.rage;if(rage)a+=rage.stacks*4;
+  if(h.statuses.weak)a=Math.floor(a*.75);
+  const pred=passive('predator');if(pred&&h.hp<h.maxHP*.50)a=Math.floor(a*(1+pred));
+  if(hasTrait('predatory')&&h.hp<h.maxHP*.50)a+=3;
+  const bers=passive('berserk');if(bers&&h.hp<h.maxHP*bers.thr)a=Math.floor(a*(1+bers.atk));
+  return Math.max(1,Math.floor(a));
+}
+function heroSpd(){
+  const h=G.hero;
+  let s=h.spd+(h.tempStats.spd||0);
+  const tempo=h.statuses.tempo;if(tempo)s+=tempo.stacks*3;
+  const bers=passive('berserk');if(bers&&h.hp<h.maxHP*bers.thr)s=Math.floor(s*(1+bers.spd));
+  if(hasTrait('skirmisher')&&h.hp<h.maxHP*.50)s+=8;
+  if(h.statuses.slow)s=Math.floor(s*.70);
+  return Math.max(5,s);
+}
+function eSpd(e){
+  let s=e.spd;
+  if(e.archId==='bruiser')return Math.max(5,s);
+  if(e.statuses.slow)s=Math.floor(s*.70);
+  return Math.max(5,s);
+}
+
+// ═══ STATUS APPLICATION ═══
+function applyStatus(unit,key,stacks,dur,maxStacks){
+  if(key==='slow'&&unit.archId==='bruiser')return;
+  // Ward Protocol (first debuff each battle is negated)
+  if(unit===G.hero && unit.flags && unit.flags.debuffWard){
+    const neg = (key==='bleed'||key==='poison'||key==='weak'||key==='vulnerable'||key==='slow'||key==='stun');
+    if(neg){
+      unit.flags.debuffWard=false;
+      addLog(`  🧿 Ward negates ${STATUS[key]?.name||key}!`,'laxiom');
+      return;
+    }
+  }
+  const plagMult=passive('axiomPlague')||1.0;
+  if(dur!==9999)dur=Math.floor(dur*plagMult);
+  if(!unit.statuses[key])unit.statuses[key]={stacks:0,value:0,dur:0};
+  const mx=maxStacks||99;
+  unit.statuses[key].stacks=Math.min(mx,unit.statuses[key].stacks+stacks);
+  unit.statuses[key].dur=Math.max(unit.statuses[key].dur,dur);
+
+  if(key==='bleed'){
+    if(hasP('bleedWeak')||hasP('axiomCrimson'))applyStatus(unit,'weak',1,dur);
+    if(hasP('bleedSlow'))applyStatus(unit,'slow',1,dur);
+  }
+  if(key==='poison'&&unit!==G.hero){
+    if(hasP('poisonSlow'))applyStatus(unit,'slow',1,dur);
+    if(hasP('plagueLord')){
+      G.enemies.filter(e=>!e.dead&&e!==unit).forEach(e=>{
+        if(!e.statuses.poison)e.statuses.poison={stacks:0,value:0,dur:0};
+        e.statuses.poison.stacks=Math.min(10,e.statuses.poison.stacks+1);
+        e.statuses.poison.dur=Math.max(e.statuses.poison.dur,3);
+      });
+    }
+  }
+}
+
+// ═══ DAMAGE / HEAL ═══
+function dealToEnemy(enemy,dmg){
+  if(enemy.dead||dmg<=0)return 0;
+  if(enemy.archId==='tank'&&enemy._tankGuard){enemy._tankGuard=false;addLog(`  🛡 ${enemy.name} Iron Will negates!`,'lstatus');return 0;}
+
+  const sh=enemy.statuses.shield;
+  if(sh&&sh.value>0){
+    const abs=Math.min(sh.value,dmg);sh.value-=abs;dmg-=abs;
+    if(sh.value<=0)delete enemy.statuses.shield;
+    if(dmg<=0)return abs;
+  }
+
+  const prev=enemy.hp;
+  enemy.hp=Math.max(0,enemy.hp-dmg);
+  if(enemy.hp<=0&&!enemy.dead){enemy.dead=true;onKill(enemy);}
+  return Math.min(dmg,prev);
+}
+
+function heroDmg(rawDmg,attacker,src){
+  const hero=G.hero;
+  if(rawDmg<=0)return 0;
+
+  if(hasTrait('tenacious')&&hero.hp<hero.maxHP*.25)rawDmg=Math.floor(rawDmg*.60);
+
+  if(src!=='mirror'&&src!=='thorns'&&src!=='dot'&&attacker&&attacker!==hero){
+    const m=passive('axiomMirror');if(m){const md=Math.floor(rawDmg*m);dealToEnemy(attacker,md);addLog(`  🪞 Mirror: ${md} reflected!`,'laxiom');}
+    const th=passive('thorns');if(th){const td=Math.floor(rawDmg*th);dealToEnemy(attacker,td);}
+    if(hasTrait('spite')&&rawDmg>0){const sp=Math.floor(rawDmg*.08);if(sp>0)dealToEnemy(attacker,sp);}
+  }
+
+  const sh=hero.statuses.shield;
+  if(sh&&sh.value>0){
+    if(hasP('axiomFortress')){
+      addLog(`  🏯 Fortress Mind: hit negated!`,'laxiom');
+      sh.value-=1;
+      if(sh.value<=0){delete hero.statuses.shield;shieldBreak(attacker);}
+      return 0;
+    }else{
+      const abs=Math.min(sh.value,rawDmg);sh.value-=abs;rawDmg-=abs;
+      if(sh.value<=0){delete hero.statuses.shield;shieldBreak(attacker);}
+      if(rawDmg<=0)return abs;
+    }
+  }
+
+  const prev=hero.hp;
+  hero.hp=Math.max(0,hero.hp-rawDmg);
+  if(hero.hp<=0&&!hero.usedUndying&&hasP('undying')){
+    hero.usedUndying=true;hero.hp=Math.floor(hero.maxHP*.35);
+    addLog(`  🔄 UNDYING! Hero rises with ${hero.hp} HP!`,'laxiom');
+  }
+  const sw=passive('secondWind');
+  if(sw && !hero.flags.secondWindUsed && hero.hp>0 && hero.hp<hero.maxHP*0.30){
+    hero.flags.secondWindUsed=true;
+    const heal=Math.floor(hero.maxHP*sw);
+    addLog(`  🌬️ Second Wind! +${heal}`,'laxiom');
+    healHero(heal,'sw');
+  }
+  trigBoon('onDmg',hero,attacker);
+  return Math.min(rawDmg,prev);
+}
+
+function shieldBreak(attacker){
+  addLog(`  💔 Shield broken!`,'lshield');
+  const bash=passive('shieldBash');
+  if(bash&&attacker&&!attacker.dead){dealToEnemy(attacker,bash);addLog(`  💥 Shield Bash! ${attacker.name} takes ${bash}!`,'lhit');}
+}
+
+function healHero(amt,src){
+  const h=G.hero;
+  const over=Math.max(0,(h.hp+amt)-h.maxHP);
+  h.hp=Math.min(h.maxHP,h.hp+amt);
+  if(over>0&&hasP('overhealShield')){addShieldToUnit(h,over);addLog(`  💎 Overheal → ${over} Shield!`,'laxiom');}
+  if(amt>0&&src!=='ls'&&src!=='regen')addLog(`  💚 Healed ${amt} HP`,'lheal');
+}
+
+// ═══ BOON EVENT SYSTEM ═══
+function trigBoon(evType,hero,target){
+  for(const b of G.boons)for(const ef of b.effects){
+    if(ef.t!==evType)continue;
+    if(ef.ef==='status')applyStatus(hero,ef.st,ef.sk,ef.dur,ef.mx);
+    else if(ef.ef==='statusEnemy'){if(target&&target!==hero&&!target.dead)applyStatus(target,ef.st,ef.sk,ef.dur);}
+    else if(ef.ef==='shield')addShieldToUnit(hero,ef.amt);
+    else if(ef.ef==='tempStat')hero.tempStats[ef.s]=(hero.tempStats[ef.s]||0)+ef.v;
+    else if(ef.ef==='permStat'){hero.permStats[ef.s]=(hero.permStats[ef.s]||0)+ef.v;addLog(`  ⭐ ${b.name}: perm +${ef.v} ATK!`,'laxiom');}
+    else if(ef.ef==='healPct')healHero(Math.floor(hero.maxHP*ef.v),'kill');
+    else if(ef.ef==='flag')hero.flags[ef.f]=(hero.flags[ef.f]||0)+ef.v;
+    else if(ef.ef==='splash'){
+      const others=G.enemies.filter(e=>!e.dead&&e!==target);
+      if(others.length){
+        const t2=rpick(others);
+        const sd=Math.floor(heroAtk()*ef.v);
+        dealToEnemy(t2,sd);
+        addLog(`  ⚡ Chain Lightning → ${t2.name} for ${sd}!`,'laxiom');
+      }
+    }
+  }
+}
+
+function applyBoonEffectsOnPick(boon){
+  for(const ef of boon.effects){
+    if(ef.t==='stat'){
+      if(ef.s==='hp')G.hero.hp=Math.min(G.hero.maxHP+ef.v,G.hero.hp+ef.v);
+      G.hero[ef.s]=(G.hero[ef.s]||0)+ef.v;
+    }
+  }
+}
+function applyBattleStartBoons(){
+  for(const b of G.boons)for(const ef of b.effects){
+    if(ef.t==='onBattleStart'&&ef.ef==='shield')addShieldToUnit(G.hero,ef.amt);
+  }
+  if(hasTrait('aegis'))addShieldToUnit(G.hero,8);
+}
+
+
+function pickHeroTarget(alive){
+  if(!alive || !alive.length) return null;
+  const tmode=tacticTargetMode();
+  if(tmode==='threat'){
+    // Highest ATK first (ties: lower HP)
+    return alive.reduce((m,e)=> (e.atk>m.atk || (e.atk===m.atk && e.hp<m.hp)) ? e : m, alive[0]);
+  }
+  if(tmode==='wounded' || hasP('targetLowest')){
+    return alive.reduce((m,e)=>((e.hp/e.maxHP) < (m.hp/m.maxHP))?e:m, alive[0]);
+  }
+  return alive[0];
+}
+function applyEnemyStartTraits(){
+  // Warden banner: grant allies Shield at battle start (scales lightly with wave)
+  const wardens = G.enemies.filter(e=>!e.dead && e.archId==='warden');
+  if(wardens.length){
+    const amt = 10 + Math.floor((G.wave-1)*1.2);
+    G.enemies.filter(e=>!e.dead).forEach(e=>addShieldToUnit(e, amt));
+    addLog(`  🧿 Banner: enemies gain ${amt} Shield!`,'lstatus');
+  }
+}
+
+// ═══ COMBAT LOOP ═══
+function startBattle(){
+  const h=G.hero;
+  if(!commitPendingTactic()){renderAll();return;}
+  h.statuses={};h.actionMeter=0;h.atkCount=0;h.tempStats={};h.flags={};h.usedUndying=false;
+  if(hasP('axiomOpen'))h.flags.openStrike=true;
+  if(hasP('wardDebuff'))h.flags.debuffWard=true;
+  h.flags.secondWindUsed=false;
+  applyWaveTraitsToEnemies();
+  applyBattleStartBoons();
+  applyEnemyStartTraits();
+  applyBattleStartTactics();
+  if(G.waveFlags.heroStartVuln){applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');}
+  G.phase='BATTLE';G.tick=0;G.statusTick=0;
+  addLog(`⚔ Wave ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
+  G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
+  renderAll();
+  if(G.interval)clearInterval(G.interval);
+  G.interval=setInterval(combatTick,100/G.speed);
+}
+
+function combatTick(){
+  if(G.phase!=='BATTLE'){clearInterval(G.interval);return;}
+  G.tick++;G.statusTick++;
+  if(G.statusTick>=10){
+    G.statusTick=0;
+    tickStatuses(G.hero,true);
+    G.enemies.filter(e=>!e.dead).forEach(e=>tickStatuses(e,false));
+    if(G.waveFlags.toxicAir){
+      G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.max(0,e.hp-1);if(e.hp<=0&&!e.dead){e.dead=true;onKill(e);}});
+      heroDmg(1,null,'dot');
+    }
+    if(G.waveFlags.eRegen){
+      G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.min(e.maxHP,e.hp+Math.floor(e.maxHP*G.waveFlags.eRegen));});
+    }
+    const ren=passive('regen');if(ren)healHero(Math.floor(G.hero.maxHP*ren),'regen');
+  }
+  if(checkEnd())return;
+
+  if(!G.hero.statuses.stun){
+    G.hero.actionMeter+=heroSpd()/500;
+    if(G.hero.actionMeter>=1){G.hero.actionMeter=0;doHeroAtk();}
+  }
+  G.enemies.filter(e=>!e.dead).forEach(e=>{
+    if(e.statuses.stun)return;
+    e.actionMeter+=eSpd(e)/500;
+    if(e.actionMeter>=1){e.actionMeter=0;doEnemyAtk(e);}
+  });
+
+  if(checkEnd())return;
+  if(G.tick%2===0)renderBattleUI();
+}
+
+function doHeroAtk(){
+  const h=G.hero,alive=G.enemies.filter(e=>!e.dead);
+  if(!alive.length)return;
+  h.atkCount++;
+  const target=pickHeroTarget(alive);
+  const es=effectiveStats();
+
+  if(rng()>es.accuracy-(target.evasion||0)){addLog(`  ↩ Miss!`,'lmiss');return;}
+
+  let crit=h.flags.openStrike?(h.flags.openStrike=false,true):(rng()<es.critChance);
+  let dmg=heroAtk();
+  if(h.flags.tacticAmbush){dmg=Math.floor(dmg*2);h.flags.tacticAmbush=false;addLog(`  🗡 Ambush!`,'laxiom');}
+
+  if(h.flags.deathMark){dmg=Math.floor(dmg*2.6);h.flags.deathMark=0;addLog(`  ☠ Death Mark!`,'laxiom');}
+  const tr=passive('trance');if(tr&&h.atkCount%tr===0){dmg=Math.floor(dmg*1.9);addLog(`  🔁 Battle Trance!`,'laxiom');}
+  const arc=passive('arcane');if(arc&&h.atkCount%arc===0){const md=Math.floor(dmg*.9);addLog(`  🔮 Arcane Surge! +${md}`,'laxiom');dealToEnemy(target,md);}
+  const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog(`  🌀 VOID STRIKE! ${vd}!`,'laxiom');dealToEnemy(target,vd);if(target.dead)return;}
+
+  const doEcho=hasP('axiomEcho')&&(h.atkCount%passive('axiomEcho')===0);
+  if(crit)dmg=Math.floor(dmg*es.critDmg);
+
+  let effDef=target.def;
+  if(hasP('necroticPoison')&&target.statuses.poison)effDef=Math.max(0,effDef-target.statuses.poison.stacks*passive('necroticPoison'));
+  const dp=passive('defpen');if(dp)effDef=Math.floor(effDef*(1-dp));
+  if(crit){const cdp=passive('critDefpen');if(cdp)effDef=Math.floor(effDef*(1-cdp));}
+
+  const exec=passive('executioner');if(exec&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*(1+exec));
+  if(hasTrait('executioner_b')&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*1.15);
+  if(target.statuses.vulnerable)dmg=Math.floor(dmg*1.30);
+
+  dmg=Math.max(1,dmg-effDef);
+  const actual=dealToEnemy(target,dmg);
+
+  if(crit)addLog(`  ⚔ CRIT! ${target.name} ← ${actual}`,'lcrit');
+  else addLog(`  ⚔ ${target.name} ← ${actual}`,'lhit');
+
+  const ls=Math.floor(actual*(es.lifesteal||0));if(ls>0)healHero(ls,'ls');
+  if(hasTrait('serrated')&&rng()<.22&&!target.dead)applyStatus(target,'bleed',1,2);
+
+  trigBoon('onHit',h,target);
+  const sh=passive('shred');if(sh && !target.dead){const before=target.def;target.def=Math.max(0,target.def-sh);if(target.def!==before)addLog(`  🪨 Sunder! ${target.name} DEF -${before-target.def}`,'lstatus');}
+
+  if(crit)trigBoon('onCrit',h,target);
+  const sc=passive('stunCrit');if(crit&&sc&&rng()<sc&&!target.dead){applyStatus(target,'stun',1,1);addLog(`  💫 Stun!`,'lstatus');}
+
+
+  const tw=passive('twin');
+  if(tw&&rng()<tw){
+    const t2=G.enemies.find(e=>!e.dead);
+    if(t2){
+      const td2=Math.max(1,Math.floor(heroAtk())-t2.def);
+      dealToEnemy(t2,td2);
+      addLog(`  ⚔⚔ Twin! ${t2.name} ← ${td2}`,'lhit');
+    }
+  }
+  if(doEcho&&!target.dead){
+    const ed=Math.max(1,Math.floor(heroAtk()*.5)-effDef);
+    dealToEnemy(target,ed);
+    addLog(`  🔁 Echo! ${target.name} ← ${ed}`,'laxiom');
+  }
+}
+
+function doEnemyAtk(enemy){
+  const h=G.hero,ev=effectiveStats().evasion;
+  if(rng()<ev){addLog(`  💃 Dodged ${enemy.name}!`,'lmiss');trigBoon('onDodge',h,enemy);return;}
+
+  let dmg=enemy.atk;
+  let crit=rng()<(enemy.cc||.05);
+
+  // New archetype abilities
+  if(enemy.archId==='archer'){
+    enemy._pierceCtr=(enemy._pierceCtr||0)+1;
+    enemy._pierce = (enemy._pierceCtr%4===0);
+    if(enemy._pierce) addLog(`  🏹 Piercing Shot!`,'lstatus');
+    if(crit && rng()<0.35){applyStatus(h,'vulnerable',1,3);addLog(`  🎯 Exposed! Vulnerable`,'lstatus');}
+  }
+  if(enemy.archId==='frost'){
+    enemy._frostCtr=(enemy._frostCtr||0)+1;
+    if(enemy._frostCtr%3===0){applyStatus(h,'slow',1,3);addLog(`  ❄️ Frostbite! Slow`,'lstatus');}
+    if(crit && rng()<0.15){applyStatus(h,'stun',1,1);addLog(`  💫 Frozen! Stun`,'lstatus');}
+  }
+  if(enemy.archId==='warden'){
+    enemy._bannerCtr=(enemy._bannerCtr||0)+1;
+    if(enemy._bannerCtr%4===0){applyStatus(h,'weak',1,3);addLog(`  🧿 Suppressed! Weak`,'lstatus');}
+  }
+
+
+  if(enemy.beh==='burst'&&!enemy._firstAtkDone){enemy._firstAtkDone=true;dmg*=2;addLog(`  🗡 AMBUSH! ${enemy.name}!`,'lcrit');}
+  if(enemy.archId==='bombardier'){enemy._chargeCtr++;if(enemy._chargeCtr%3===0){dmg*=2;addLog(`  💣 OVERCHARGE! ${enemy.name}!`,'lcrit');}}
+  if(enemy.archId==='shaman'){enemy._hexCtr++;if(enemy._hexCtr%3===0){applyStatus(h,'weak',1,4);addLog(`  🔮 Hex! Weak on hero`,'lstatus');}}
+
+  if(crit)dmg=Math.floor(dmg*(enemy.cd||1.5));
+
+  const heroDef = (enemy.archId==='archer' && enemy._pierce) ? Math.floor(h.def*0.2) : h.def;
+  const reduced=Math.max(1,Math.floor(dmg)-heroDef);
+  const actual=heroDmg(reduced,enemy,'attack');
+
+  if(crit)addLog(`  💥 ${enemy.name} CRITS! ${actual}`,'lcrit');
+  else addLog(`  👊 ${enemy.name} hits ${actual}`,'lhit');
+
+  if(enemy.lifesteal>0)enemy.hp=Math.min(enemy.maxHP,enemy.hp+Math.floor(actual*enemy.lifesteal));
+
+  if(G.waveFlags.eEcho&&rng()<.25){
+    const e2=Math.max(1,Math.floor(enemy.atk*.55)-h.def);
+    heroDmg(e2,enemy,'echo');
+    addLog(`  🔊 Echo! ${e2}`,'lhit');
+  }
+}
+
+function onKill(enemy){
+  addLog(`  💀 ${enemy.name} slain!`,'ldeath');
+  if(G.waveFlags.enraged){
+    G.enemies.filter(e=>!e.dead).forEach(e=>e.atk+=15);
+    addLog(`  😡 Enraged! +15 ATK!`,'lstatus');
+  }
+  G.waveGold+=ri(3,7);
+  trigBoon('onKill',G.hero,enemy);
+}
+
+function tickStatuses(unit,isHero){
+  const bm=isHero?1.0:Math.max(1,passive('bleedMult')||1);
+  const pm=isHero?1.0:Math.max(1,passive('poisonMult')||1);
+  const vk=isHero?0:(hasTrait('venomkiss')?1:0);
+
+  for(const [k,s] of Object.entries(unit.statuses)){
+    if(!s)continue;
+    if(k==='shield')continue;
+    if(s.dur!==9999){
+      s.dur--;
+      if(s.dur<=0){delete unit.statuses[k];continue;}
+    }
+    if(k==='bleed'){
+      let d=Math.floor((3+s.stacks)*bm);
+      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);}
+      if(isHero)heroDmg(d,null,'dot');
+      else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
+    }
+    if(k==='poison'){
+      let d=Math.floor((2+s.stacks+vk)*pm);
+      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);}
+      if(isHero)heroDmg(d,null,'dot');
+      else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
+    }
+    if(k==='regen'&&isHero)healHero(s.value||3,'regen');
+  }
+}
+
+// ═══ END CONDITIONS ═══
+function checkEnd(){
+  if(G.hero.hp<=0){
+    clearInterval(G.interval);
+    addLog('  💀 Hero has fallen.','ldeath');
+    heroFell();
+    G.phase='GAME_OVER';
+    renderAll();
+    return true;
+  }
+  if(G.enemies.every(e=>e.dead)){
+    clearInterval(G.interval);
+    const baseGoldRaw=15+G.wave*3+(G.waveGold||0);
+    const baseGold=Math.floor(baseGoldRaw*(G.waveGoldMult||1));
+    G.gold+=baseGold;
+    const xpEarned=20+G.wave*9;G.xp+=xpEarned;
+    addLog(`🏆 Wave ${G.wave} complete! +${baseGold}ᛋ +${xpEarned}XP`,'lwave');
+    G.activeTactic=null;G.waveGoldMult=1;
+    checkLevelUp();
+    G.rerollCost=10;
+    genDraft();
+    G.phase='REWARDS';
+    renderAll();
+    return true;
+  }
+  return false;
+}
+
+function checkLevelUp(){
+  while(G.xp>=G.xpNeeded){
+    G.xp-=G.xpNeeded;G.level++;G.xpNeeded=Math.floor(G.xpNeeded*1.35);
+    G.hero.maxHP+=18;G.hero.hp=Math.min(G.hero.maxHP,G.hero.hp+18);G.hero.atk+=3;G.hero.def+=1;
+    addLog(`🌟 Level Up → Lv.${G.level}! (+18 HP +3 ATK +1 DEF)`,'laxiom');
+  }
+}
+
+// ─── RETIRE FLOW ─────────────────────────────────────────────────────────────
+function computeEarnedEVs(){
+  return{
+    hp:Math.min(8,Math.max(0,Math.floor((G.wave-1)*0.8))),
+    atk:Math.min(8,Math.max(0,Math.floor((G.wave-1)*0.7))),
+    def:Math.min(6,Math.max(0,Math.floor((G.wave-1)*0.5))),
+    spd:Math.min(6,Math.max(0,Math.floor((G.wave-1)*0.4))),
+    crit:Math.min(5,Math.max(0,Math.floor(G.level*0.6))),
+    eva:Math.min(4,Math.max(0,Math.floor(G.level*0.3))),
+    acc:Math.min(4,Math.max(0,Math.floor(G.level*0.3))),
+    ls:Math.min(3,Math.max(0,Math.floor(G.level*0.2))),
+  };
+}
+
+function retireHero(){
+  const rec=G.hero.record;
+  const earnedEVs=computeEarnedEVs();
+  rec.runResult={outcome:'retired',wave:G.wave,boons:G.boons.map(b=>b.id),axioms:G.boons.filter(b=>b.rarity==='axiom').map(b=>b.id),level:G.level,earnedEVs,ts:Date.now()};
+  assignBreedUses(rec, calcBreedUsesForRetire());
+  const cap=evCap();
+  EV_KEYS.forEach(k=>rec.evs[k]=Math.min(cap,(rec.evs[k]||0)+(earnedEVs[k]||0)));
+
+  META.family[rec.id]=rec;
+  if(META.retiredPool.length>=poolMax())META.retiredPool.shift();
+  META.retiredPool.push(rec.id);
+
+  const essence=Math.floor(G.gold*.35)+G.wave*4;
+  META.legacyEssence+=essence;
+
+  if(G.interval)clearInterval(G.interval);
+  addLog(`🏛 ${rec.name} retired at Wave ${G.wave}! +${essence} Essence.`,'laxiom');
+  saveMeta();
+
+  const axiomBoons=G.boons.filter(b=>b.rarity==='axiom');
+  if(axiomBoons.length>0)showImprintOffer(rec,axiomBoons,essence);
+  else showRetireSummary(rec,essence,earnedEVs);
+}
+
+function showImprintOffer(rec,axiomBoons,essence){
+  const candidates=axiomBoons.slice(0,3);
+  const chance=imprintChance();
+  let html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px">ᚱᚢᚾ RUNE OATH</div>
+    <p style="color:var(--txt2);font-size:12px;margin-bottom:16px">${rec.name} carried Axiom knowledge. You may attempt to imprint one as a heritable genetic trait.<br>
+    <span style="color:var(--amber)">Imprint Chance: ${Math.round(chance*100)}%</span></p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+    ${candidates.map(b=>{
+      const traitMapping={'ax_crimson':'serrated','ax_ghost':'skirmisher','ax_harvest':'resilient','ax_wrath':'gambler','ax_iron_law':'ironblood','ax_echo':'swift_born','ax_aegis':'aegis','ax_opening':'lucky','ax_kinetic':'lucky','ax_fortress':'tenacious','ax_plague':'venomkiss','ax_mirror':'spite'};
+      const tk=traitMapping[b.id]||rpick(GTRAIT_KEYS);
+      const gt=GTRAITS[tk];
+      return `<div class="imprint-card" onclick="tryImprint('${rec.id}','${tk}',${chance},'${b.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><span style="font-size:14px">${b.icon}</span> <strong style="font-size:12px">${b.name}</strong></div>
+          <div style="font-size:10px;color:var(--amber)">${Math.round(chance*100)}% chance</div>
+        </div>
+        <div style="font-size:10px;color:var(--txt3);margin-top:3px">→ Genetic: <span style="color:#d090ff">${gt?gt.icon+' '+gt.name:'Unknown'}</span>: ${gt?gt.desc:''}</div>
+      </div>`;
+    }).join('')}
+    </div>
+    <button class="btn btn-sm btn-ghost" style="width:100%" onclick="showRetireSummary(META.family['${rec.id}'],${essence},null)">Skip Imprint</button>`;
+  showOverlayContent(html);
+}
+
+function tryImprint(heroId,traitKey,chance,boonId){
+  const rec=META.family[heroId];if(!rec)return;
+  const success=Math.random()<chance;
+  if(success&&rec.traits.length<TRAIT_MAX_BASE){
+    if(!rec.traits.includes(traitKey))rec.traits.push(traitKey);
+    saveMeta();
+    addLog(`🧬 OATH SEALED! ${GTRAITS[traitKey]?.name||traitKey} is now hereditary!`,'laxiom');
+  }else{
+    addLog(`🧬 The oath slips away. The knowledge fades...`,'lstatus');
+  }
+  showRetireSummary(rec,META.legacyEssence,null);
+}
+
+function showRetireSummary(rec,essence,earnedEVs){
+  const ev=rec.evs;
+  let html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 HERO RETIRED</div>
+    <div style="color:var(--txt2);font-size:13px;margin-bottom:14px">${rec.name} has been added to the Chosen of the Hall and will be available for breeding.</div>
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px;margin-bottom:14px;text-align:left">
+      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC PROFILE</div>
+      ${EV_KEYS.map(k=>`<div class="srow"><span class="sl">${k.toUpperCase()}_EV</span><span class="sv">${ev[k]||0} / ${evCap()}</span></div>`).join('')}
+      ${rec.traits.length?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
+    </div>
+    <div style="color:var(--green);font-size:13px;margin-bottom:16px">+${essence} Glory added to lineage coffers.</div>
+    <div style="margin:0 0 14px">
+      <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Difficulty (enemy stats)</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input id="start-diff" type="range" min="0" max="2" step="0.1"
+          value="${Number(UI.difficulty??1)}"
+          oninput="onDifficultyInput(this.value,'start')"
+          style="flex:1;accent-color:var(--amber)">
+        <span id="start-diff-val" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--gold)">x${Number(UI.difficulty??1).toFixed(1)}</span>
+      </div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:4px">0 = trivial · 1 = default · 2 = brutal</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="hideOverlay();showLegacy()">🏛 View Legacy</button>
+      <button class="btn btn-green" style="flex:1" onclick="hideOverlay();showStartScreen()">▶ New Run</button>
+    </div>`;
+  showOverlayContent(html);
+}
+
+// ─── DEATH FLOW ───────────────────────────────────────────────────────────────
+function heroFell(){
+  const rec=G.hero.record;
+  const salvageEarned=G.wave*2+G.boons.filter(b=>b.rarity==='axiom').length*5+Math.floor(G.boons.length/2);
+  rec.runResult={outcome:'fallen',wave:G.wave,boons:G.boons.map(b=>b.id),axioms:G.boons.filter(b=>b.rarity==='axiom').map(b=>b.id),level:G.level,salvageEarned,ts:Date.now()};
+  META.family[rec.id]=rec;
+  META.fallenLedger.push(rec.id);
+  META.salvage+=salvageEarned;
+  saveMeta();
+  addLog(`ᚱ ${salvageEarned} Relics recovered from ${rec.name}'s legacy.`,'ldeath');
+  updateMetaHeader();
+}
+
+// ─── BREEDING ─────────────────────────────────────────────────────────────────
+let BREED_SELECTED=[];
+function breedHeroes(idA,idB){
+  const recA=META.family[idA],recB=META.family[idB];
+  if(!recA||!recB)return null;
+  const cap=evCap();
+  const VAR=5;
+  const childEVs={};
+  EV_KEYS.forEach(k=>{
+    let val=Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2+ri(-VAR,VAR));
+    if(Math.random()<.08)val+=ri(5,12);
+    childEVs[k]=Math.min(cap,Math.max(0,val));
+  });
+  const allParentTraits=[...new Set([...recA.traits,...recB.traits])];
+  const sharedTraits=recA.traits.filter(t=>recB.traits.includes(t));
+  const childTraits=[];
+  for(const t of allParentTraits){
+    const baseChance=sharedTraits.includes(t)?.75:.45;
+    if(Math.random()<baseChance)childTraits.push(t);
+  }
+  if(Math.random()<mutationRate()){
+    const unlocked=[...META.unlockedTraits];
+    const available=unlocked.filter(t=>!childTraits.includes(t));
+    if(available.length){
+      const mut=rpick(available);
+      childTraits.push(mut);
+      addLog(`🧬 MUTATION! New trait emerged: ${GTRAITS[mut]?.name||mut}!`,'laxiom');
+    }
+  }
+  const finalTraits=childTraits.slice(0,TRAIT_MAX_BASE);
+  const genNum=Math.max(recA.gen,recB.gen)+1;
+  const topEvK=EV_KEYS.reduce((a,b)=>childEVs[a]>childEVs[b]?a:b);
+  const evTagMap={hp:'Sustain',atk:'Execute',def:'Bulwark',spd:'Tempo',crit:'Crit',eva:'Tempo',acc:'Crit',ls:'Sustain'};
+  const topTag=evTagMap[topEvK]||'Arcane';
+  const childName=genName(genNum,topTag,[recA.name,recB.name]);
+  const childRec=mkHeroRecord(childName,genNum,[recA.id,recB.id],childEVs,finalTraits);
+  META.family[childRec.id]=childRec;
+  saveMeta();
+  return childRec;
+}
+
+// ─── DRAFT SYSTEM ─────────────────────────────────────────────────────────────
+function genDraft(){
+  const owned=new Set(G.boons.map(b=>b.id));
+  const curTags=new Set(G.boons.flatMap(b=>b.tags));
+  const rw={common:40,uncommon:26,rare:16,epic:9,legendary:4,axiom:3};
+  const boost=Math.min(G.wave,10);
+  rw.common=Math.max(8,rw.common-boost*2);rw.rare+=boost;rw.epic+=Math.floor(boost/2);rw.axiom+=Math.floor(boost/3);
+
+  const pool=BOONS.filter(b=>!owned.has(b.id));
+  if(pool.length<1){G.draft=[];return;}
+
+  const wfn=b=>{
+    let w=rw[b.rarity]||5;
+    const synCount=b.tags.filter(t=>curTags.has(t)).length;
+    const syn=Math.min(2,synCount);
+    w+=syn*6;
+    if(synCount===0 && G.wave<=3 && (b.rarity==='common'||b.rarity==='uncommon')) w+=3;
+    if(G.wave<=2&&b.rarity==='common')w+=20;
+    return Math.max(1,w);
+  };
+
+  const picked=[],used=new Set();
+  let att=0;
+  while(picked.length<4&&att<300){
+    att++;
+    const b=rwgt(pool.filter(x=>!used.has(x.id)),wfn);
+    if(b&&!used.has(b.id)){picked.push(b);used.add(b.id);}
+  }
+  G.draft=picked;
+}
+
+function pickBoon(id){
+  const boon=BOONS.find(b=>b.id===id);if(!boon)return;
+  G.boons.push(boon);
+  applyBoonEffectsOnPick(boon);
+  addLog(`📦 Drafted: ${boon.name} [${boon.rarity}]`,'laxiom');
+  G.draft=[];
+
+  if(G.wave>=G.maxWaves){
+    const rec=G.hero.record;
+    rec.runResult={outcome:'victory',wave:G.wave,boons:G.boons.map(b=>b.id),axioms:G.boons.filter(b=>b.rarity==='axiom').map(b=>b.id),level:G.level,ts:Date.now()};
+    assignBreedUses(rec, 2);
+    const earnedEVs=computeEarnedEVs();
+    EV_KEYS.forEach(k=>rec.evs[k]=Math.min(evCap(),(rec.evs[k]||0)+(earnedEVs[k]||0)));
+    META.family[rec.id]=rec;
+    if(META.retiredPool.length>=poolMax())META.retiredPool.shift();
+    META.retiredPool.push(rec.id);
+    META.legacyEssence+=80;
+    saveMeta();
+    G.phase='VICTORY';
+    renderAll();
+    return;
+  }
+
+  G.wave++;
+  genWave();
+  renderAll();
+}
+
+function doReroll(){
+  if(G.gold<G.rerollCost)return;
+  G.gold-=G.rerollCost;
+  G.rerollCost+=6;
+  genDraft();
+  renderAll();
+}
+
+function shopBuy(item){
+  const shop={
+    heal:{cost:20,fn(){const h=Math.floor(G.hero.maxHP*.36);healHero(h,'shop');}},
+    atk:{cost:14,fn(){G.hero.atk+=7;addLog(`⬆ +7 ATK`,'lheal');}},
+    def:{cost:12,fn(){G.hero.def+=5;addLog(`⬆ +5 DEF`,'lheal');}},
+    hp:{cost:10,fn(){G.hero.maxHP+=28;G.hero.hp=Math.min(G.hero.maxHP,G.hero.hp+28);addLog(`⬆ +28 MaxHP`,'lheal');}},
+    spd:{cost:15,fn(){G.hero.spd+=10;addLog(`⬆ +10 SPD`,'lheal');}},
+    crit:{cost:20,fn(){G.hero.critChance=Math.min(.9,G.hero.critChance+.06);addLog(`⬆ +6% Crit`,'lheal');}},
+  };
+  const s=shop[item];if(!s||G.gold<s.cost)return;
+  G.gold-=s.cost;s.fn();renderAll();
+}
+
+// ═══ RUN RENDERING ═══
+function renderAll(){renderHero();renderRight();renderCenter();renderFooter();updateHeader();updateMetaHeader();}
+function renderBattleUI(){renderHero();renderCenter();updateHeader();}
+
+function updateHeader(){
+  if(!G)return;
+  document.getElementById('hdr-wave').textContent=`Wave ${G.wave}/${G.maxWaves}`;
+  document.getElementById('hdr-lvl').textContent=`Lv.${G.level}·${G.xp}/${G.xpNeeded}XP`;
+  document.getElementById('hdr-gold').textContent=G.gold;
+  document.getElementById('hdr-salvage').textContent=META.salvage;
+}
+
+function updateMetaHeader(){
+  const el1=document.getElementById('leg-essence');if(el1)el1.textContent=META.legacyEssence;
+  const el2=document.getElementById('leg-salvage');if(el2)el2.textContent=META.salvage;
+  const hs=document.getElementById('hdr-salvage');if(hs)hs.textContent=META.salvage;
+}
+
+function renderHero(){
+  if(!G)return;
+  const h=G.hero,es=effectiveStats();
+  const hpPct=Math.max(0,h.hp/h.maxHP*100);
+  const sh=h.statuses.shield;
+  const shPct=sh?Math.min(100-hpPct,sh.value/h.maxHP*100):0;
+  const pm=(h.permStats.atk||0),tmp=(h.tempStats.atk||0);
+  let atkStr=`${Math.round(h.atk+pm)}`;if(tmp>0)atkStr+=` <span class="sdp">+${tmp}</span>`;
+  const rec=h.record;
+
+  let html='';
+  if(rec){
+    html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:5px 8px;margin-bottom:6px">
+      <div style="font-size:11px;color:var(--txt3)">Gen ${rec.gen} · ${rec.name}</div>
+      ${rec.traits.length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait" title="${gt.desc}">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
+    </div>`;
+  }
+
+
+  const tact=(G.activeTactic && TACTIC_BY_ID[G.activeTactic]) || (G.pendingTactic && TACTIC_BY_ID[G.pendingTactic]);
+  if(tact){
+    const state=G.activeTactic?'Active':'Planned';
+    const extra=G.activeTactic?'':` · ᛋ${tact.cost} on start`;
+    html+=`<div style="margin:6px 0 2px"><span class="tactic-pill">🧠 ${state}: ${tact.icon} ${tact.name}${extra}</span></div>`;
+  }
+
+  html+=`<div class="sec-title">Hero Stats</div>
+  <div class="bar-wrap">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--txt3);margin-bottom:3px">
+      <span>HP</span><span style="font-family:'Share Tech Mono',monospace">${h.hp}/${h.maxHP}${sh?' 🛡'+sh.value:''}</span>
+    </div>
+    <div class="bar bar-hp"><div class="bar-fill" style="width:${hpPct}%"></div>${sh?`<div class="bar-shield-ovl" style="left:${hpPct}%;width:${shPct}%"></div>`:''}</div>
+    <div class="bar bar-xp" style="margin-top:3px"><div class="bar-xp-fill" style="width:${(G.xp/G.xpNeeded*100)}%"></div></div>
+    <div class="bar-txt">${h.hp}/${h.maxHP} HP · Lv.${G.level}</div>
+  </div>
+  <div style="margin-top:6px">
+    <div class="srow"><span class="sl">⚔ ATK</span><span class="sv">${atkStr}</span></div>
+    <div class="srow"><span class="sl">🛡 DEF</span><span class="sv">${Math.round(h.def)}</span></div>
+    <div class="srow"><span class="sl">⚡ SPD</span><span class="sv">${Math.round(h.spd)}</span></div>
+    <div class="srow"><span class="sl">🎯 Crit</span><span class="sv">${Math.round(es.critChance*100)}% / ${Math.round(es.critDmg*100)}%</span></div>
+    <div class="srow"><span class="sl">💃 Eva</span><span class="sv">${Math.round(h.evasion*100)}%</span></div>
+    <div class="srow"><span class="sl">🧛 LS</span><span class="sv">${Math.round(h.lifesteal*100)}%</span></div>
+  </div>`;
+
+  const sbadges=Object.entries(h.statuses).filter(([k,s])=>s&&(s.stacks>0||s.value>0));
+  if(sbadges.length){
+    html+=`<div class="sec-title" style="margin-top:7px">Statuses</div><div style="display:flex;flex-wrap:wrap;gap:2px">`;
+    sbadges.forEach(([k,s])=>{
+      const sd=STATUS[k];if(!sd)return;
+      const lbl=k==='shield'?`${sd.name}:${s.value}`:`${sd.name}${s.stacks>1?' ×'+s.stacks:''}${s.dur!==9999?' ('+s.dur+'s)':''}`;
+      html+=`<span class="sbadge ${sd.cls}" title="${sd.desc}">${sd.icon} ${lbl}</span>`;
+    });
+    html+=`</div>`;
+  }
+
+  if(G.boons.length){
+    html+=`<div class="sec-title" style="margin-top:7px">Boons (${G.boons.length})</div><div style="display:flex;flex-wrap:wrap;gap:3px">`;
+    G.boons.forEach(b=>html+=`<div class="inv-item ii-${b.rarity}" title="${b.name}: ${b.desc}">${b.icon}</div>`);
+    html+=`</div>`;
+  }
+  document.getElementById('hero-content').innerHTML=html;
+}
+
+function renderRight(){
+  if(!G){document.getElementById('right-content').innerHTML='';return;}
+  const tagCounts={};G.boons.forEach(b=>b.tags.forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
+  const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  let html='';
+  if(topTags.length){
+    html+=`<div class="sec-title">Build Tags</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px">`;
+    topTags.forEach(([t,c])=>html+=`<span class="tag t-${t}">${t} ×${c}</span>`);
+    html+=`</div>`;
+  }
+  const axioms=G.boons.filter(b=>b.rarity==='axiom');
+  if(axioms.length){
+    html+=`<div class="sec-title">Active Runes</div>`;
+    axioms.forEach(b=>{
+      html+=`<div style="background:#120a1e;border:1px solid #7a20b0;border-radius:4px;padding:5px 8px;margin:2px 0">
+        <div style="font-size:11px;font-weight:700;color:#d050ff">${b.icon} ${b.name.replace('RUNE: ','')}</div>
+        <div style="font-size:10px;color:#9060c0;margin-top:2px">${b.desc}</div>
+      </div>`;
+    });
+  }
+  if(G.boons.length){
+    const rc={common:'#6060a0',uncommon:'#50a050',rare:'#6060d8',epic:'#a040c0',legendary:'#d4a017',axiom:'#d050ff'};
+    html+=`<div class="sec-title">Boons</div>`;
+    G.boons.forEach(b=>html+=`<div style="margin:2px 0;font-size:11px" title="${b.desc}"><span style="color:${rc[b.rarity]||'#888'}">${b.icon}</span> ${b.name}</div>`);
+  }
+  document.getElementById('right-content').innerHTML=html||`<div style="color:var(--txt3);font-size:11px;margin-top:8px">No boons yet.</div>`;
+}
+
+function renderCenter(){
+  if(!G)return;
+  const el=document.getElementById('center-content');
+  if(G.phase==='WAVE_PREVIEW')el.innerHTML=renderWavePreview();
+  else if(G.phase==='BATTLE')el.innerHTML=renderBattle();
+  else if(G.phase==='REWARDS')el.innerHTML=renderRewards();
+  else if(G.phase==='GAME_OVER'||G.phase==='VICTORY')el.innerHTML=renderEndScreen();
+}
+
+function renderWavePreview(){
+  const isBoss=G.bossWaves.includes(G.wave);
+  const ep=G.enemies.reduce((s,e)=>s+e.hp/8+e.atk*1.8+e.def*.8,0);
+  const hp=G.hero.maxHP/8+G.hero.atk*1.8+G.hero.def*.8+G.boons.length*15;
+  const diff=Math.min(5,Math.max(1,Math.ceil(ep/Math.max(1,hp)*2)));
+  const diffColors=['#50a050','#80a030','#a08030','#a04020','#c01010'];
+  const diffLabels=['Trivial','Easy','Moderate','Hard','Brutal'];
+
+  let h=`<div class="slide-in" style="padding:16px">`;
+  if(G.retireAvailable){
+    h+=`<div class="retire-banner">
+      <div class="retire-banner-title">🏛 RETIREMENT OPPORTUNITY</div>
+      <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">End your run now and send ${G.hero.record?.name||'your hero'} to the Chosen of the Hall. Convert run progress into genetic strength for future generations.</div>
+      <button class="btn btn-gold btn-sm" onclick="showRetireConfirm()">🏛 Retire Hero</button>
+    </div>`;
+  }
+  h+=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:${isBoss?'var(--amber)':'var(--cyan)'}">${isBoss?'⭐ BOSS — ':''}WAVE ${G.wave}</div>
+    <div style="display:flex;gap:3px;align-items:center">
+      ${Array(5).fill(0).map((_,i)=>`<div class="diff-pip${i<diff?' dp-on':''}" ${i<diff?`style="background:${diffColors[diff-1]};border-color:${diffColors[diff-1]}"`:''}></div>`).join('')}
+      <span style="font-size:11px;color:${diffColors[diff-1]};margin-left:5px;font-weight:700">${diffLabels[diff-1]}</span>
+    </div>
+  </div>`;
+
+  if(G.waveTraits.length){
+    h+=`<div class="sec-title">Wave Modifiers</div>`;
+    G.waveTraits.forEach(t=>{
+      h+=`<div class="trait-card"><div class="ticon">${t.icon}</div><div><div class="tname">${t.name}</div><div class="tdesc">${t.desc}</div></div></div>`;
+    });
+    h+=`<div style="height:8px"></div>`;
+  }
+
+
+  // Tactics (cost paid when you start the wave)
+  if(G.tacticOffers && G.tacticOffers.length){
+    h+=`<div class="sec-title">Tactics</div>`;
+    h+=`<div class="tactic-grid">`+G.tacticOffers.map(t=>{
+      const affordable = (G.gold>=t.cost);
+      const sel = (G.pendingTactic===t.id);
+      const cls = `tactic-card${sel?' sel':''}${!affordable?' disabled':''}`;
+      const on = affordable ? `selectPendingTactic('${t.id}')` : '';
+      return `<div class="${cls}" ${on?`onclick="${on}"`:''} title="${t.desc}">
+        <div class="tactic-top">
+          <div class="tactic-name">${t.icon} ${t.name}</div>
+          <div class="tactic-cost">ᛋ${t.cost}</div>
+        </div>
+        <div class="tactic-desc">${t.desc}</div>
+      </div>`;
+    }).join('')+`</div>`;
+    if(G.pendingTactic){
+      const t=TACTIC_BY_ID[G.pendingTactic];
+      if(t){
+        h+=`<div class="tactic-note"><span class="tactic-pill">Selected: ${t.icon} ${t.name} · costs ᛋ${t.cost} on start</span>
+          <button class="btn btn-sm" style="margin-left:8px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt2)" onclick="clearPendingTactic()">Clear</button>
+        </div>`;
+      }
+    } else {
+      h+=`<div class="tactic-note">Pick one tactic (you pay when you start the wave).</div>`;
+    }
+    h+=`<div style="height:10px"></div>`;
+  }
+
+  h+=`<div class="sec-title">Enemy Lineup (${G.enemies.length} units)</div>`;
+  G.enemies.forEach(e=>{
+    h+=`<div class="enemy-card${e.elite?' ec-elite':''}">
+      <div class="eicon" style="background:${e.col}22;border:1px solid ${e.col}55">${e.icon}</div>
+      <div class="einfo">
+        <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.name}</div>
+        <div class="etrait">◈ ${e.trait}: ${e.td}</div>
+        <div class="estats">HP:${e.hp} ATK:${e.atk} DEF:${e.def} SPD:${e.spd}</div>
+      </div>
+    </div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function renderBattle(){
+  const alive=G.enemies.filter(e=>!e.dead),dead=G.enemies.filter(e=>e.dead);
+  let h=`<div style="padding:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="font-weight:800;font-size:14px;color:var(--red)" class="pulse">⚔ BATTLE — WAVE ${G.wave}</span>
+    </div>`;
+
+  alive.forEach(e=>{
+    const hp=Math.max(0,e.hp/e.maxHP*100),shv=e.statuses.shield,shpct=shv?Math.min(100-hp,shv.value/e.maxHP*100):0;
+    const sbs=Object.entries(e.statuses).filter(([k])=>e.statuses[k]&&k!=='shield'&&e.statuses[k].stacks>0);
+    h+=`<div class="enemy-card${e.elite?' ec-elite':''}">
+      <div class="eicon" style="background:${e.col}22;border:1px solid ${e.col}55">${e.icon}</div>
+      <div class="einfo">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.name}</div>
+          <div style="font-size:10px;color:var(--txt3);font-family:'Share Tech Mono',monospace">${e.hp}/${e.maxHP}${shv?' 🛡'+shv.value:''}</div>
+        </div>
+        <div class="ehpbar" style="position:relative">
+          <div class="ehpfill" style="width:${hp}%"></div>
+          ${shv?`<div style="position:absolute;top:0;left:${hp}%;width:${shpct}%;height:100%;background:rgba(72,120,240,.5)"></div>`:''}
+        </div>
+        ${sbs.length?`<div style="margin-top:3px">${sbs.map(([k,s])=>{const sd=STATUS[k];return sd?`<span class="sbadge ${sd.cls}" style="font-size:9px;padding:1px 4px">${sd.icon}${s.stacks>1?' ×'+s.stacks:''}</span>`:''}).join('')}</div>`:''}
+      </div>
+    </div>`;
+  });
+
+  if(dead.length){
+    h+=`<div style="margin-top:4px;opacity:.3">${dead.map(e=>`<div style="font-size:11px;color:var(--txt3);padding:1px">☠ ${e.name}</div>`).join('')}</div>`;
+  }
+
+  h+=`</div>`;
+  return h;
+}
+
+function renderRewards(){
+  const shop=[
+    {id:'heal',icon:'💚',name:'Heal',cost:20,desc:'Restore 36% HP'},
+    {id:'atk',icon:'⚔',name:'+ATK',cost:14,desc:'+7 Attack'},
+    {id:'def',icon:'🛡',name:'+DEF',cost:12,desc:'+5 Defense'},
+    {id:'hp',icon:'❤',name:'+HP',cost:10,desc:'+28 MaxHP'},
+    {id:'spd',icon:'💨',name:'+SPD',cost:15,desc:'+10 Speed'},
+    {id:'crit',icon:'🎯',name:'+CRIT',cost:20,desc:'+6% Crit'},
+  ];
+  const hpPct=Math.max(0,G.hero.hp/G.hero.maxHP*100);
+  let h=`<div class="slide-in" style="padding:16px">
+    <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:12px">🏆 Wave ${G.wave} Complete!</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <div class="sec-title">ᛋ Shop (${G.gold} gold)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+          ${shop.map(s=>`<div class="shop-btn${G.gold<s.cost?' sb-disabled':''}" onclick="shopBuy('${s.id}')" title="${s.desc}">
+            <div class="sb-name">${s.icon} ${s.name}</div><div class="sb-cost">ᛋ${s.cost}</div><div class="sb-desc">${s.desc}</div>
+          </div>`).join('')}
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:var(--txt3)">
+          HP: <span style="color:${hpPct>60?'var(--green)':hpPct>30?'var(--amber)':'var(--red)'}">${G.hero.hp}/${G.hero.maxHP} (${Math.round(hpPct)}%)</span>
+        </div>
+      </div>
+      <div>
+        <div class="sec-title">📦 Draft (pick 1)</div>
+        ${G.draft.length?G.draft.map(b=>`
+          <div class="boon-card rc-${b.rarity}" onclick="pickBoon('${b.id}')" style="margin-bottom:6px">
+            <div class="boon-rar rar-${b.rarity}">${b.rarity.toUpperCase()}</div>
+            <div><span style="font-size:14px">${b.icon}</span> <span class="boon-name">${b.name}</span></div>
+            <div class="boon-desc" style="margin-top:3px">${b.desc}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">${b.tags.map(t=>`<span class="tag t-${t}">${t}</span>`).join('')}</div>
+          </div>`).join(''):`<div style="color:var(--txt3);font-size:12px">No more boons!</div>`}
+        ${G.draft.length?`<button class="btn btn-sm btn-ghost" style="width:100%;margin-top:4px" onclick="doReroll()">🔄 Reroll (ᛋ${G.rerollCost})${G.gold<G.rerollCost?' — need gold':''}</button>`:''}
+      </div>
+    </div>
+  </div>`;
+  return h;
+}
+
+function renderEndScreen(){
+  const won=G.phase==='VICTORY';
+  const rec=G.hero.record;
+  const tagCounts={};G.boons.forEach(b=>b.tags.forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
+  const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const score=G.level*50+G.boons.length*30+(won?300:0)+G.wave*20;
+  const retiredMsg=won?'(Auto-retired to pool)':'';
+  return `<div class="slide-in" style="padding:24px;text-align:center">
+    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:${won?'var(--gold)':'var(--red)'};text-shadow:0 0 20px ${won?'rgba(212,160,23,.6)':'rgba(224,64,64,.5)'};margin-bottom:8px">${won?'⭐ SAGA COMPLETE':'💀 FALLEN WARRIOR'}</div>
+    <div style="color:var(--txt2);margin-bottom:16px;font-size:12px">${won?'All 12 trials survived. '+retiredMsg:'Wave '+G.wave+' — '+(rec?.name||'Hero')+' has fallen.'}</div>
+    <div style="display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:14px 20px;margin-bottom:16px;text-align:left;min-width:260px">
+      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Run Summary</div>
+      <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Waves Survived</span><span style="font-weight:700">${G.wave}/${G.maxWaves}</span></div>
+      <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Hero Level</span><span style="font-weight:700">${G.level}</span></div>
+      <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Boons</span><span style="font-weight:700">${G.boons.length}</span></div>
+      <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Score</span><span style="font-weight:700;color:var(--gold)">${score}</span></div>
+      ${rec?.traits?.length?`<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;display:flex;flex-wrap:wrap;gap:2px">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
+      ${topTags.length?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:2px">${topTags.map(([t,c])=>`<span class="tag t-${t}">${t} ×${c}</span>`).join('')}</div>`:''}
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="showLegacy()">🏛 View Legacy</button>
+      <button class="btn btn-primary" onclick="showStartScreen()">▶ New Run</button>
+    </div>
+  </div>`;
+}
+
+function renderFooter(){
+  if(!G)return;
+  const ftr=document.getElementById('ftr-btns'),info=document.getElementById('ftr-info');
+  if(G.phase==='WAVE_PREVIEW'){
+    ftr.innerHTML=`<button class="btn btn-primary" onclick="startBattle()">⚔ Start Wave ${G.wave}</button>`;
+    info.textContent=`ᛋ ${G.gold} gold · ${G.wave<G.maxWaves?'Next: Wave '+(G.wave+1):'Final Wave!'}`;
+  }else if(G.phase==='BATTLE'){
+    ftr.innerHTML=`<span style="color:var(--txt3);font-size:12px;animation:pulse2 1.2s infinite">⚔ Battle in progress...</span>`;
+    info.textContent=`Tick:${G.tick} · Enemies:${G.enemies.filter(e=>!e.dead).length}/${G.enemies.length}`;
+  }else if(G.phase==='REWARDS'){
+    ftr.innerHTML=`<span style="color:var(--txt3);font-size:12px">Choose a boon or use the shop.</span>`;
+    info.textContent=`ᛋ ${G.gold}`;
+  }else{
+    ftr.innerHTML='';info.textContent='';
+  }
+}
+
+// ═══ LEGACY SCREEN ═══
+let currentLegacyTab='pool';
+function showLegacy(){
+  closeDrawers();
+  document.getElementById('legacy-screen').style.display='flex';
+  setLegacyTab(currentLegacyTab);
+  updateMetaHeader();
+  syncChromeHeights();
+}
+function hideLegacy(){
+  document.getElementById('legacy-screen').style.display='none';
+  closeDrawers();
+  syncChromeHeights();
+}
+function setLegacyTab(tab){
+  currentLegacyTab=tab;
+  ['pool','breed','fallen','tree','upgrades'].forEach(t=>{
+    document.getElementById('ltab-'+t).className='ltab'+(t===tab?' active':'');
+  });
+  const lc=document.getElementById('legacy-content');
+  if(tab==='pool')lc.innerHTML=renderRetiredPool();
+  else if(tab==='breed')lc.innerHTML=renderBreeding();
+  else if(tab==='fallen')lc.innerHTML=renderFallenLedger();
+  else if(tab==='tree')renderFamilyTree();
+  else if(tab==='upgrades')lc.innerHTML=renderRunesmith();
+}
+
+// ─── RETIRED POOL ─────────────────────────────────────────────────────────────
+function evColor(k){return{hp:'#40e078',atk:'#f0a828',def:'#4878f0',spd:'#c080ff',crit:'#f0a828',eva:'#30d0c0',acc:'#30d0c0',ls:'#d070d8'}[k]||'#888';}
+
+function toggleBreedSelect(id){
+  const idx=BREED_SELECTED.indexOf(id);
+  if(idx>=0)BREED_SELECTED.splice(idx,1);
+  else{if(BREED_SELECTED.length>=2)BREED_SELECTED.shift();BREED_SELECTED.push(id);}
+  setLegacyTab('pool');
+}
+
+function renderRetiredPool(){
+  const heroes=META.retiredPool.map(id=>META.family[id]).map(r=>{if(r){const u=getBreedUses(r);if(typeof r.breedUsesMax!=='number' || r.breedUsesMax<=0){r.breedUsesMax=u.max; r.breedUsesLeft=u.left;} } return r;}).filter(r=>r && getBreedUses(r).left>0);
+  if(!heroes.length){
+    return `<div style="text-align:center;padding:40px;color:var(--txt3)">
+      <div style="font-size:32px;margin-bottom:12px">🏛</div>
+      <div style="font-size:13px">No retired heroes yet.</div>
+      <div style="font-size:11px;margin-top:6px">Complete a run and choose to retire your hero instead of fighting on.</div>
+    </div>`;
+  }
+  let h=`<div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--gold)">Chosen of the Hall</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${heroes.length}/${poolMax()} heroes · Select two to breed</div>
+      </div>
+      <button class="btn btn-green btn-sm" onclick="setLegacyTab('breed')">⚗ Breed →</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">`;
+  heroes.forEach(rec=>{
+    const sel=BREED_SELECTED.includes(rec.id);
+    const selIdx=BREED_SELECTED.indexOf(rec.id);
+    const selClass=selIdx===0?' hc-parent-a':selIdx===1?' hc-parent-b':'';
+    const derived=evDerived(rec.evs);
+    const uses=getBreedUses(rec);
+    h+=`<div class="hero-card${sel?selClass:''}" onclick="toggleBreedSelect('${rec.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+        <div>
+          <div class="hc-gen">GEN ${rec.gen}${sel?' — PARENT '+(selIdx===0?'A':'B'):''}</div>
+          <div class="hc-name">${rec.name}</div>
+        </div>
+        ${sel?`<div style="font-size:18px;color:${selIdx===0?'#4878f0':'var(--violet)'}">★</div>`:''}
+        <button onclick="removeFromRetiredPool(event,'${rec.id}')" title="Remove from pool" style="background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.35);color:var(--red);padding:2px 6px;border-radius:4px;font-size:10px;cursor:pointer">✕</button>
+      </div>
+      <div class="hc-stats">HP:${derived.maxHP} ATK:${Math.round(derived.atk)} DEF:${Math.round(derived.def)} SPD:${derived.spd}</div>
+      <div class="hc-stats">CRIT:${Math.round(derived.critChance*100)}% EVA:${Math.round(derived.evasion*100)}%</div>
+      <div class="hc-stats" style="margin-top:3px">Breeds left: <span style="color:var(--gold);font-weight:800">${uses.left}/${uses.max}</span></div>
+      ${rec.traits.length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:5px">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait" title="${gt.desc}">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
+      <div style="margin-top:8px">
+        ${EV_KEYS.map(k=>`<div style="display:flex;align-items:center;gap:5px;margin:2px 0">
+          <div style="font-size:9px;color:var(--txt3);width:28px;text-transform:uppercase">${k}</div>
+          <div class="ev-bar" style="flex:1"><div class="ev-fill" style="width:${Math.round((rec.evs[k]||0)/evCap()*100)}%;background:${evColor(k)}"></div></div>
+          <div style="font-size:9px;color:var(--txt3);width:22px;text-align:right">${rec.evs[k]||0}</div>
+        </div>`).join('')}
+      </div>
+      ${rec.runResult?`<div style="font-size:10px;color:var(--txt3);margin-top:5px;border-top:1px solid var(--border);padding-top:4px">Wave ${rec.runResult.wave} · ${rec.runResult.boons?.length||0} boons · Lv.${rec.runResult.level||1}</div>`:''}
+    </div>`;
+  });
+  h+=`</div></div>`;
+  return h;
+}
+
+// ─── BREEDING PANEL ───────────────────────────────────────────────────────────
+function renderBreeding(){
+  if(BREED_SELECTED.length<2){
+    return `<div style="text-align:center;padding:40px;color:var(--txt3)">
+      <div style="font-size:32px;margin-bottom:12px">⚗</div>
+      <div style="font-size:13px">Select two heroes from the Chosen of the Hall first.</div>
+      <button class="btn btn-gold btn-sm" style="margin-top:14px" onclick="setLegacyTab('pool')">← Chosen of the Hall</button>
+    </div>`;
+  }
+  const recA=META.family[BREED_SELECTED[0]],recB=META.family[BREED_SELECTED[1]];
+  const usesA=getBreedUses(recA), usesB=getBreedUses(recB);
+  if(!recA||!recB)return `<div style="color:var(--red);padding:20px">Invalid selection.</div>`;
+
+  const cap=evCap();
+  const previewEVs={};EV_KEYS.forEach(k=>previewEVs[k]=Math.min(cap,Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2)));
+  const derived=evDerived(previewEVs);
+  const sharedTraits=recA.traits.filter(t=>recB.traits.includes(t));
+  const allTraits=[...new Set([...recA.traits,...recB.traits])];
+
+  let h=`<div>
+    <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px">⚗ Breeding Chamber</div>
+    <div style="display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:center;margin-bottom:20px">
+      <div class="child-preview" style="background:rgba(72,120,240,.08);border-color:rgba(72,120,240,.4)">
+        <div style="font-size:10px;color:#80a8ff;letter-spacing:2px;margin-bottom:5px">PARENT A</div>
+        <div style="font-weight:700;font-size:14px">${recA.name}</div>
+        <div style="font-size:10px;color:var(--txt3)">Gen ${recA.gen}</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">Breeds left: <span style="color:#80a8ff;font-weight:800">${usesA.left}/${usesA.max}</span></div>
+        <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:2px">${recA.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon}</span>`:''}).join('')}</div>
+      </div>
+      <div style="text-align:center;font-size:20px;color:var(--violet)">⚗</div>
+      <div class="child-preview" style="background:rgba(144,80,232,.08);border-color:rgba(144,80,232,.4)">
+        <div style="font-size:10px;color:#c080ff;letter-spacing:2px;margin-bottom:5px">PARENT B</div>
+        <div style="font-weight:700;font-size:14px">${recB.name}</div>
+        <div style="font-size:10px;color:var(--txt3)">Gen ${recB.gen}</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">Breeds left: <span style="color:#c080ff;font-weight:800">${usesB.left}/${usesB.max}</span></div>
+        <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:2px">${recB.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon}</span>`:''}).join('')}</div>
+      </div>
+    </div>
+
+    <div class="child-preview" style="margin-bottom:20px">
+      <div style="font-size:11px;color:var(--violet);letter-spacing:2px;margin-bottom:8px">CHILD PREVIEW (approximate)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:10px;color:var(--txt3);margin-bottom:6px">DERIVED STATS</div>
+          ${[['MaxHP',derived.maxHP],['ATK',Math.round(derived.atk)],['DEF',Math.round(derived.def)],['SPD',derived.spd],['Crit',Math.round(derived.critChance*100)+'%'],['Eva',Math.round(derived.evasion*100)+'%']]
+            .map(([l,v])=>`<div class="srow"><span class="sl" style="font-size:11px">${l}</span><span class="sv" style="font-size:11px">${v}</span></div>`).join('')}
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--txt3);margin-bottom:6px">EV INHERITANCE</div>
+          ${EV_KEYS.map(k=>`<div style="display:flex;align-items:center;gap:4px;margin:2px 0">
+            <div style="font-size:9px;color:var(--txt3);width:26px;text-transform:uppercase">${k}</div>
+            <div class="ev-bar" style="flex:1"><div class="ev-fill" style="width:${Math.round(previewEVs[k]/cap*100)}%;background:${evColor(k)}"></div></div>
+            <div style="font-size:9px;color:var(--txt3);width:20px;text-align:right">~${previewEVs[k]}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:5px">TRAIT INHERITANCE CHANCES</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+          ${allTraits.map(tk=>{
+            const gt=GTRAITS[tk];if(!gt)return '';
+            const shared=sharedTraits.includes(tk);
+            const ch=shared?.75:.45;
+            return `<div style="background:rgba(160,80,220,.15);border:1px solid rgba(160,80,220,.3);border-radius:3px;padding:4px 8px;font-size:10px">
+              <span style="color:#d090ff">${gt.icon} ${gt.name}</span>
+              <span style="color:var(--txt3);margin-left:6px">${Math.round(ch*100)}%${shared?' (shared)':''}</span>
+            </div>`;
+          }).join('')}
+          <div style="background:rgba(40,180,80,.1);border:1px solid rgba(40,180,80,.3);border-radius:3px;padding:4px 8px;font-size:10px;color:var(--green)">🧬 Mutation ${Math.round(mutationRate()*100)}%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-primary" onclick="doBreed()">⚗ Begin Breeding</button>
+      <button class="btn btn-sm btn-ghost" onclick="BREED_SELECTED=[];setLegacyTab('pool')">✕ Clear Selection</button>
+    </div>
+  </div>`;
+  return h;
+}
+
+function doBreed(){
+  if(BREED_SELECTED.length<2){alert('Select 2 heroes first.');return;}
+  const a=BREED_SELECTED[0], b=BREED_SELECTED[1];
+  const ua=getBreedUses(META.family[a]), ub=getBreedUses(META.family[b]);
+  if(ua.left<=0||ub.left<=0){alert('One of the selected parents has no breeding uses left.');return;}
+  const childRec=breedHeroes(a,b);
+  if(!childRec)return;
+  consumeBreedUse(a);
+  consumeBreedUse(b);
+  saveMeta();
+  BREED_SELECTED=[];
+  const lc=document.getElementById('legacy-content');
+  const derived=evDerived(childRec.evs);
+  lc.innerHTML=`<div class="slide-in" style="text-align:center;padding:30px">
+    <div style="font-size:22px;margin-bottom:8px">🧬</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--violet);margin-bottom:6px">${childRec.name}</div>
+    <div style="color:var(--txt3);font-size:12px;margin-bottom:18px">Generation ${childRec.gen} · Born of legacy</div>
+    <div style="display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:14px 20px;margin-bottom:18px;text-align:left;min-width:240px">
+      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC STATS</div>
+      ${[['MaxHP',derived.maxHP],['ATK',Math.round(derived.atk)],['DEF',Math.round(derived.def)],['SPD',derived.spd],['Crit',Math.round(derived.critChance*100)+'%']]
+        .map(([l,v])=>`<div class="srow"><span class="sl" style="font-size:12px">${l}</span><span class="sv" style="font-size:12px;color:var(--green)">${v}</span></div>`).join('')}
+      ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ Run with ${childRec.name}</button>
+      <button class="btn btn-sm btn-ghost" onclick="setLegacyTab('pool')">← Back</button>
+    </div>
+  </div>`;
+}
+
+function startWithChild(heroId){
+  const rec=META.family[heroId];if(!rec)return;
+  initGame(null,rec.evs,rec.traits,rec);
+}
+
+// ─── FALLEN LEDGER ────────────────────────────────────────────────────────────
+function renderFallenLedger(){
+  const fallen=META.fallenLedger.map(id=>META.family[id]).filter(Boolean).reverse();
+  let h=`<div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--red)">ᚱ Fallen Saga</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${fallen.length} fallen heroes · ᚱ${META.salvage} relics available</div>
+      </div>
+    </div>`;
+  if(!fallen.length){
+    h+=`<div style="color:var(--txt3);font-size:12px;text-align:center;padding:30px">No fallen heroes yet. The lineage lives on.</div></div>`;
+    return h;
+  }
+  h+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">`;
+  fallen.forEach(rec=>{
+    const rr=rec.runResult||{};
+    const sal=rr.salvageEarned||0;
+    h+=`<div class="hero-card hc-dead">
+      <div class="hc-gen">GEN ${rec.gen} · FALLEN</div>
+      <div class="hc-name">☠ ${rec.name}</div>
+      ${rec.traits.length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin:4px 0">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait" style="font-size:9px">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
+      <div class="hc-stats">Wave ${rr.wave||'?'} · ${(rr.boons?.length||0)} boons · Lv.${rr.level||1}</div>
+      ${rr.axioms?.length?`<div style="font-size:10px;color:#d050ff;margin-top:3px">Runes: ${rr.axioms.length}</div>`:''}
+      <div style="margin-top:8px;font-size:10px;color:var(--salvage)">+ᚱ${sal} salvage granted</div>
+    </div>`;
+  });
+  h+=`</div></div>`;
+  return h;
+}
+
+// ─── FAMILY TREE ──────────────────────────────────────────────────────────────
+function renderFamilyTree(){
+  const lc=document.getElementById('legacy-content');
+  const allHeroes=Object.values(META.family);
+  if(!allHeroes.length){
+    lc.innerHTML=`<div style="text-align:center;padding:40px;color:var(--txt3)"><div style="font-size:32px;margin-bottom:12px">🌳</div><div>No heroes in the lineage yet.</div></div>`;
+    return;
+  }
+  const byGen={};
+  allHeroes.forEach(h=>{const g=h.gen||0;(byGen[g]||(byGen[g]=[])).push(h);});
+  const maxGen=Math.max(...Object.keys(byGen).map(Number));
+  const NODE_W=130,NODE_H=80,GAP_X=160,GAP_Y=100,PAD=20;
+  const pos={};
+  for(let g=0;g<=maxGen;g++){
+    const heroes=byGen[g]||[];
+    heroes.forEach((h,i)=>{pos[h.id]={x:PAD+g*GAP_X,y:PAD+i*GAP_Y};});
+  }
+  const canvasW=PAD*2+(maxGen)*GAP_X+NODE_W;
+  const canvasH=PAD*2+Math.max(...Object.values(byGen).map(a=>a.length))*GAP_Y+NODE_H;
+  let svgLines='';
+  allHeroes.forEach(h=>{
+    if(h.parentIds){
+      h.parentIds.forEach(pid=>{
+        const pp=pos[pid],cp=pos[h.id];
+        if(pp&&cp){
+          const x1=pp.x+NODE_W/2,y1=pp.y+NODE_H/2;
+          const x2=cp.x+NODE_W/2,y2=cp.y+NODE_H/2;
+          svgLines+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(144,80,232,.35)" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+        }
+      });
+    }
+  });
+  let nodes='';
+  allHeroes.forEach(h=>{
+    const p=pos[h.id];if(!p)return;
+    const isInPool=META.retiredPool.includes(h.id);
+    const isRetiredLike=!!(h.runResult && (h.runResult.outcome==='retired' || h.runResult.outcome==='victory'));
+    const isSpentRetired=(isRetiredLike && !isInPool);
+    const isRetired=isInPool;
+    const isFallen=META.fallenLedger.includes(h.id);
+    const cls=isRetired?'tn-retired':(isSpentRetired?'tn-spent':(isFallen?'tn-dead':''));
+    const statusColor=isRetired?'var(--gold)':(isSpentRetired?'var(--txt2)':(isFallen?'var(--red)':'var(--txt3)'));
+    const derived=evDerived(h.evs);
+    nodes+=`<div class="tree-node ${cls}" style="left:${p.x}px;top:${p.y}px;width:${NODE_W}px" onclick="showHeroDetail('${h.id}')">
+      <div style="font-size:9px;color:${statusColor};letter-spacing:1px">G${h.gen} ${isRetired?'★':(isSpentRetired?'☆':(isFallen?'☠':''))}</div>
+      <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.name}</div>
+      <div style="font-size:9px;color:var(--txt3);margin-top:2px">ATK:${Math.round(derived.atk)} DEF:${Math.round(derived.def)}</div>
+      ${h.traits.length?`<div style="margin-top:3px">${h.traits.slice(0,2).map(tk=>{const gt=GTRAITS[tk];return gt?`<span style="font-size:10px">${gt.icon}</span>`:''}).join('')}</div>`:''}
+    </div>`;
+  });
+  lc.innerHTML=`<div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--gold)">🌳 Family Tree</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${allHeroes.length} heroes across ${maxGen+1} generations</div>
+      </div>
+      <div style="font-size:10px;color:var(--txt3)"><span style="color:var(--gold)">★</span> In Pool &nbsp; <span style="color:var(--txt2)">☆</span> Retired (spent) &nbsp; <span style="color:var(--red)">☠</span> Fallen &nbsp; Click node for details</div>
+    </div>
+    <div style="position:relative;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-height:200px">
+      <svg style="position:absolute;top:0;left:0;width:${canvasW}px;height:${canvasH}px;pointer-events:none">${svgLines}</svg>
+      <div style="position:relative;width:${canvasW}px;height:${canvasH}px">${nodes}</div>
+    </div>
+    <div id="hero-detail-panel" style="margin-top:14px"></div>
+  </div>`;
+}
+
+function showHeroDetail(id){
+  const rec=META.family[id];if(!rec)return;
+  const derived=evDerived(rec.evs);
+  const rr=rec.runResult||{};
+  const isRetired=META.retiredPool.includes(id);
+  const isFallen=META.fallenLedger.includes(id);
+  const status=isRetired?'Retired ★':isFallen?'Fallen ☠':'Active';
+  const statusColor=isRetired?'var(--gold)':isFallen?'var(--red)':'var(--cyan)';
+  document.getElementById('hero-detail-panel').innerHTML=`<div class="slide-in" style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:10px;color:var(--txt3)">Generation ${rec.gen} · <span style="color:${statusColor}">${status}</span></div>
+        <div style="font-size:18px;font-weight:700;margin-top:2px">${rec.name}</div>
+      </div>
+      <button onclick="document.getElementById('hero-detail-panel').innerHTML=''" style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
+      <div>
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:5px">DERIVED STATS</div>
+        ${[['HP',derived.maxHP],['ATK',Math.round(derived.atk)],['DEF',Math.round(derived.def)],['SPD',derived.spd],['CRIT',Math.round(derived.critChance*100)+'%'],['EVA',Math.round(derived.evasion*100)+'%']]
+          .map(([l,v])=>`<div class="srow"><span class="sl" style="font-size:11px">${l}</span><span class="sv" style="font-size:11px">${v}</span></div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:5px">EV PROFILE</div>
+        ${EV_KEYS.map(k=>`<div style="display:flex;align-items:center;gap:4px;margin:2px 0">
+          <div style="font-size:9px;color:var(--txt3);width:26px;text-transform:uppercase">${k}</div>
+          <div class="ev-bar" style="flex:1"><div class="ev-fill" style="width:${Math.round((rec.evs[k]||0)/evCap()*100)}%;background:${evColor(k)}"></div></div>
+          <div style="font-size:9px;color:var(--txt3);width:20px;text-align:right">${rec.evs[k]||0}</div>
+        </div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:5px">TRAITS</div>
+        ${rec.traits.length?rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<div class="gtrait" style="display:flex;margin:3px 0">${gt.icon} ${gt.name}</div>`:''}).join(''):`<div style="color:var(--txt3);font-size:11px">None</div>`}
+        ${rr.wave?`<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px">
+          <div style="font-size:10px;color:var(--txt3)">Run: Wave ${rr.wave} · ${(rr.boons?.length||0)} boons · Lv.${rr.level||1}</div>
+          ${rr.axioms?.length?`<div style="font-size:10px;color:#d050ff;margin-top:2px">Runes: ${rr.axioms.length}</div>`:''}
+        </div>`:''}
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:10px;color:var(--txt3)">Parents: ${rec.parentIds?.length?rec.parentIds.map(pid=>META.family[pid]?.name||'Unknown').join(' × '):'Founder hero'}</div>
+  </div>`;
+}
+
+// ─── UPGRADES ─────────────────────────────────────────────────────────────────
+function renderRunesmith(){
+  const ups=[
+    {id:'evCap',name:'Stronger Bloodline',icon:'🧬',desc:`Raise EV cap by +10 (currently ${evCap()})`,cost:30},
+    {id:'imprintChance',name:'Imprint Mastery',icon:'💫',desc:`+15% imprint success chance (currently ${Math.round(imprintChance()*100)}%)`,cost:25},
+    {id:'poolSize',name:'Wider Pool',icon:'🏛',desc:`+2 retired pool slots (currently ${poolMax()})`,cost:20},
+    {id:'mutationRate',name:'Mutation Catalyst',icon:'⚡',desc:`+3% mutation chance (currently ${Math.round(mutationRate()*100)}%)`,cost:20},
+  {id:'nursery', name:'Nursery Program', icon:'👶', desc:`+15% chance retired heroes have 2 breeding uses (currently +${Math.round((META.upgrades.nursery||0)*15)}%)`, cost:25, currency:'salvage'},
+];
+  const unlocked=[...META.unlockedTraits];
+  const locked=GTRAIT_KEYS.filter(k=>!unlocked.includes(k));
+  let h=`<div>
+    <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:4px">Legacy Runesmith</div>
+    <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">Spend Relics from fallen heroes to permanently improve your lineage.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:20px">
+      ${ups.map(u=>`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div style="font-weight:700;font-size:13px">${u.icon} ${u.name}</div>
+          <div style="font-size:10px;font-weight:700;color:var(--salvage)">ᚱ${u.cost}</div>
+        </div>
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">${u.desc}</div>
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:8px">Rank: ${META.upgrades[u.id]||0}</div>
+        <button class="btn btn-salvage btn-sm${META.salvage<u.cost?' sb-disabled':''}" onclick="buyUpgrade('${u.id}',${u.cost})">Purchase</button>
+      </div>`).join('')}
+    </div>`;
+  if(locked.length){
+    h+=`<div style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--cyan)">🧬 Unlock Mutation Traits</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Spend Relics to add new traits to your mutation pool. These can appear during breeding.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+        ${locked.map(tk=>{
+          const gt=GTRAITS[tk];if(!gt)return '';
+          const disabled=META.salvage<15;
+          return `<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:10px">
+            <div style="font-weight:700;font-size:12px;color:#d090ff">${gt.icon} ${gt.name}</div>
+            <div style="font-size:10px;color:var(--txt2);margin:3px 0">${gt.desc}</div>
+            <button class="btn btn-sm" style="margin-top:6px;background:rgba(200,60,255,.1);border:1px solid rgba(200,60,255,.3);color:#d090ff;${disabled?'opacity:.4;cursor:not-allowed':''}" onclick="unlockTrait('${tk}')">ᚱ15 Unlock</button>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+  h+=`<div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--amber)">💾 Save Data</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-amber" onclick="doExport()">📤 Export Save</button>
+        <button class="btn btn-sm btn-ghost" onclick="doImport()">📥 Import Save</button>
+        <button class="btn btn-sm btn-danger" onclick="doResetMeta()">🗑 Reset All Data</button>
+      </div>
+    </div>
+  </div>`;
+  return h;
+}
+function buyUpgrade(id,cost){if(META.salvage<cost)return;META.salvage-=cost;META.upgrades[id]=(META.upgrades[id]||0)+1;saveMeta();setLegacyTab('upgrades');updateMetaHeader();}
+function unlockTrait(tk){if(META.salvage<15)return;META.salvage-=15;META.unlockedTraits.add(tk);saveMeta();setLegacyTab('upgrades');updateMetaHeader();}
+function doExport(){
+  const s=exportSave();
+  const ta=document.createElement('textarea');ta.value=s;document.body.appendChild(ta);ta.select();
+  document.execCommand('copy');document.body.removeChild(ta);
+  alert('Save data copied to clipboard!');
+}
+function doImport(){
+  const s=prompt('Paste save data:');
+  if(s&&importSave(s)){alert('Save imported successfully!');setLegacyTab('upgrades');updateMetaHeader();}
+  else if(s)alert('Invalid save data.');
+}
+function doResetMeta(){
+  if(!confirm('Reset ALL legacy data? This cannot be undone.'))return;
+  localStorage.removeItem(META_KEY);
+  META={legacyEssence:0,salvage:0,retiredPool:[],fallenLedger:[],family:{},upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
+    unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),nextHeroId:1};
+  saveMeta();setLegacyTab('upgrades');updateMetaHeader();
+}
+
+// ═══ OVERLAY HELPERS ═══
+function showOverlayContent(html){
+  document.getElementById('overlay-content').innerHTML=html;
+  document.getElementById('overlay').style.display='flex';
+}
+function hideOverlay(){document.getElementById('overlay').style.display='none';}
+
+function showRetireConfirm(){
+  const rec=G.hero.record;
+  const earnedEVs=computeEarnedEVs();
+  let html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 RETIRE HERO?</div>
+    <p style="color:var(--txt2);font-size:12px;margin-bottom:14px">End your run at Wave ${G.wave} and add <strong style="color:var(--gold)">${rec?.name||'your hero'}</strong> to the Chosen of the Hall for future breeding.</p>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:14px;text-align:left">
+      <div style="font-size:10px;color:var(--txt3);margin-bottom:5px">EARNED EVs THIS RUN</div>
+      ${EV_KEYS.map(k=>`<div class="srow"><span class="sl" style="font-size:11px">${k.toUpperCase()}_EV</span><span class="sv sdp" style="font-size:11px">+${earnedEVs[k]||0}</span></div>`).join('')}
+      <div style="margin-top:8px;font-size:11px;color:var(--gold)">+${Math.floor(G.gold*.35)+G.wave*4} Glory</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-gold" style="flex:1" onclick="hideOverlay();retireHero()">🏛 Retire Now</button>
+      <button class="btn btn-sm btn-ghost" style="flex:1" onclick="hideOverlay()">⚔ Keep Fighting</button>
+    </div>`;
+  showOverlayContent(html);
+}
+
+function showStartScreen(){
+  closeDrawers();
+  const hasRetired=META.retiredPool.length>0;
+  let html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:var(--violet);margin-bottom:10px;text-shadow:0 0 20px rgba(144,80,232,.6)">ᚠ RUNESAGA</div>
+    <p style="color:var(--txt2);margin:8px 0 18px;line-height:1.7;font-size:12px">Raise a champion. Forge an Legacy.<br>Invoke <span style="color:var(--violet)">Runes</span> · Build synergies · Carve your lineage.</p>`;
+  if(hasRetired){
+    html+=`<div style="background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.3);border-radius:5px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--txt2)">
+      🏛 You have <strong style="color:var(--gold)">${META.retiredPool.length}</strong> retired ${META.retiredPool.length===1?'hero':'heroes'} ready for breeding.
+      <span style="color:var(--txt3)">Go to Legacy → Breeding to create a stronger generation.</span>
+    </div>`;
+  }
+  html+=`<div style="margin:0 0 14px">
+      <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Run Seed (optional)</label>
+      <input id="seed-input" type="text" placeholder="Leave blank for random"
+        style="width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 12px;border-radius:4px;font-size:12px;font-family:'Share Tech Mono',monospace;text-align:center;outline:none">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:2;padding:11px" onclick="startNewRunFromOverlay()">▶ Start New Run (Gen 0)</button>
+      ${hasRetired?`<button class="btn btn-gold" style="flex:1;padding:11px" onclick="hideOverlay();showLegacy()">ᛟ Hero Hall</button>`:''}
+    </div>`;
+  showOverlayContent(html);
+  updateDifficultyUI();
+  syncChromeHeights();
+}
+function startNewRunFromOverlay(){
+  const seed=(document.getElementById('seed-input')?.value||'').trim();
+  hideOverlay();
+  startFirstHero(seed||null);
+}
+
+// ═══ CONTROLS ═══
+function cycleSpeed(){
+  if(!G)return;
+  const speeds=[1,2,4];
+  const idx=speeds.indexOf(G.speed);
+  G.speed=speeds[(idx+1)%speeds.length];
+  document.getElementById('btn-speed').textContent=`${G.speed}× Speed`;
+  if(G.interval){
+    clearInterval(G.interval);
+    if(G.phase==='BATTLE')G.interval=setInterval(combatTick,100/G.speed);
+  }
+}
+function confirmReset(){
+  if(G&&G.phase==='BATTLE')clearInterval(G.interval);
+  G=null;
+  updateDifficultyUI();
+  showStartScreen();
+}
+
+// ═══ LOG ═══
+function addLog(msg,cls){
+  const log=document.getElementById('combat-log');
+  const el=document.createElement('div');el.className=cls||'lhit';el.innerHTML=msg;
+  log.appendChild(el);
+  while(log.children.length>400)log.removeChild(log.firstChild);
+  log.scrollTop=log.scrollHeight;
+}
+function clearLog(){document.getElementById('combat-log').innerHTML='';}
+
+// ─────────────────────────────────────────────────────────────
+// RESPONSIVE DRAWERS + CHROME HEIGHT
+// ─────────────────────────────────────────────────────────────
+function syncChromeHeights(){
+  const hd=document.getElementById('header');
+  const ft=document.getElementById('footer');
+  if(hd){
+    const h=Math.ceil(hd.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--header-h',h+'px');
+  }
+  if(ft){
+    const f=Math.ceil(ft.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--footer-h',f+'px');
+  }
+}
+function closeDrawers(){document.body.classList.remove('drawer-hero','drawer-right');}
+function toggleDrawer(which){
+  const cls=(which==='hero')?'drawer-hero':'drawer-right';
+  const isOn=document.body.classList.contains(cls);
+  closeDrawers();
+  if(!isOn)document.body.classList.add(cls);
+  syncChromeHeights();
+}
+function applyResponsiveLayout(){
+  syncChromeHeights();
+  if(!window.matchMedia('(max-width: 980px)').matches)closeDrawers();
+}
+document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeDrawers();});
+window.addEventListener('resize',applyResponsiveLayout);
+window.addEventListener('orientationchange',()=>setTimeout(applyResponsiveLayout,150));
+
+// ─────────────────────────────────────────────────────────────
+// COLLAPSIBLE COMBAT LOG
+// ─────────────────────────────────────────────────────────────
+function setCombatLogCollapsed(collapsed){
+  UI.logCollapsed=!!collapsed;
+  saveUI();
+  const wrap=document.getElementById('log-wrap');
+  const btn=document.getElementById('btn-log-toggle');
+  if(UI.logCollapsed){
+    wrap.classList.add('collapsed');
+    if(btn)btn.textContent='Expand';
+  }else{
+    wrap.classList.remove('collapsed');
+    if(btn)btn.textContent='Collapse';
+    const log=document.getElementById('combat-log');
+    log.scrollTop=log.scrollHeight;
+  }
+  syncChromeHeights();
+}
+function toggleCombatLog(){setCombatLogCollapsed(!UI.logCollapsed);}
+
+// ═══ INIT ═══
+window.onload=()=>{
+  loadMeta();
+  loadUI();
+  if(typeof UI.difficulty!=='number')UI.difficulty=1;
+  Object.values(META.family).forEach(h=>{if(!h.evs)h.evs=emptyEVs();});
+  // Ensure retired heroes have breeding uses; remove spent/missing from pool
+  Object.values(META.family).forEach(h=>{
+    if(h && h.runResult && (h.runResult.outcome==='retired' || h.runResult.outcome==='victory')){
+      if(typeof h.breedUsesMax!=='number' || h.breedUsesMax<=0) h.breedUsesMax=1;
+      if(typeof h.breedUsesLeft!=='number') h.breedUsesLeft=h.breedUsesMax;
+    }
+  });
+  if(Array.isArray(META.retiredPool)){
+    META.retiredPool=META.retiredPool.filter(id=>{
+      const r=META.family[id];
+      if(!r) return false;
+      const u=getBreedUses(r);
+      return u.left>0;
+    });
+  }
+  saveMeta();
+  const small=window.matchMedia('(max-width: 420px)').matches;
+  if(small&&localStorage.getItem(UI_KEY)===null){
+    UI.logCollapsed=true;
+    saveUI();
+  }
+  setCombatLogCollapsed(UI.logCollapsed);
+  updateDifficultyUI();
+  showStartScreen();
+  setTimeout(applyResponsiveLayout,0);
+};
+
+
+// ═══════════════════════════════════════════════════════════════
+// V5 PATCH — Aspects + Breeding Actions + Fallen Scars/Relics
+// Naming — Generations + Blended Children
+// ═══════════════════════════════════════════════════════════════
+
+// --- Add SCAR traits (risk/reward) ---
+(function(){
+  const SCARS = {
+    frayed_nerves:{name:'Frayed Nerves',icon:'⚡',desc:'+12 SPD, start battle Vulnerable (2s).',color:'#c080ff'},
+    cold_iron:{name:'Cold Iron',icon:'🧊',desc:'+6 DEF, −4% Crit Chance.',color:'#80a8ff'},
+    brittle_edge:{name:'Brittle Edge',icon:'🩶',desc:'+10% Crit Chance, −20 Max HP.',color:'#e8c048'},
+    grave_salt:{name:'Grave Salt',icon:'🜃',desc:'+8 ATK, take +10% damage.',color:'#ff7070'},
+  };
+  Object.assign(GTRAITS, SCARS);
+  for(const k of Object.keys(SCARS)){
+    if(Array.isArray(GTRAIT_KEYS) && !GTRAIT_KEYS.includes(k)) GTRAIT_KEYS.push(k);
+    // Make scars unlockable via mutation only after discovered; so do NOT auto-add to unlockedTraits here.
+  }
+})();
+
+// --- Aspects (lineage identity) ---
+const ASPECTS = ['Steel','Gale','Venom','Execution','Axiom'];
+const ASPECT_ICON = {Steel:'🛡',Gale:'🌪',Venom:'🐍',Execution:'🐺',Axiom:'ᚱ'};
+const ASPECT_COLOR = {Steel:'#78a8ff',Gale:'#c080ff',Venom:'#70d870',Execution:'#f0a828',Axiom:'#d050ff'};
+const ASPECT_THRESH = [0, 60, 140, 260]; // rank 0..3
+
+const TAG_ASPECT = {
+  Bulwark:'Steel', Shield:'Steel', Thorns:'Steel', Sustain:'Steel',
+  Tempo:'Gale',
+  Bleed:'Venom', Poison:'Venom',
+  Crit:'Execution', Execute:'Execution',
+  Axiom:'Axiom', Arcane:'Axiom'
+};
+
+const TRAIT_ASPECT = {
+  serrated:'Venom', venomkiss:'Venom',
+  aegis:'Steel', ironblood:'Steel', tenacious:'Steel', spite:'Steel', resilient:'Steel',
+  swift_born:'Gale', skirmisher:'Gale',
+  lucky:'Execution', gambler:'Execution', predatory:'Execution', executioner_b:'Execution', vampiric_b:'Venom',
+  frayed_nerves:'Gale', cold_iron:'Steel', brittle_edge:'Execution', grave_salt:'Execution',
+};
+
+function aspectRankFromXp(xp){
+  const x = Math.max(0, Math.floor(xp||0));
+  if(x >= ASPECT_THRESH[3]) return 3;
+  if(x >= ASPECT_THRESH[2]) return 2;
+  if(x >= ASPECT_THRESH[1]) return 1;
+  return 0;
+}
+function aspectNextThreshold(rank){
+  const r = Math.max(0, Math.min(3, rank|0));
+  return ASPECT_THRESH[Math.min(3, r+1)] || ASPECT_THRESH[3];
+}
+function getAspectState(aspect){
+  normalizeMeta();
+  return META.aspects[aspect] || {xp:0,rank:0};
+}
+function getAspectRank(aspect){
+  return getAspectState(aspect).rank|0;
+}
+function addAspectXP(aspect, amount){
+  normalizeMeta();
+  if(!ASPECTS.includes(aspect)) aspect = 'Steel';
+  const st = META.aspects[aspect] || (META.aspects[aspect] = {xp:0,rank:0});
+  const prevRank = aspectRankFromXp(st.xp);
+  st.xp = Math.max(0, Math.floor((st.xp||0) + (amount||0)));
+  st.rank = aspectRankFromXp(st.xp);
+  if(st.rank > prevRank){
+    try{ addLog(`🏛 LINEAGE ASCENDS: ${ASPECT_ICON[aspect]||'✦'} ${aspect} Rank ${st.rank}!`,'laxiom'); }catch(e){}
+  }
+}
+function computeRunAspectScores(){
+  const s = {Steel:0,Gale:0,Venom:0,Execution:0,Axiom:0};
+  if(!G) return s;
+  // Boon tags
+  (G.boons||[]).forEach(b=>{
+    (b.tags||[]).forEach(t=>{
+      const a = TAG_ASPECT[t];
+      if(a) s[a] += 4;
+    });
+    if(b.rarity==='axiom') s.Axiom += 10;
+    if(b.rarity==='legendary') s.Axiom += 2;
+  });
+  // Genetic traits currently expressed
+  const tr = (G.hero && G.hero.traits) ? G.hero.traits : (G.hero && G.hero.record && G.hero.record.traits) ? G.hero.record.traits : [];
+  (tr||[]).forEach(tk=>{
+    const a = TRAIT_ASPECT[tk];
+    if(a) s[a] += 3;
+  });
+  return s;
+}
+function pickTopAspects(scores){
+  const entries = Object.entries(scores||{}).sort((a,b)=>b[1]-a[1]);
+  const top = entries[0] && entries[0][1]>0 ? entries[0][0] : 'Steel';
+  const second = entries[1] && entries[1][1]>0 ? entries[1][0] : null;
+  return [top, second];
+}
+function awardAspectXPFromRun(outcome){
+  if(!G) return;
+  normalizeMeta();
+  const scores = computeRunAspectScores();
+  const [a1,a2] = pickTopAspects(scores);
+  const base = (8 + (G.wave||1)*3 + Math.floor((G.level||1)*2));
+  const mult = (outcome==='victory') ? 1.8 : (outcome==='retired') ? 1.0 : 0.6;
+  const xp1 = Math.floor(base*mult);
+  const xp2 = Math.floor(base*0.55*mult);
+  addAspectXP(a1, xp1);
+  if(a2) addAspectXP(a2, xp2);
+  // Axiom spillover if any axioms in run
+  const ax = (G.boons||[]).filter(b=>b.rarity==='axiom').length;
+  if(ax>0) addAspectXP('Axiom', Math.floor((8+ax*8)*mult));
+  // Persist
+  try{ saveMeta(); updateMetaHeader(); }catch(e){}
+}
+
+// --- Generations + blended naming ---
+function baseGivenFromFull(full){
+  if(!full) return rpick(NAME_PREFIXES);
+  // Try to find the first capitalized chunk
+  const first = full.split(' ')[0] || '';
+  const clean = first.replace(/[^A-Za-z]/g,'');
+  return clean || rpick(NAME_PREFIXES);
+}
+function capName(s){
+  if(!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function blendCandidates(nameA, nameB){
+  const A = baseGivenFromFull(nameA);
+  const B = baseGivenFromFull(nameB);
+  const cuts = [[3,3],[4,3],[3,4],[2,3]];
+  const out = [];
+  for(const [p,s] of cuts){
+    const pA = A.slice(0, Math.min(p, A.length));
+    const sB = B.slice(Math.max(0, B.length-s));
+    out.push(capName(pA + sB));
+    const pB = B.slice(0, Math.min(p, B.length));
+    const sA = A.slice(Math.max(0, A.length-s));
+    out.push(capName(pB + sA));
+  }
+  // Seeded fallback
+  out.push(capName(A.slice(0,4) + rpick(NAME_SUFFIXES)));
+  // Unique + sane lengths
+  const uniq = [];
+  for(const c of out){
+    const v = (c||'').replace(/[^A-Za-z]/g,'');
+    if(v.length<4) continue;
+    if(!uniq.includes(v)) uniq.push(v);
+  }
+  return uniq.length ? uniq : [capName(rpick(NAME_PREFIXES)+rpick(NAME_SUFFIXES))];
+}
+function birthEpithet(aspect, flags){
+  if(flags && flags.spliceScar) return 'the Scarred Heir';
+  if(flags && flags.spliceRelic) return 'the Bound';
+  if(flags && flags.mutated) return 'the Unshaped';
+  const map = {
+    Steel:'the Shieldbearer',
+    Gale:'the Stormswift',
+    Venom:'the Serpentblood',
+    Execution:'the Wolfbitten',
+    Axiom:'the Runebound'
+  };
+  return map[aspect] || 'the Ascendant';
+}
+function pickGivenForAspect(cands, aspect){
+  const idxMap = {Steel:0,Gale:1,Venom:2,Execution:3,Axiom:4};
+  const idx = idxMap[aspect] ?? 0;
+  return cands[idx % cands.length];
+}
+
+// Override genName while keeping signature
+function genName(gen, aspectOrTag, parentNames, flags){
+  normalizeMeta();
+  const house = META.houseName || genHouseName();
+  const aspect = (ASPECTS.includes(aspectOrTag)) ? aspectOrTag : (TAG_ASPECT[aspectOrTag] || 'Steel');
+
+  if(gen===0){
+    const given = capName(rpick(NAME_PREFIXES) + rpick(NAME_SUFFIXES));
+    return `${given} the First of House ${house}`;
+  }
+  const pA = parentNames && parentNames[0] ? parentNames[0] : '';
+  const pB = parentNames && parentNames[1] ? parentNames[1] : '';
+  const cands = blendCandidates(pA, pB);
+  const given = pickGivenForAspect(cands, aspect);
+  const epi = birthEpithet(aspect, flags);
+  return `${given} ${epi} of House ${house}`;
+}
+
+// Override mkHeroRecord to store lineage metadata
+function mkHeroRecord(name,gen,parentIds,evs,traits){
+  normalizeMeta();
+  return {
+    id: mkHeroId(),
+    name,
+    gen,
+    parentIds: parentIds || [],
+    evs: {...(evs||emptyEVs())},
+    traits: [...(traits||[])],
+    runResult: null,
+    house: META.houseName || '',
+    birthAspect: 'Steel',
+    birthFlags: {},
+  };
+}
+
+function genHouseName(){
+  // short & punchy: Prefix+Suffix, then title-case
+  const raw = (rpick(NAME_PREFIXES) + rpick(NAME_SUFFIXES)).replace(/[^A-Za-z]/g,'');
+  return capName(raw);
+}
+function normalizeMeta(){
+  if(typeof META !== 'object' || !META) META = {};
+  if(!META.houseName || typeof META.houseName !== 'string') META.houseName = genHouseName();
+  if(!META.aspects || typeof META.aspects !== 'object') META.aspects = {};
+  for(const a of ASPECTS){
+    if(!META.aspects[a]) META.aspects[a] = {xp:0,rank:0};
+    META.aspects[a].xp = Math.max(0, Math.floor(META.aspects[a].xp||0));
+    META.aspects[a].rank = aspectRankFromXp(META.aspects[a].xp);
+  }
+  META.relics = Math.max(0, Math.floor(META.relics||0));
+  if(!META.scarTokens || typeof META.scarTokens !== 'object') META.scarTokens = {};
+  for(const k of Object.keys(META.scarTokens)){
+    META.scarTokens[k] = Math.max(0, Math.floor(META.scarTokens[k]||0));
+    if(META.scarTokens[k] <= 0) delete META.scarTokens[k];
+  }
+}
+
+// --- Scar/Relic inventory helpers ---
+function totalScarTokens(){
+  normalizeMeta();
+  return Object.values(META.scarTokens||{}).reduce((a,b)=>a+(b||0),0);
+}
+function scarTokenCount(k){
+  normalizeMeta();
+  return (META.scarTokens && META.scarTokens[k]) ? META.scarTokens[k] : 0;
+}
+function addScarToken(k, n){
+  normalizeMeta();
+  META.scarTokens[k] = Math.max(0, (META.scarTokens[k]||0) + (n||0));
+  if(META.scarTokens[k] <= 0) delete META.scarTokens[k];
+}
+
+// --- Apply trait stat effects (wrap original) ---
+(function(){
+  const _applyGeneticTraitStats = applyGeneticTraitStats;
+  applyGeneticTraitStats = function(h){
+    _applyGeneticTraitStats(h);
+    // Scars
+    if(!h || !h.traits) return;
+    if(h.traits.includes('frayed_nerves')) h.spd += 12;
+    if(h.traits.includes('cold_iron')){ h.def += 6; h.critChance = Math.max(0, Math.min(0.9, h.critChance - 0.04)); }
+    if(h.traits.includes('brittle_edge')){ h.critChance = Math.min(0.9, h.critChance + 0.10); h.maxHP = Math.max(30, h.maxHP - 20); h.hp = Math.min(h.hp, h.maxHP); }
+    if(h.traits.includes('grave_salt')) h.atk += 8;
+  };
+})();
+
+// --- Birth gifts (one-time at hero creation) ---
+function applyBirthGift(hero, rec){
+  if(!hero || !rec) return;
+  const a = rec.birthAspect || 'Steel';
+  const r = getAspectRank(a);
+  if(a==='Steel'){
+    hero.def += 1 + r;
+    hero.maxHP += 10 + r*4; hero.hp = Math.min(hero.maxHP, hero.hp + 10 + r*4);
+  }else if(a==='Gale'){
+    hero.spd += 6 + r*2;
+    hero.evasion = Math.min(0.6, hero.evasion + 0.02 + r*0.005);
+  }else if(a==='Venom'){
+    hero.atk += 2 + r;
+    hero.lifesteal = Math.min(0.4, hero.lifesteal + 0.01 + r*0.004);
+  }else if(a==='Execution'){
+    hero.critChance = Math.min(0.9, hero.critChance + 0.03 + r*0.01);
+  }else if(a==='Axiom'){
+    hero.critChance = Math.min(0.9, hero.critChance + 0.02 + r*0.008);
+    hero.spd += 3 + r;
+  }
+}
+
+// Wrap newHero to apply birth gift
+(function(){
+  const _newHero = newHero;
+  newHero = function(evs, traits, record){
+    const h = _newHero(evs, traits, record);
+    try{ if(record) applyBirthGift(h, record); }catch(e){}
+    return h;
+  };
+})();
+
+// --- Damage hook for grave_salt (+10% damage taken) ---
+(function(){
+  const _heroDmg = heroDmg;
+  heroDmg = function(rawDmg, attacker, src){
+    if(G && G.hero && hasTrait && hasTrait('grave_salt') && rawDmg>0) rawDmg = Math.floor(rawDmg * 1.10);
+    return _heroDmg(rawDmg, attacker, src);
+  };
+})();
+
+// --- Fallen harvest overlay (Relic vs Scar token) ---
+const SCAR_KEYS = ['frayed_nerves','cold_iron','brittle_edge','grave_salt'];
+
+function showFallenHarvest(heroId, salvageEarned){
+  const rec = META.family[heroId];
+  if(!rec) return;
+  normalizeMeta();
+  const picks = rshuffle(SCAR_KEYS).slice(0,3);
+  const html = `
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--salvage);margin-bottom:8px">ᚱ FALLEN HARVEST</div>
+    <div style="color:var(--txt2);font-size:12px;margin-bottom:12px">
+      ${rec.name} fell at Wave ${rec.runResult?.wave||'?'}.
+      You recovered <span style="color:var(--salvage);font-weight:700">ᚱ${salvageEarned}</span>.
+      Decide what the failure becomes.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px">
+      <div style="background:rgba(20,18,40,.75);border:1px solid rgba(144,80,232,.25);border-radius:8px;padding:12px;text-align:left">
+        <div style="font-weight:800;color:var(--gold);margin-bottom:4px">🗿 Refine into a Relic</div>
+        <div style="color:var(--txt2);font-size:11px;margin-bottom:8px">Gain <strong>1 Relic</strong> (used for Splice to lock a trait into a child).</div>
+        <button class="btn btn-gold" style="width:100%" onclick="harvestRelic('${heroId}')">Gain +1 Relic</button>
+      </div>
+
+      <div style="background:rgba(10,20,18,.65);border:1px solid rgba(48,208,192,.25);border-radius:8px;padding:12px;text-align:left">
+        <div style="font-weight:800;color:var(--salvage);margin-bottom:4px">🩹 Forge a Scar Token</div>
+        <div style="color:var(--txt2);font-size:11px;margin-bottom:8px">Choose a scar (power + drawback). Gain <strong>1 Scar Token</strong> you can implant via Splice.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${picks.map(k=>{
+            const gt = GTRAITS[k];
+            return `<div class="imprint-card" onclick="harvestScar('${heroId}','${k}')">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-weight:800;color:#d090ff">${gt?gt.icon:''} ${gt?gt.name:k}</div>
+                <div style="font-size:10px;color:var(--salvage)">+1 token</div>
+              </div>
+              <div style="font-size:10px;color:var(--txt2);margin-top:4px">${gt?gt.desc:''}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div style="color:var(--txt3);font-size:10px">Relics: ${META.relics} · Scar Tokens: ${totalScarTokens()}</div>
+  `;
+  showOverlayContent(html);
+}
+
+function harvestRelic(heroId){
+  const rec = META.family[heroId];
+  if(!rec) return;
+  normalizeMeta();
+  META.relics += 1;
+  if(rec.runResult) rec.runResult.harvest = 'relic';
+  META.family[heroId] = rec;
+  saveMeta(); updateMetaHeader();
+  hideOverlay();
+}
+function harvestScar(heroId, scarKey){
+  const rec = META.family[heroId];
+  if(!rec) return;
+  normalizeMeta();
+  addScarToken(scarKey, 1);
+  // Unlock into mutation pool once discovered
+  try{ META.unlockedTraits.add(scarKey); }catch(e){}
+  if(rec.runResult) rec.runResult.harvest = 'scar:' + scarKey;
+  META.family[heroId] = rec;
+  saveMeta(); updateMetaHeader();
+  hideOverlay();
+  try{ addLog(`🩹 Scar Token gained: ${GTRAITS[scarKey]?.name||scarKey}`,'laxiom'); }catch(e){}
+}
+
+// --- Breeding actions state ---
+let BREED_ACTION = {mode:'none', spliceKind:'relic', traitKey:null, scarKey:null};
+function resetBreedAction(){ BREED_ACTION = {mode:'none', spliceKind:'relic', traitKey:null, scarKey:null}; }
+
+function stabilizeCost(){
+  const c = 15 - getAspectRank('Steel')*2;
+  return Math.max(6, c|0);
+}
+function catalyzeCost(){
+  const c = 15 - getAspectRank('Gale')*2;
+  return Math.max(6, c|0);
+}
+function setBreedAction(mode){
+  if(mode===BREED_ACTION.mode){ resetBreedAction(); }
+  else{
+    BREED_ACTION.mode = mode;
+    if(mode!=='splice'){ BREED_ACTION.spliceKind='relic'; BREED_ACTION.traitKey=null; BREED_ACTION.scarKey=null; }
+  }
+  setLegacyTab('breed');
+}
+function setSpliceKind(kind){
+  BREED_ACTION.spliceKind = kind;
+  BREED_ACTION.traitKey = null;
+  BREED_ACTION.scarKey = null;
+  setLegacyTab('breed');
+}
+function setSpliceTrait(tk){
+  BREED_ACTION.traitKey = tk;
+  setLegacyTab('breed');
+}
+function setSpliceScar(sk){
+  BREED_ACTION.scarKey = sk;
+  setLegacyTab('breed');
+}
+
+function breedingActionsHTML(){
+  normalizeMeta();
+  const mode = BREED_ACTION.mode;
+  const hasEss = (META.legacyEssence||0) >= stabilizeCost();
+  const hasSal = (META.salvage||0) >= catalyzeCost();
+  const hasRel = (META.relics||0) > 0;
+  const scars = Object.keys(META.scarTokens||{}).filter(k=>scarTokenCount(k)>0);
+
+  const btn = (lbl, m, ok, extra) => `
+    <button class="btn btn-sm ba-btn ${mode===m?'active':''} ${ok?'':'disabled'}" onclick="${ok?`setBreedAction('${m}')`:`alert('Not enough resources.')`}">
+      ${lbl} ${extra||''}
+    </button>
+  `;
+
+  let html = `
+    <div style="margin:10px 0 16px">
+      <div class="sec-title">Breeding Actions</div>
+      <div class="breed-actions">
+        ${btn(`🧊 Stabilize <span style="color:var(--gold);font-family:'Share Tech Mono',monospace">ᛋ${stabilizeCost()}</span>`, 'stabilize', hasEss)}
+        ${btn(`⚡ Catalyze <span style="color:var(--salvage);font-family:'Share Tech Mono',monospace">ᚱ${catalyzeCost()}</span>`, 'catalyze', hasSal)}
+        ${btn(`🧬 Splice <span style="color:var(--amber);font-family:'Share Tech Mono',monospace">${(hasRel?`🗿${META.relics}`:'')}${(scars.length?` · 🩹${totalScarTokens()}`:'')}</span>`, 'splice', (hasRel||scars.length>0))}
+      </div>
+  `;
+
+  if(mode==='stabilize'){
+    html += `<div class="breed-subpanel">
+      <div style="font-weight:800;color:var(--gold);margin-bottom:4px">Stabilize</div>
+      <div style="font-size:11px;color:var(--txt2)">Lower EV variance, higher inheritance reliability, lower mutation chance.</div>
+    </div>`;
+  }else if(mode==='catalyze'){
+    html += `<div class="breed-subpanel">
+      <div style="font-weight:800;color:var(--salvage);margin-bottom:4px">Catalyze</div>
+      <div style="font-size:11px;color:var(--txt2)">Higher EV variance and mutation chance. More likely to produce an unexpected heir.</div>
+    </div>`;
+  }else if(mode==='splice'){
+    const a = BREED_SELECTED[0], b = BREED_SELECTED[1];
+    const recA = META.family[a], recB = META.family[b];
+    const parentTraits = [...new Set([...(recA?.traits||[]), ...(recB?.traits||[])])];
+    html += `<div class="breed-subpanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-weight:900;color:#d090ff">Splice</div>
+        <div style="font-size:10px;color:var(--txt3)">Choose a Relic-lock or implant a Scar.</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        ${hasRel?`<span class="choice-pill ${BREED_ACTION.spliceKind==='relic'?'active':''}" onclick="setSpliceKind('relic')">🗿 Relic Lock</span>`:''}
+        ${scars.length?`<span class="choice-pill ${BREED_ACTION.spliceKind==='scar'?'active':''}" onclick="setSpliceKind('scar')">🩹 Scar Implant</span>`:''}
+      </div>
+    `;
+
+    if(BREED_ACTION.spliceKind==='relic'){
+      html += `<div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Consume <strong>1 Relic</strong> to lock a parent trait into the child (high chance).</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      if(!hasRel) html += `<div style="color:var(--txt3);font-size:11px">No relics available.</div>`;
+      else if(!parentTraits.length) html += `<div style="color:var(--txt3);font-size:11px">Parents have no traits to lock.</div>`;
+      else{
+        html += parentTraits.map(tk=>{
+          const gt = GTRAITS[tk];
+          const on = (BREED_ACTION.traitKey===tk);
+          return `<span class="choice-pill ${on?'active':''}" onclick="setSpliceTrait('${tk}')">${gt?gt.icon:''} ${gt?gt.name:tk}</span>`;
+        }).join('');
+      }
+      html += `</div>`;
+    }else{
+      html += `<div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Consume <strong>1 Scar Token</strong> to implant that scar into the child (guaranteed).</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      if(!scars.length) html += `<div style="color:var(--txt3);font-size:11px">No scar tokens available.</div>`;
+      else{
+        html += scars.map(sk=>{
+          const gt = GTRAITS[sk];
+          const on = (BREED_ACTION.scarKey===sk);
+          return `<span class="choice-pill ${on?'active':''}" onclick="setSpliceScar('${sk}')">${gt?gt.icon:''} ${gt?gt.name:sk} ×${scarTokenCount(sk)}</span>`;
+        }).join('');
+      }
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+// --- Trait inheritance bonus by aspect rank ---
+function traitInheritBonus(tk){
+  const a = TRAIT_ASPECT[tk];
+  if(!a) return 0;
+  return getAspectRank(a) * 0.03; // up to +9%
+}
+
+// Override breedHeroes to accept breeding action options + naming flags
+function breedHeroes(idA, idB, opts){
+  const recA = META.family[idA], recB = META.family[idB];
+  if(!recA || !recB) return null;
+  normalizeMeta();
+
+  const action = (opts && opts.mode) ? opts.mode : 'none';
+  const spliceKind = opts ? opts.spliceKind : null;
+
+  let VAR = 5;
+  let mutMult = 1.0;
+  let inheritAdd = 0.0;
+  let mutBoostChance = 0.08;
+
+  if(action==='stabilize'){ VAR = 2; mutMult = 0.55; inheritAdd = 0.10; mutBoostChance = 0.06; }
+  else if(action==='catalyze'){ VAR = 8; mutMult = 1.75; inheritAdd = -0.05; mutBoostChance = 0.18; }
+
+  const cap = evCap();
+  const childEVs = {};
+  EV_KEYS.forEach(k=>{
+    let val = Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2 + ri(-VAR, VAR));
+    if(Math.random() < mutBoostChance) val += ri(5, 12);
+    childEVs[k] = Math.min(cap, Math.max(0, val));
+  });
+
+  const allParentTraits = [...new Set([...(recA.traits||[]), ...(recB.traits||[])])];
+  const sharedTraits = (recA.traits||[]).filter(t=> (recB.traits||[]).includes(t));
+  const childTraits = [];
+  for(const t of allParentTraits){
+    const baseChance = (sharedTraits.includes(t) ? 0.75 : 0.45) + inheritAdd + traitInheritBonus(t);
+    if(Math.random() < Math.min(0.95, Math.max(0.05, baseChance))) childTraits.push(t);
+  }
+
+  let mutated = false;
+  if(Math.random() < (mutationRate() * mutMult)){
+    const unlocked = [...META.unlockedTraits];
+    const available = unlocked.filter(t=>!childTraits.includes(t));
+    if(available.length){
+      const mut = rpick(available);
+      childTraits.push(mut);
+      mutated = true;
+      try{ addLog(`🧬 MUTATION! New trait emerged: ${GTRAITS[mut]?.name||mut}!`,'laxiom'); }catch(e){}
+    }
+  }
+
+  // Splice effects
+  let spliceRelic = false, spliceScar = false;
+  if(action==='splice' && opts){
+    if(spliceKind==='relic' && opts.traitKey){
+      spliceRelic = true;
+      const t = opts.traitKey;
+      // High chance to include locked parent trait
+      if(allParentTraits.includes(t) && Math.random() < 0.90 && !childTraits.includes(t)) childTraits.push(t);
+      if(allParentTraits.includes(t) && Math.random() < 0.25 && !childTraits.includes(t)) childTraits.push(t); // small second roll if missed
+    }else if(spliceKind==='scar' && opts.scarKey){
+      spliceScar = true;
+      const sk = opts.scarKey;
+      if(!childTraits.includes(sk)) childTraits.push(sk);
+    }
+  }
+
+  // Enforce max traits: scars should be kept if present
+  const maxTraits = TRAIT_MAX_BASE;
+  let finalTraits = [...new Set(childTraits)];
+  if(finalTraits.length > maxTraits){
+    // Prefer to keep spliced scar if any
+    const keep = [];
+    if(spliceScar && opts && opts.scarKey) keep.push(opts.scarKey);
+    if(spliceRelic && opts && opts.traitKey) keep.push(opts.traitKey);
+    // Build final list
+    const out = [];
+    for(const k of keep){ if(k && finalTraits.includes(k) && !out.includes(k)) out.push(k); }
+    for(const k of finalTraits){ if(out.length>=maxTraits) break; if(!out.includes(k)) out.push(k); }
+    finalTraits = out.slice(0, maxTraits);
+  }else{
+    finalTraits = finalTraits.slice(0, maxTraits);
+  }
+
+  // Determine child aspect (from EV + traits)
+  const topEvK = EV_KEYS.reduce((a,b)=> (childEVs[a]||0) > (childEVs[b]||0) ? a : b);
+  const evAspectMap = {hp:'Steel',def:'Steel',ls:'Venom',atk:'Execution',crit:'Execution',spd:'Gale',eva:'Gale',acc:'Execution'};
+  let birthAspect = evAspectMap[topEvK] || 'Steel';
+  // If child has an Axiom boon later, that will shift; for birth we keep genetics.
+  if(finalTraits.some(t=>TRAIT_ASPECT[t]==='Axiom')) birthAspect = 'Axiom';
+
+  const genNum = Math.max(recA.gen||0, recB.gen||0) + 1;
+  const childName = genName(genNum, birthAspect, [recA.name, recB.name], {mutated, spliceRelic, spliceScar});
+  const childRec = mkHeroRecord(childName, genNum, [recA.id, recB.id], childEVs, finalTraits);
+  childRec.birthAspect = birthAspect;
+  childRec.birthFlags = {catalyzed: action==='catalyze', mutated, spliceRelic, spliceScar};
+
+  META.family[childRec.id] = childRec;
+  saveMeta();
+  return childRec;
+}
+
+// Override doBreed to apply costs + splice inventory
+(function(){
+  const _doBreed = doBreed;
+  doBreed = function(){
+    if(BREED_SELECTED.length<2){alert('Select 2 heroes first.');return;}
+    normalizeMeta();
+    const a = BREED_SELECTED[0], b = BREED_SELECTED[1];
+    const ua = getBreedUses(META.family[a]), ub = getBreedUses(META.family[b]);
+    if(ua.left<=0||ub.left<=0){alert('One of the selected parents has no breeding uses left.');return;}
+
+    const mode = BREED_ACTION.mode;
+    const opts = {mode:'none'};
+
+    // Pay costs / consume inventory
+    if(mode==='stabilize'){
+      const c = stabilizeCost();
+      if((META.legacyEssence||0) < c){ alert('Not enough Essence for Stabilize.'); return; }
+      META.legacyEssence -= c;
+      opts.mode = 'stabilize';
+    }else if(mode==='catalyze'){
+      const c = catalyzeCost();
+      if((META.salvage||0) < c){ alert('Not enough Relics for Catalyze.'); return; }
+      META.salvage -= c;
+      opts.mode = 'catalyze';
+    }else if(mode==='splice'){
+      opts.mode = 'splice';
+      opts.spliceKind = BREED_ACTION.spliceKind;
+      if(BREED_ACTION.spliceKind==='relic'){
+        if((META.relics||0) <= 0){ alert('No relics available.'); return; }
+        if(!BREED_ACTION.traitKey){ alert('Choose a parent trait to lock.'); return; }
+        META.relics -= 1;
+        opts.traitKey = BREED_ACTION.traitKey;
+      }else{
+        if(!BREED_ACTION.scarKey){ alert('Choose a scar token to implant.'); return; }
+        if(scarTokenCount(BREED_ACTION.scarKey) <= 0){ alert('That scar token is not available.'); return; }
+        addScarToken(BREED_ACTION.scarKey, -1);
+        opts.scarKey = BREED_ACTION.scarKey;
+      }
+    }
+
+    const childRec = breedHeroes(a, b, opts);
+    if(!childRec) return;
+
+    consumeBreedUse(a);
+    consumeBreedUse(b);
+    saveMeta();
+    BREED_SELECTED = [];
+    resetBreedAction();
+
+    const lc=document.getElementById('legacy-content');
+    const derived=evDerived(childRec.evs);
+    lc.innerHTML=`<div class="slide-in" style="text-align:center;padding:30px">
+      <div style="font-size:22px;margin-bottom:8px">🧬</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--violet);margin-bottom:6px">${childRec.name}</div>
+      <div style="color:var(--txt3);font-size:12px;margin-bottom:18px">Generation ${childRec.gen} · ${ASPECT_ICON[childRec.birthAspect]||'✦'} ${childRec.birthAspect} lineage</div>
+      <div style="display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:14px 20px;margin-bottom:18px;text-align:left;min-width:240px">
+        <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC STATS</div>
+        ${[['MaxHP',derived.maxHP],['ATK',Math.round(derived.atk)],['DEF',Math.round(derived.def)],['SPD',derived.spd],['Crit',Math.round(derived.critChance*100)+'%']].map(([l,v])=>`<div class="srow"><span class="sl" style="font-size:12px">${l}</span><span class="sv" style="font-size:12px;color:var(--green)">${v}</span></div>`).join('')}
+        ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ Run with this Heir</button>
+        <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border2);color:var(--txt3)" onclick="setLegacyTab('pool')">← Back</button>
+      </div>
+    </div>`;
+  };
+})();
+
+// Inject breeding actions UI into Breeding tab (wrap renderBreeding)
+(function(){
+  const _renderBreeding = renderBreeding;
+  renderBreeding = function(){
+    const base = _renderBreeding();
+    if(BREED_SELECTED.length<2) return base;
+    // Insert after the "Breeding Chamber" title
+    const needle = `⚗ Breeding Chamber</div>`;
+    if(base.includes(needle)){
+      return base.replace(needle, needle + breedingActionsHTML());
+    }
+    // fallback: prepend
+    return breedingActionsHTML() + base;
+  };
+})();
+
+// --- Runesmith tab: show Generations + Aspects + inventory ---
+function aspectsHTML(){
+  normalizeMeta();
+  const rows = ASPECTS.map(a=>{
+    const st = getAspectState(a);
+    const next = aspectNextThreshold(st.rank);
+    const prev = ASPECT_THRESH[st.rank] || 0;
+    const pct = (st.rank>=3) ? 100 : Math.max(0, Math.min(100, ((st.xp - prev) / Math.max(1, (next - prev))) * 100));
+    return `<div class="aspect-row">
+      <div style="width:86px;font-size:11px;font-weight:800;color:${ASPECT_COLOR[a]||'#aaa'}">${ASPECT_ICON[a]||'✦'} ${a}</div>
+      <div class="aspect-bar"><div class="aspect-fill" style="width:${pct}%;background:${ASPECT_COLOR[a]||'#777'}"></div></div>
+      <div style="width:80px;text-align:right;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--txt3)">R${st.rank} · ${st.xp}${st.rank>=3?'':' / '+next}</div>
+    </div>`;
+  }).join('');
+  return `<div style="background:rgba(20,18,40,.55);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:900;color:var(--gold)">ᛟ House ${META.houseName}</div>
+      <div style="font-size:10px;color:var(--txt3)">Relics: 🗿${META.relics} · Scar Tokens: 🩹${totalScarTokens()}</div>
+    </div>
+    <div style="font-size:10px;color:var(--txt3);margin-bottom:8px">Rename House:</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input id="house-name-input" value="${(META.houseName||'')}" style="flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 10px;border-radius:6px;font-size:12px;font-family:'Share Tech Mono',monospace;outline:none">
+      <button class="btn btn-sm btn-amber" onclick="setHouseNameFromInput()">Save</button>
+    </div>
+    <div class="sec-title" style="margin-top:0">Bloodline Aspects</div>
+    ${rows}
+    <div style="font-size:10px;color:var(--txt3);margin-top:8px">Earn Aspect XP by retiring or winning. Each family develops a distinct identity over generations.</div>
+  </div>`;
+}
+function setHouseNameFromInput(){
+  const el = document.getElementById('house-name-input');
+  if(!el) return;
+  const v = (el.value||'').trim().replace(/[^A-Za-z0-9_-]/g,'').slice(0,18);
+  if(!v){ alert('Family name cannot be empty.'); return; }
+  normalizeMeta();
+  META.houseName = v;
+  saveMeta();
+  setLegacyTab('upgrades');
+}
+
+(function(){
+  const _renderRunesmith = renderRunesmith;
+  renderRunesmith = function(){
+    const base = _renderRunesmith();
+    // Insert our house/aspects panel at the top of the tab
+    const needle = `<div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:4px">Legacy Runesmith</div>`;
+    if(base.includes(needle)){
+      return base.replace(needle, aspectsHTML() + needle);
+    }
+    return aspectsHTML() + base;
+  };
+})();
+
+// --- Show house on start screen (override) ---
+function showStartScreen(){
+  normalizeMeta();
+  const hasRetired = META.retiredPool && META.retiredPool.length>0;
+  let html=`<div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:var(--violet);margin-bottom:6px;text-shadow:0 0 20px rgba(144,80,232,.6)">ᚠ RUNESAGA</div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:12px">ᛟ House ${META.houseName} · Relics 🗿${META.relics} · Scar Tokens 🩹${totalScarTokens()}</div>
+  <p style="color:var(--txt2);margin:8px 0 18px;line-height:1.7;font-size:12px">Raise a Champion. Forge a Legacy.<br>Invoke <span style="color:var(--violet)">Runes</span> · Find synergies · Build your lineage.</p>`;
+  if(hasRetired){
+    html+=`<div style="background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.3);border-radius:5px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--txt2)">
+      🏛 You have <strong style="color:var(--gold)">${META.retiredPool.length}</strong> retired ${META.retiredPool.length===1?'hero':'heroes'} ready for breeding.
+      <span style="color:var(--txt3)">Go to Legacy → Breeding to create a stronger generation.</span>
+    </div>`;
+  }
+  html+=`<div style="margin:0 0 14px"><label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Run Seed (optional)</label>
+    <input id="seed-input" type="text" placeholder="Leave blank for random" style="width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 12px;border-radius:4px;font-size:12px;font-family:'Share Tech Mono',monospace;text-align:center;outline:none"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="flex:2;min-width:200px;padding:11px" onclick="startNewRunFromOverlay()">▶ Start New Run (Founder)</button>
+      <button class="btn btn-gold" style="flex:1;min-width:130px;padding:11px" onclick="hideOverlay();showLegacy()">ᛟ Hero Hall</button>
+    </div>`;
+  showOverlayContent(html);
+}
+
+// --- Ensure founder record uses house + aspect naming ---
+function startFirstHero(){
+  normalizeMeta();
+  const founder = mkHeroRecord(genName(0,'Steel',null,null), 0, [], emptyEVs(), []);
+  founder.birthAspect = 'Steel';
+  founder.birthFlags = {};
+  META.family[founder.id] = founder;
+  saveMeta();
+  initGame(null, emptyEVs(), [], founder);
+}
+
+// --- Award aspect XP on retire/victory/fallen, and show fallen harvest ---
+(function(){
+  const _retireHero = retireHero;
+  retireHero = function(){
+    try{ awardAspectXPFromRun('retired'); }catch(e){}
+    _retireHero();
+    // ensure persisted
+    try{ saveMeta(); }catch(e){}
+  };
+
+  const _pickBoon = pickBoon;
+  pickBoon = function(id){
+    const wasFinal = !!(G && G.wave>=G.maxWaves);
+    _pickBoon(id);
+    if(wasFinal && G && G.phase==='VICTORY'){
+      try{ awardAspectXPFromRun('victory'); }catch(e){}
+    }
+  };
+
+  const _heroFell = heroFell;
+  heroFell = function(){
+    _heroFell();
+    try{ awardAspectXPFromRun('fallen'); }catch(e){}
+    // Offer harvest choice overlay
+    try{
+      const rec = (G && G.hero && G.hero.record) ? G.hero.record : null;
+      if(rec && rec.id){
+        const saved = META.family[rec.id];
+        const sal = saved?.runResult?.salvageEarned || 0;
+        showFallenHarvest(rec.id, sal);
+      }
+    }catch(e){}
+  };
+})();
+
+// --- Re-assert a clean onload so normalizeMeta is always applied first ---
+window.onload = ()=>{
+  loadMeta();
+  normalizeMeta();
+  // Ensure all heroes have evs
+  Object.values(META.family||{}).forEach(h=>{ if(!h.evs) h.evs = emptyEVs(); if(!h.traits) h.traits=[]; if(!h.birthAspect) h.birthAspect='Steel'; if(!h.birthFlags) h.birthFlags={}; });
+  showStartScreen();
+};
+
+
+// --- V5: Breeding-use calculation considers Catalyze + Gale Aspect ---
+function calcBreedUsesForRetire(rec){
+  normalizeMeta();
+  const n = (META.upgrades && META.upgrades.nursery) ? META.upgrades.nursery : 0;
+  let p2 = 0.10 + n*0.07;
+  if(n>=5) p2 += 0.05;
+  // small randomness per retire
+  if(rng()<0.12) p2 += 0.08;
+  // Catalyzed births tend to be more "fertile"
+  if(rec && rec.birthFlags && rec.birthFlags.catalyzed) p2 += 0.12;
+  // Gale aspect subtly increases second-breed odds across the house
+  p2 += getAspectRank('Gale') * 0.02;
+  // Stabilized (not tracked) would lower, but we keep it simple.
+  p2 = Math.max(0.02, Math.min(0.85, p2));
+  return (rng() < p2) ? 2 : 1;
+}
+
+</script>
+</body>
+</html>
