@@ -183,7 +183,7 @@ body{
 .ehpbar{height:5px;background:var(--bg3);border-radius:2px;margin-top:5px;overflow:hidden;}
 .ehpfill{height:100%;background:linear-gradient(90deg,var(--red2),var(--red));border-radius:2px;transition:width .25s;}
 
-/* Wave trait cards */
+/* Trial trait cards */
 .trait-card{
   background:var(--bg2);border:1px solid #1a2a3a;border-left:3px solid var(--cyan);
   border-radius:4px;padding:7px 10px;margin:4px 0;display:flex;gap:8px;
@@ -488,7 +488,7 @@ body{
   <div id="header">
     <span class="logo">ᚠ RUNESAGA</span>
     <div style="width:1px;height:20px;background:var(--border2)"></div>
-    <span class="wave-num" id="hdr-wave">Wave 1/12</span>
+    <span class="wave-num" id="hdr-wave">Trial 1 of 12</span>
     <span style="font-size:11px;color:var(--txt3)" id="hdr-lvl">Lv.1</span>
     <div style="display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--gold)">ᛋ<span id="hdr-gold">0</span></div>
     <div style="display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--salvage)">ᚱ<span id="hdr-salvage">0</span></div>
@@ -504,7 +504,7 @@ body{
 
       <button class="btn btn-sm" id="btn-speed" onclick="cycleSpeed()">1× Speed</button>
       <button class="btn btn-sm btn-gold" onclick="showLegacy()">ᛟ Hero Hall</button>
-      <button class="btn btn-sm btn-danger" onclick="confirmReset()">New Run</button>
+      <button class="btn btn-sm btn-danger" onclick="confirmReset()">Begin New Saga</button>
     </div>
   </div>
   <div id="main">
@@ -544,14 +544,14 @@ body{
     <div class="legacy-tabs">
       <div class="ltab active" id="ltab-pool" onclick="setLegacyTab('pool')">Chosen of the Hall</div>
       <div class="ltab" id="ltab-breed" onclick="setLegacyTab('breed')">Breeding</div>
-      <div class="ltab" id="ltab-fallen" onclick="setLegacyTab('fallen')">Fallen Saga</div>
+      <div class="ltab" id="ltab-fallen" onclick="setLegacyTab('fallen')">Saga Closed</div>
       <div class="ltab" id="ltab-tree" onclick="setLegacyTab('tree')">Family Tree</div>
       <div class="ltab" id="ltab-upgrades" onclick="setLegacyTab('upgrades')">Runesmith</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:14px;align-items:center;font-size:12px;font-family:'Share Tech Mono',monospace">
-      <span style="color:var(--gold)">ᛋ <span id="leg-essence">0</span> Essence</span>
-      <span style="color:var(--salvage)">ᚱ <span id="leg-salvage">0</span> Relics</span>
-      <button class="btn btn-sm btn-danger" onclick="hideLegacy()">✕ Return to Run</button>
+      <span style="color:var(--gold)">ᛒ <span id="leg-essence">0</span> Allfather's Blessing</span>
+      <span style="color:var(--salvage)">ᚱ <span id="leg-salvage">0</span> Rune-Shards</span>
+      <button class="btn btn-sm btn-danger" onclick="hideLegacy()">✕ Return to Saga</button>
     </div>
   </div>
   <div id="legacy-body">
@@ -747,6 +747,7 @@ let META={
   upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
   unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),
   nextHeroId:1,
+  hasSeenOpening:false,
 };
 
 function saveMeta(){
@@ -900,7 +901,7 @@ const TACTICS=[
   {id:'t_ambush',        name:'Ambush',          icon:'🗡', cost:14, kind:'start',  desc:'Your first attack deals double damage.'},
   {id:'t_sabotage',      name:'Sabotage',        icon:'🧨', cost:12, kind:'start',  desc:'Enemies start with -15% Defense.'},
   {id:'t_flare',         name:'Flare',           icon:'🔥', cost:12, kind:'start',  desc:'Enemies start Vulnerable for 3s.'},
-  {id:'t_greed',         name:'Greed',           icon:'🪙', cost:8,  kind:'econ',   desc:'+30% gold for this wave.'},
+  {id:'t_greed',         name:'Greed',           icon:'🪙', cost:8,  kind:'econ',   desc:'+30% Saga-Marks for this wave.'},
 ];
 const TACTIC_BY_ID=Object.fromEntries(TACTICS.map(t=>[t.id,t]));
 
@@ -922,7 +923,7 @@ function clearPendingTactic(){
   renderAll();
 }
 function commitPendingTactic(){
-  // called when starting a wave (charges gold once)
+  // called when starting a wave (charges Saga-Marks once)
   G.activeTactic=null;
   G.waveGoldMult=1;
   if(!G.pendingTactic) return true;
@@ -961,7 +962,7 @@ function applyBattleStartTactics(){
     addLog(`  🔥 Flare: enemies Vulnerable (3s)`,'lstatus');
   } else if(t.id==='t_greed'){
     G.waveGoldMult=1.30;
-    addLog(`  🪙 Greed: +30% gold this wave`,'lstatus');
+    addLog(`  🪙 Greed: +30% Saga-Marks this wave`,'lstatus');
   }
 }
 function tacticTargetMode(){
@@ -1314,7 +1315,7 @@ function startBattle(){
   applyBattleStartTactics();
   if(G.waveFlags.heroStartVuln){applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');}
   G.phase='BATTLE';G.tick=0;G.statusTick=0;
-  addLog(`⚔ Wave ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
+  addLog(`⚔ Trial ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
   G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
   renderAll();
   if(G.interval)clearInterval(G.interval);
@@ -1516,7 +1517,7 @@ function checkEnd(){
     const baseGold=Math.floor(baseGoldRaw*(G.waveGoldMult||1));
     G.gold+=baseGold;
     const xpEarned=20+G.wave*9;G.xp+=xpEarned;
-    addLog(`🏆 Wave ${G.wave} complete! +${baseGold}ᛋ +${xpEarned}XP`,'lwave');
+    addLog(`🏆 Trial ${G.wave} complete! +${baseGold}ᛋ +${xpEarned}XP`,'lwave');
     G.activeTactic=null;G.waveGoldMult=1;
     checkLevelUp();
     G.rerollCost=10;
@@ -1566,7 +1567,7 @@ function retireHero(){
   META.legacyEssence+=essence;
 
   if(G.interval)clearInterval(G.interval);
-  addLog(`🏛 ${rec.name} retired at Wave ${G.wave}! +${essence} Essence.`,'laxiom');
+  addLog(`🏛 ${rec.name} Saga Sealed at Trial ${G.wave}! +${essence} Allfather's Blessing.`,'laxiom');
   saveMeta();
 
   const axiomBoons=G.boons.filter(b=>b.rarity==='axiom');
@@ -1615,7 +1616,7 @@ function tryImprint(heroId,traitKey,chance,boonId){
 function showRetireSummary(rec,essence,earnedEVs){
   const ev=rec.evs;
   let html=`
-    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 HERO RETIRED</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 SAGA SEALED</div>
     <div style="color:var(--txt2);font-size:13px;margin-bottom:14px">${rec.name} has been added to the Chosen of the Hall and will be available for breeding.</div>
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px;margin-bottom:14px;text-align:left">
       <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC PROFILE</div>
@@ -1636,7 +1637,7 @@ function showRetireSummary(rec,essence,earnedEVs){
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-primary" style="flex:1" onclick="hideOverlay();showLegacy()">🏛 View Legacy</button>
-      <button class="btn btn-green" style="flex:1" onclick="hideOverlay();showStartScreen()">▶ New Run</button>
+      <button class="btn btn-green" style="flex:1" onclick="hideOverlay();showStartScreen()">▶ Begin New Saga</button>
     </div>`;
   showOverlayContent(html);
 }
@@ -1650,7 +1651,7 @@ function heroFell(){
   META.fallenLedger.push(rec.id);
   META.salvage+=salvageEarned;
   saveMeta();
-  addLog(`ᚱ ${salvageEarned} Relics recovered from ${rec.name}'s legacy.`,'ldeath');
+  addLog(`ᚱ ${salvageEarned} Rune-Shards recovered from ${rec.name}'s legacy.`,'ldeath');
   updateMetaHeader();
 }
 
@@ -1781,7 +1782,7 @@ function renderBattleUI(){renderHero();renderCenter();updateHeader();}
 
 function updateHeader(){
   if(!G)return;
-  document.getElementById('hdr-wave').textContent=`Wave ${G.wave}/${G.maxWaves}`;
+  document.getElementById('hdr-wave').textContent=`Trial ${G.wave} of ${G.maxWaves}`;
   document.getElementById('hdr-lvl').textContent=`Lv.${G.level}·${G.xp}/${G.xpNeeded}XP`;
   document.getElementById('hdr-gold').textContent=G.gold;
   document.getElementById('hdr-salvage').textContent=META.salvage;
@@ -1918,7 +1919,7 @@ function renderWavePreview(){
   </div>`;
 
   if(G.waveTraits.length){
-    h+=`<div class="sec-title">Wave Modifiers</div>`;
+    h+=`<div class="sec-title">Trial Modifiers</div>`;
     G.waveTraits.forEach(t=>{
       h+=`<div class="trait-card"><div class="ticon">${t.icon}</div><div><div class="tname">${t.name}</div><div class="tdesc">${t.desc}</div></div></div>`;
     });
@@ -2015,10 +2016,10 @@ function renderRewards(){
   ];
   const hpPct=Math.max(0,G.hero.hp/G.hero.maxHP*100);
   let h=`<div class="slide-in" style="padding:16px">
-    <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:12px">🏆 Wave ${G.wave} Complete!</div>
+    <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:12px">🏆 Trial ${G.wave} — The saga continues.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div>
-        <div class="sec-title">ᛋ Shop (${G.gold} gold)</div>
+        <div class="sec-title">⚒ Forge Stall (${G.gold} Saga-Marks)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
           ${shop.map(s=>`<div class="shop-btn${G.gold<s.cost?' sb-disabled':''}" onclick="shopBuy('${s.id}')" title="${s.desc}">
             <div class="sb-name">${s.icon} ${s.name}</div><div class="sb-cost">ᛋ${s.cost}</div><div class="sb-desc">${s.desc}</div>
@@ -2029,7 +2030,7 @@ function renderRewards(){
         </div>
       </div>
       <div>
-        <div class="sec-title">📦 Draft (pick 1)</div>
+        <div class="sec-title">📜 Rune-Gift Draft — Choose one omen.</div>
         ${G.draft.length?G.draft.map(b=>`
           <div class="boon-card rc-${b.rarity}" onclick="pickBoon('${b.id}')" style="margin-bottom:6px">
             <div class="boon-rar rar-${b.rarity}">${b.rarity.toUpperCase()}</div>
@@ -2037,7 +2038,7 @@ function renderRewards(){
             <div class="boon-desc" style="margin-top:3px">${b.desc}</div>
             <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">${b.tags.map(t=>`<span class="tag t-${t}">${t}</span>`).join('')}</div>
           </div>`).join(''):`<div style="color:var(--txt3);font-size:12px">No more boons!</div>`}
-        ${G.draft.length?`<button class="btn btn-sm btn-ghost" style="width:100%;margin-top:4px" onclick="doReroll()">🔄 Reroll (ᛋ${G.rerollCost})${G.gold<G.rerollCost?' — need gold':''}</button>`:''}
+        ${G.draft.length?`<button class="btn btn-sm btn-ghost" style="width:100%;margin-top:4px" onclick="doReroll()">🔮 Seek Another Omen (ᛋ${G.rerollCost})${G.gold<G.rerollCost?' — need Saga-Marks':''}</button>`:''}
       </div>
     </div>
   </div>`;
@@ -2052,10 +2053,10 @@ function renderEndScreen(){
   const score=G.level*50+G.boons.length*30+(won?300:0)+G.wave*20;
   const retiredMsg=won?'(Auto-retired to pool)':'';
   return `<div class="slide-in" style="padding:24px;text-align:center">
-    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:${won?'var(--gold)':'var(--red)'};text-shadow:0 0 20px ${won?'rgba(212,160,23,.6)':'rgba(224,64,64,.5)'};margin-bottom:8px">${won?'⭐ SAGA COMPLETE':'💀 FALLEN WARRIOR'}</div>
-    <div style="color:var(--txt2);margin-bottom:16px;font-size:12px">${won?'All 12 trials survived. '+retiredMsg:'Wave '+G.wave+' — '+(rec?.name||'Hero')+' has fallen.'}</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:${won?'var(--gold)':'var(--red)'};text-shadow:0 0 20px ${won?'rgba(212,160,23,.6)':'rgba(224,64,64,.5)'};margin-bottom:8px">${won?'⭐ SAGA COMPLETE':'💀 SAGA CLOSED'}</div>
+    <div style="color:var(--txt2);margin-bottom:16px;font-size:12px">${won?'All 12 trials endured. '+retiredMsg:'Trial '+G.wave+' — '+(rec?.name||'Hero')+' has fallen.'}</div>
     <div style="display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:14px 20px;margin-bottom:16px;text-align:left;min-width:260px">
-      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Run Summary</div>
+      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Saga Summary</div>
       <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Waves Survived</span><span style="font-weight:700">${G.wave}/${G.maxWaves}</span></div>
       <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Hero Level</span><span style="font-weight:700">${G.level}</span></div>
       <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Boons</span><span style="font-weight:700">${G.boons.length}</span></div>
@@ -2065,7 +2066,7 @@ function renderEndScreen(){
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-gold" onclick="showLegacy()">🏛 View Legacy</button>
-      <button class="btn btn-primary" onclick="showStartScreen()">▶ New Run</button>
+      <button class="btn btn-primary" onclick="showStartScreen()">▶ Begin New Saga</button>
     </div>
   </div>`;
 }
@@ -2074,8 +2075,8 @@ function renderFooter(){
   if(!G)return;
   const ftr=document.getElementById('ftr-btns'),info=document.getElementById('ftr-info');
   if(G.phase==='WAVE_PREVIEW'){
-    ftr.innerHTML=`<button class="btn btn-primary" onclick="startBattle()">⚔ Start Wave ${G.wave}</button>`;
-    info.textContent=`ᛋ ${G.gold} gold · ${G.wave<G.maxWaves?'Next: Wave '+(G.wave+1):'Final Wave!'}`;
+    ftr.innerHTML=`<button class="btn btn-primary" onclick="startBattle()">⚔ Begin Trial ${G.wave}</button>`;
+    info.textContent=`ᛋ ${G.gold} Saga-Marks · ${G.wave<G.maxWaves?'Next: Trial '+(G.wave+1):'Final Trial!'}`;
   }else if(G.phase==='BATTLE'){
     ftr.innerHTML=`<span style="color:var(--txt3);font-size:12px;animation:pulse2 1.2s infinite">⚔ Battle in progress...</span>`;
     info.textContent=`Tick:${G.tick} · Enemies:${G.enemies.filter(e=>!e.dead).length}/${G.enemies.length}`;
@@ -2168,7 +2169,7 @@ function renderRetiredPool(){
           <div style="font-size:9px;color:var(--txt3);width:22px;text-align:right">${rec.evs[k]||0}</div>
         </div>`).join('')}
       </div>
-      ${rec.runResult?`<div style="font-size:10px;color:var(--txt3);margin-top:5px;border-top:1px solid var(--border);padding-top:4px">Wave ${rec.runResult.wave} · ${rec.runResult.boons?.length||0} boons · Lv.${rec.runResult.level||1}</div>`:''}
+      ${rec.runResult?`<div style="font-size:10px;color:var(--txt3);margin-top:5px;border-top:1px solid var(--border);padding-top:4px">Trial ${rec.runResult.wave} · ${rec.runResult.boons?.length||0} boons · Lv.${rec.runResult.level||1}</div>`:''}
     </div>`;
   });
   h+=`</div></div>`;
@@ -2279,7 +2280,7 @@ function doBreed(){
       ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
     </div>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ Run with ${childRec.name}</button>
+      <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ You choose the next thread — Run as ${childRec.name}</button>
       <button class="btn btn-sm btn-ghost" onclick="setLegacyTab('pool')">← Back</button>
     </div>
   </div>`;
@@ -2296,8 +2297,8 @@ function renderFallenLedger(){
   let h=`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--red)">ᚱ Fallen Saga</div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${fallen.length} fallen heroes · ᚱ${META.salvage} relics available</div>
+        <div style="font-size:16px;font-weight:700;color:var(--red)">ᚱ Saga Closed</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${fallen.length} fallen heroes · ᚱ${META.salvage} Rune-Shards available</div>
       </div>
     </div>`;
   if(!fallen.length){
@@ -2312,7 +2313,7 @@ function renderFallenLedger(){
       <div class="hc-gen">GEN ${rec.gen} · FALLEN</div>
       <div class="hc-name">☠ ${rec.name}</div>
       ${rec.traits.length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin:4px 0">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait" style="font-size:9px">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
-      <div class="hc-stats">Wave ${rr.wave||'?'} · ${(rr.boons?.length||0)} boons · Lv.${rr.level||1}</div>
+      <div class="hc-stats">Trial ${rr.wave||'?'} · ${(rr.boons?.length||0)} boons · Lv.${rr.level||1}</div>
       ${rr.axioms?.length?`<div style="font-size:10px;color:#d050ff;margin-top:3px">Runes: ${rr.axioms.length}</div>`:''}
       <div style="margin-top:8px;font-size:10px;color:var(--salvage)">+ᚱ${sal} salvage granted</div>
     </div>`;
@@ -2377,7 +2378,7 @@ function renderFamilyTree(){
         <div style="font-size:16px;font-weight:700;color:var(--gold)">🌳 Family Tree</div>
         <div style="font-size:11px;color:var(--txt3);margin-top:2px">${allHeroes.length} heroes across ${maxGen+1} generations</div>
       </div>
-      <div style="font-size:10px;color:var(--txt3)"><span style="color:var(--gold)">★</span> In Pool &nbsp; <span style="color:var(--txt2)">☆</span> Retired (spent) &nbsp; <span style="color:var(--red)">☠</span> Fallen &nbsp; Click node for details</div>
+      <div style="font-size:10px;color:var(--txt3)"><span style="color:var(--gold)">★</span> Saga Sealed &nbsp; <span style="color:var(--txt2)">☆</span> Saga Sealed (spent) &nbsp; <span style="color:var(--red)">☠</span> Saga Closed &nbsp; Click node for details</div>
     </div>
     <div style="position:relative;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-height:200px">
       <svg style="position:absolute;top:0;left:0;width:${canvasW}px;height:${canvasH}px;pointer-events:none">${svgLines}</svg>
@@ -2393,7 +2394,7 @@ function showHeroDetail(id){
   const rr=rec.runResult||{};
   const isRetired=META.retiredPool.includes(id);
   const isFallen=META.fallenLedger.includes(id);
-  const status=isRetired?'Retired ★':isFallen?'Fallen ☠':'Active';
+  const status=isRetired?'Saga Sealed ★':isFallen?'Saga Closed ☠':'Active';
   const statusColor=isRetired?'var(--gold)':isFallen?'var(--red)':'var(--cyan)';
   document.getElementById('hero-detail-panel').innerHTML=`<div class="slide-in" style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:16px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -2421,7 +2422,7 @@ function showHeroDetail(id){
         <div style="font-size:10px;color:var(--txt3);margin-bottom:5px">TRAITS</div>
         ${rec.traits.length?rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<div class="gtrait" style="display:flex;margin:3px 0">${gt.icon} ${gt.name}</div>`:''}).join(''):`<div style="color:var(--txt3);font-size:11px">None</div>`}
         ${rr.wave?`<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px">
-          <div style="font-size:10px;color:var(--txt3)">Run: Wave ${rr.wave} · ${(rr.boons?.length||0)} boons · Lv.${rr.level||1}</div>
+          <div style="font-size:10px;color:var(--txt3)">Saga: Trial ${rr.wave} · ${(rr.boons?.length||0)} boons · Lv.${rr.level||1}</div>
           ${rr.axioms?.length?`<div style="font-size:10px;color:#d050ff;margin-top:2px">Runes: ${rr.axioms.length}</div>`:''}
         </div>`:''}
       </div>
@@ -2443,7 +2444,7 @@ function renderRunesmith(){
   const locked=GTRAIT_KEYS.filter(k=>!unlocked.includes(k));
   let h=`<div>
     <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:4px">Legacy Runesmith</div>
-    <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">Spend Relics from fallen heroes to permanently improve your lineage.</div>
+    <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">Spend Rune-Shards from Saga Closed heroes to permanently improve your lineage.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:20px">
       ${ups.map(u=>`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
@@ -2457,7 +2458,7 @@ function renderRunesmith(){
     </div>`;
   if(locked.length){
     h+=`<div style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--cyan)">🧬 Unlock Mutation Traits</div>
-      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Spend Relics to add new traits to your mutation pool. These can appear during breeding.</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Spend Rune-Shards to add new traits to your mutation pool. These can appear during breeding.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
         ${locked.map(tk=>{
           const gt=GTRAITS[tk];if(!gt)return '';
@@ -2514,11 +2515,11 @@ function showRetireConfirm(){
   const earnedEVs=computeEarnedEVs();
   let html=`
     <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 RETIRE HERO?</div>
-    <p style="color:var(--txt2);font-size:12px;margin-bottom:14px">End your run at Wave ${G.wave} and add <strong style="color:var(--gold)">${rec?.name||'your hero'}</strong> to the Chosen of the Hall for future breeding.</p>
+    <p style="color:var(--txt2);font-size:12px;margin-bottom:14px">End your run at Trial ${G.wave} and add <strong style="color:var(--gold)">${rec?.name||'your hero'}</strong> to the Chosen of the Hall for future breeding.</p>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:14px;text-align:left">
       <div style="font-size:10px;color:var(--txt3);margin-bottom:5px">EARNED EVs THIS RUN</div>
       ${EV_KEYS.map(k=>`<div class="srow"><span class="sl" style="font-size:11px">${k.toUpperCase()}_EV</span><span class="sv sdp" style="font-size:11px">+${earnedEVs[k]||0}</span></div>`).join('')}
-      <div style="margin-top:8px;font-size:11px;color:var(--gold)">+${Math.floor(G.gold*.35)+G.wave*4} Glory</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--gold)">+${Math.floor(G.gold*.35)+G.wave*4} Allfather's Blessing</div>
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-gold" style="flex:1" onclick="hideOverlay();retireHero()">🏛 Retire Now</button>
@@ -2532,7 +2533,7 @@ function showStartScreen(){
   const hasRetired=META.retiredPool.length>0;
   let html=`
     <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:var(--violet);margin-bottom:10px;text-shadow:0 0 20px rgba(144,80,232,.6)">ᚠ RUNESAGA</div>
-    <p style="color:var(--txt2);margin:8px 0 18px;line-height:1.7;font-size:12px">Raise a champion. Forge an Legacy.<br>Invoke <span style="color:var(--violet)">Runes</span> · Build synergies · Carve your lineage.</p>`;
+    <p style="color:var(--txt2);margin:8px 0 18px;line-height:1.7;font-size:12px">You are not the hero. You are the line itself.<br>Invoke <span style="color:var(--violet)">Runes</span> · Build synergies · Carve your lineage.</p>`;
   if(hasRetired){
     html+=`<div style="background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.3);border-radius:5px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--txt2)">
       🏛 You have <strong style="color:var(--gold)">${META.retiredPool.length}</strong> retired ${META.retiredPool.length===1?'hero':'heroes'} ready for breeding.
@@ -2540,12 +2541,12 @@ function showStartScreen(){
     </div>`;
   }
   html+=`<div style="margin:0 0 14px">
-      <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Run Seed (optional)</label>
+      <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Saga Seed (optional)</label>
       <input id="seed-input" type="text" placeholder="Leave blank for random"
         style="width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 12px;border-radius:4px;font-size:12px;font-family:'Share Tech Mono',monospace;text-align:center;outline:none">
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:2;padding:11px" onclick="startNewRunFromOverlay()">▶ Start New Run (Gen 0)</button>
+      <button class="btn btn-primary" style="flex:2;padding:11px" onclick="startNewRunFromOverlay()">▶ Begin New Saga (Gen 0)</button>
       ${hasRetired?`<button class="btn btn-gold" style="flex:1;padding:11px" onclick="hideOverlay();showLegacy()">ᛟ Hero Hall</button>`:''}
     </div>`;
   showOverlayContent(html);
@@ -2574,7 +2575,7 @@ function confirmReset(){
   if(G&&G.phase==='BATTLE')clearInterval(G.interval);
   G=null;
   updateDifficultyUI();
-  showStartScreen();
+  if(!META.hasSeenOpening){ showOpeningNarrative(); } else { showStartScreen(); }
 }
 
 // ═══ LOG ═══
@@ -2668,7 +2669,7 @@ window.onload=()=>{
   }
   setCombatLogCollapsed(UI.logCollapsed);
   updateDifficultyUI();
-  showStartScreen();
+  if(!META.hasSeenOpening){ showOpeningNarrative(); } else { showStartScreen(); }
   setTimeout(applyResponsiveLayout,0);
 };
 
@@ -2981,7 +2982,7 @@ function showFallenHarvest(heroId, salvageEarned){
   const html = `
     <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--salvage);margin-bottom:8px">ᚱ FALLEN HARVEST</div>
     <div style="color:var(--txt2);font-size:12px;margin-bottom:12px">
-      ${rec.name} fell at Wave ${rec.runResult?.wave||'?'}.
+      ${rec.name} fell at Trial ${rec.runResult?.wave||'?'}.
       You recovered <span style="color:var(--salvage);font-weight:700">ᚱ${salvageEarned}</span>.
       Decide what the failure becomes.
     </div>
@@ -3127,7 +3128,7 @@ function breedingActionsHTML(){
     if(BREED_ACTION.spliceKind==='relic'){
       html += `<div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Consume <strong>1 Relic</strong> to lock a parent trait into the child (high chance).</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">`;
-      if(!hasRel) html += `<div style="color:var(--txt3);font-size:11px">No relics available.</div>`;
+      if(!hasRel) html += `<div style="color:var(--txt3);font-size:11px">No Rune-Shards available.</div>`;
       else if(!parentTraits.length) html += `<div style="color:var(--txt3);font-size:11px">Parents have no traits to lock.</div>`;
       else{
         html += parentTraits.map(tk=>{
@@ -3277,19 +3278,19 @@ function breedHeroes(idA, idB, opts){
     // Pay costs / consume inventory
     if(mode==='stabilize'){
       const c = stabilizeCost();
-      if((META.legacyEssence||0) < c){ alert('Not enough Essence for Stabilize.'); return; }
+      if((META.legacyEssence||0) < c){ alert('Not enough Allfather\'s Blessing for Stabilize.'); return; }
       META.legacyEssence -= c;
       opts.mode = 'stabilize';
     }else if(mode==='catalyze'){
       const c = catalyzeCost();
-      if((META.salvage||0) < c){ alert('Not enough Relics for Catalyze.'); return; }
+      if((META.salvage||0) < c){ alert('Not enough Rune-Shards for Catalyze.'); return; }
       META.salvage -= c;
       opts.mode = 'catalyze';
     }else if(mode==='splice'){
       opts.mode = 'splice';
       opts.spliceKind = BREED_ACTION.spliceKind;
       if(BREED_ACTION.spliceKind==='relic'){
-        if((META.relics||0) <= 0){ alert('No relics available.'); return; }
+        if((META.relics||0) <= 0){ alert('No Rune-Shards available.'); return; }
         if(!BREED_ACTION.traitKey){ alert('Choose a parent trait to lock.'); return; }
         META.relics -= 1;
         opts.traitKey = BREED_ACTION.traitKey;
@@ -3322,7 +3323,7 @@ function breedHeroes(idA, idB, opts){
         ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
       </div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ Run with this Heir</button>
+        <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ You choose the next thread — Run as this Heir</button>
         <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border2);color:var(--txt3)" onclick="setLegacyTab('pool')">← Back</button>
       </div>
     </div>`;
@@ -3398,23 +3399,45 @@ function setHouseNameFromInput(){
   };
 })();
 
+
+function showOpeningNarrative(){
+  const html=`<div style="min-height:70vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:#06070d;border:1px solid var(--border2);border-radius:10px;padding:24px">
+    <div style="font-size:40px;color:var(--violet);animation:pulse2 2.6s infinite;margin-bottom:16px">ᚢ</div>
+    <div style="max-width:760px;line-height:1.8;color:var(--txt2);font-size:13px">
+      <p>The World Tree is sick.</p>
+      <p>Something moves in its roots. Its branches thin. The realms that hang from Yggdrasil grow colder, stranger, more dangerous.</p>
+      <p>The Allfather has no answer yet. Only a belief: that the right bloodline, shaped across enough trials, might reach the source.</p>
+      <p style="color:var(--txt);font-weight:700">You are not the hero.</p>
+      <p>You are the Wyrd weaver — who the Norns rejected. You guide the thread that persists across generations. You choose who carries the saga forward.</p>
+    </div>
+    <button class="btn btn-primary" style="margin-top:18px;padding:10px 24px" onclick="beginFromOpening()">Begin</button>
+  </div>`;
+  showOverlayContent(html);
+}
+
+function beginFromOpening(){
+  META.hasSeenOpening=true;
+  saveMeta();
+  showStartScreen();
+}
+
 // --- Show house on start screen (override) ---
 function showStartScreen(){
   normalizeMeta();
   const hasRetired = META.retiredPool && META.retiredPool.length>0;
   let html=`<div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:var(--violet);margin-bottom:6px;text-shadow:0 0 20px rgba(144,80,232,.6)">ᚠ RUNESAGA</div>
-  <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:12px">ᛟ House ${META.houseName} · Relics 🗿${META.relics} · Scar Tokens 🩹${totalScarTokens()}</div>
-  <p style="color:var(--txt2);margin:8px 0 18px;line-height:1.7;font-size:12px">Raise a Champion. Forge a Legacy.<br>Invoke <span style="color:var(--violet)">Runes</span> · Find synergies · Build your lineage.</p>`;
+  <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:12px">ᛟ House ${META.houseName} · Relics 🗿${META.relics} · Rune-Shards ᚱ${META.salvage}</div>
+  <p style="color:var(--txt2);margin:8px 0 18px;line-height:1.7;font-size:12px">You are not the hero. You are the line itself.<br>Invoke <span style="color:var(--violet)">Runes</span> · Find synergies · Build your lineage.</p>`;
   if(hasRetired){
     html+=`<div style="background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.3);border-radius:5px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--txt2)">
       🏛 You have <strong style="color:var(--gold)">${META.retiredPool.length}</strong> retired ${META.retiredPool.length===1?'hero':'heroes'} ready for breeding.
       <span style="color:var(--txt3)">Go to Legacy → Breeding to create a stronger generation.</span>
     </div>`;
   }
-  html+=`<div style="margin:0 0 14px"><label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Run Seed (optional)</label>
+  html+=`<div style="margin:0 0 14px"><label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Saga Seed (optional)</label>
     <input id="seed-input" type="text" placeholder="Leave blank for random" style="width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 12px;border-radius:4px;font-size:12px;font-family:'Share Tech Mono',monospace;text-align:center;outline:none"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-primary" style="flex:2;min-width:200px;padding:11px" onclick="startNewRunFromOverlay()">▶ Start New Run (Founder)</button>
+      <button class="btn btn-primary" style="flex:2;min-width:200px;padding:11px" onclick="startNewRunFromOverlay()">▶ Begin New Saga (Founder)</button>
       <button class="btn btn-gold" style="flex:1;min-width:130px;padding:11px" onclick="hideOverlay();showLegacy()">ᛟ Hero Hall</button>
     </div>`;
   showOverlayContent(html);
@@ -3472,7 +3495,7 @@ window.onload = ()=>{
   normalizeMeta();
   // Ensure all heroes have evs
   Object.values(META.family||{}).forEach(h=>{ if(!h.evs) h.evs = emptyEVs(); if(!h.traits) h.traits=[]; if(!h.birthAspect) h.birthAspect='Steel'; if(!h.birthFlags) h.birthFlags={}; });
-  showStartScreen();
+  if(!META.hasSeenOpening){ showOpeningNarrative(); } else { showStartScreen(); }
 };
 
 
