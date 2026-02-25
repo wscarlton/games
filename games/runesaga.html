@@ -1473,6 +1473,28 @@ const TACTICS=[
 ];
 const TACTIC_BY_ID=Object.fromEntries(TACTICS.map(t=>[t.id,t]));
 
+const RESOLVE_RELICS=[
+  {id:'root_cup',name:'Resolve: The Root-Cup',icon:'💚',desc:'Your stolen mercy becomes arithmetic.',mults:{lifesteal:2.0}},
+  {id:'wolf_step',name:'Resolve: The Wolf-Step',icon:'⚡',desc:'When momentum starts, it does not apologize.',mults:{tempoStacks:2.0}},
+  {id:'fired_ward',name:'Resolve: The Fired Ward',icon:'🛡',desc:'The first breath of battle meets a wall.',mults:{battleStartShield:2.0,shieldGain:1.5}},
+  {id:'carvers_edge',name:"Resolve: The Carver's Edge",icon:'🩸',desc:'Wounds remember what words cannot.',mults:{bleedStacks:2.0}},
+  {id:'eitr_kiln',name:'Resolve: The Eitr Kiln-Vial',icon:'☠️',desc:"The root's poison becomes your ink.",mults:{poisonStacks:2.0}},
+  {id:'sootglass_eye',name:'Resolve: The Sootglass Eye',icon:'🗡',desc:'A clearer strike, paid for in heat.',mults:{critDmg:1.5}},
+];
+const DEBTS=[
+  {id:'skuld_mark',name:"Debt: Skuld's Mark",icon:'🎯',desc:'The future notices you first.',battleStart:[{st:'vulnerable',sk:1,dur:3}],apply(){}},
+  {id:'frost_lungs',name:'Debt: Frost in the Lungs',icon:'❄️',desc:'Cold takes the first breath.',battleStart:[{st:'slow',sk:1,dur:3}],apply(){}},
+  {id:'ashen_breath',name:'Debt: Ashen Breath',icon:'💔',desc:'Speech turns to cinders.',battleStart:[{st:'weak',sk:1,dur:3}],apply(){}},
+  {id:'short_thread',name:'Debt: Shortened Thread',icon:'🧵',desc:'Your span tightens.',apply(G){G.hero.maxHP=Math.max(1,Math.floor(G.hero.maxHP*0.90));G.hero.hp=Math.min(G.hero.hp,G.hero.maxHP);}},
+  {id:'cracked_mail',name:'Debt: Cracked Mail',icon:'🪨',desc:'Armor remembers every strike.',apply(G){G.hero.def=Math.max(0,G.hero.def-10);}},
+  {id:'trembling_hands',name:'Debt: Trembling Hands',icon:'🫳',desc:'Your edge wavers.',apply(G){G.hero.critChance=Math.max(0,G.hero.critChance-0.05);}},
+  {id:'clouded_sight',name:'Debt: Clouded Sight',icon:'🌫',desc:'The world blurs at the edges.',apply(G){G.hero.accuracy=Math.max(0.10,G.hero.accuracy-0.08);}},
+  {id:'frayed_step',name:'Debt: Frayed Step',icon:'🐌',desc:'Your stride shortens.',apply(G){G.hero.spd=Math.max(1,G.hero.spd-12);}},
+  {id:'bitter_fang',name:'Debt: Bitter Fang',icon:'☠️',desc:'Poison comes first.',battleStart:[{st:'poison',sk:1,dur:4}],apply(){}},
+  {id:'root_wound',name:'Debt: Root-Wound',icon:'🩸',desc:'The root keeps score.',battleStart:[{st:'bleed',sk:1,dur:3}],apply(){}},
+];
+function rmult(k){return (G&&G.roadside&&G.roadside.resolveMult&&G.roadside.resolveMult[k])||1.0;}
+
 const BOSS_SIGNATURES={
   bruiser:{
     name:'Serpent Surge',
@@ -1684,6 +1706,8 @@ function initGame(seedVal,evs,traits,parentRecord){
     ragnarökActive:META.ragnarökActive||0,
     tierFlags:{},
     forgeStallItem:null,
+    roadside:{used:{5:false,9:false},resolveRelics:[],debts:[],goldMult:1.0,essenceMult:1.0,resolveMult:{lifesteal:1.0,tempoStacks:1.0,battleStartShield:1.0,shieldGain:1.0,bleedStacks:1.0,poisonStacks:1.0,critDmg:1.0}},
+    roadsideAvailable:false,
   };
   updateMetaHeader();
   genWave();
@@ -1759,7 +1783,8 @@ function genWave(){
   G.pendingTactic=null;
   G.pendingTacticPaid=false;
   genTacticOffers();
-  G.retireAvailable=G.retireWaves.includes(G.wave);
+  G.retireAvailable=false;
+  G.roadsideAvailable=!!(G.phase!=='GAME_OVER'&&(G.wave===5||G.wave===9)&&!(G.roadside&&G.roadside.used&&G.roadside.used[G.wave]));
   G.phase='WAVE_PREVIEW';
 }
 function buildEnemies(wave){
@@ -2074,9 +2099,9 @@ function healHero(amt,src){
 function trigBoon(evType,hero,target){
   for(const b of G.boons)for(const ef of b.effects){
     if(ef.t!==evType)continue;
-    if(ef.ef==='status')applyStatus(hero,ef.st,ef.sk,ef.dur,ef.mx);
-    else if(ef.ef==='statusEnemy'){if(target&&target!==hero&&!target.dead)applyStatus(target,ef.st,ef.sk,ef.dur);}
-    else if(ef.ef==='shield')addShieldToUnit(hero,ef.amt);
+    if(ef.ef==='status'){const sk=(ef.st==='tempo')?Math.max(1,Math.floor((ef.sk||1)*rmult('tempoStacks'))):(ef.sk||1);applyStatus(hero,ef.st,sk,ef.dur,ef.mx);}
+    else if(ef.ef==='statusEnemy'){if(target&&target!==hero&&!target.dead){let sk=ef.sk||1;if(ef.st==='bleed')sk=Math.max(1,Math.floor(sk*rmult('bleedStacks')));if(ef.st==='poison')sk=Math.max(1,Math.floor(sk*rmult('poisonStacks')));applyStatus(target,ef.st,sk,ef.dur);}}
+    else if(ef.ef==='shield')addShieldToUnit(hero,Math.floor((ef.amt||0)*rmult('shieldGain')));
     else if(ef.ef==='tempStat')hero.tempStats[ef.s]=(hero.tempStats[ef.s]||0)+ef.v;
     else if(ef.ef==='permStat'){hero.permStats[ef.s]=(hero.permStats[ef.s]||0)+ef.v;addLog(`  ⭐ ${b.name}: perm +${ef.v} ATK!`,'laxiom');}
     else if(ef.ef==='healPct')healHero(Math.floor(hero.maxHP*ef.v),'kill');
@@ -2103,16 +2128,20 @@ function applyBoonEffectsOnPick(boon){
 }
 function applyBattleStartBoons(){
   for(const b of G.boons)for(const ef of b.effects){
-    if(ef.t==='onBattleStart'&&ef.ef==='shield')addShieldToUnit(G.hero,ef.amt);
+    if(ef.t==='onBattleStart'&&ef.ef==='shield')addShieldToUnit(G.hero,Math.floor((ef.amt||0)*rmult('battleStartShield')));
+    if(ef.t==='onBattleStart'&&ef.ef==='status')applyStatus(G.hero,ef.st,ef.sk||1,ef.dur,ef.mx);
   }
-  if(hasTrait('aegis'))addShieldToUnit(G.hero,8);
+  if(hasTrait('aegis'))addShieldToUnit(G.hero,Math.floor(8*rmult('battleStartShield')));
   if(G.hero.gear){
     Object.values(G.hero.gear).forEach(item=>{
       if(!item)return;
       getGearEffectiveAffixes(item).forEach(affix=>{
-        if(affix.stat==='shieldOnBattleStart'&&typeof affix.effectiveValue==='number')addShieldToUnit(G.hero,Math.floor(affix.effectiveValue));
+        if(affix.stat==='shieldOnBattleStart'&&typeof affix.effectiveValue==='number')addShieldToUnit(G.hero,Math.floor(affix.effectiveValue*rmult('battleStartShield')));
       });
     });
+  }
+  if(G.roadside&&Array.isArray(G.roadside.debts)){
+    G.roadside.debts.forEach(d=>{(d.battleStart||[]).forEach(bs=>applyStatus(G.hero,bs.st,bs.sk||1,bs.dur||2));});
   }
 }
 
@@ -2244,7 +2273,7 @@ function doHeroAtk(){
   const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog(`  🌀 GINNUNGA-STRIKE! ${vd}!`,'laxiom');dealToEnemy(target,vd);if(target.dead)return;}
 
   const doEcho=hasP('axiomEcho')&&(h.atkCount%passive('axiomEcho')===0);
-  if(crit)dmg=Math.floor(dmg*es.critDmg);
+  if(crit)dmg=Math.floor(dmg*es.critDmg*rmult('critDmg'));
 
   let effDef=target.def;
   if(hasP('necroticPoison')&&target.statuses.poison)effDef=Math.max(0,effDef-target.statuses.poison.stacks*passive('necroticPoison'));
@@ -2279,7 +2308,7 @@ function doHeroAtk(){
     NarrationEngine.onCrit();
   } else addLog(`  ⚔ ${target.displayName||target.name} ← ${actual}`,'lhit');
 
-  const ls=Math.floor(actual*(es.lifesteal||0));if(ls>0)healHero(ls,'ls');
+  const ls=Math.floor(actual*(es.lifesteal||0)*rmult('lifesteal'));if(ls>0)healHero(ls,'ls');
   if(hasTrait('serrated')&&rng()<.22&&!target.dead)applyStatus(target,'bleed',1,2);
 
   trigBoon('onHit',h,target);
@@ -2520,10 +2549,11 @@ function checkEnd(){
   if(G.enemies.every(e=>e.dead)){
     clearInterval(G.interval);
     const baseGoldRaw=15+G.wave*3+(G.waveGold||0);
-    const baseGold=Math.floor(baseGoldRaw*(G.waveGoldMult||1));
+    const roadsideGoldMult=(G.roadside?.goldMult||1);
+    const baseGold=Math.floor(baseGoldRaw*(G.waveGoldMult||1)*roadsideGoldMult);
     G.gold+=baseGold;
     const xpEarned=20+G.wave*9;G.xp+=xpEarned;
-    addLog(`🏆 Trial ${G.wave} complete! +${baseGold}ᛋ +${xpEarned}XP`,'lwave');
+    addLog(`🏆 Trial ${G.wave} complete! +${baseGold}ᛋ${(G.roadside?.goldMult||1)>1?` (x${(G.roadside.goldMult).toFixed(2)})`:''} +${xpEarned}XP`,'lwave');
     G.activeTactic=null;G.waveGoldMult=1;
     checkLevelUp();
     G.rerollCost=10;
@@ -2567,11 +2597,12 @@ function computeEarnedEVs(){
   };
 }
 
-function retireHero(){
+function retireHero(trialOverride){
   const rec=G.hero.record;
   const earnedEVs=computeEarnedEVs();
+  const trial=(typeof trialOverride==='number')?trialOverride:G.wave;
   rec.runResult={
-    outcome:'retired',wave:G.wave,
+    outcome:'retired',wave:trial,
     boons:G.boons.map(b=>b.id),
     axioms:G.boons.filter(b=>b.rarity==='axiom').map(b=>b.id),
     level:G.level,earnedEVs,ts:Date.now()
@@ -2582,10 +2613,11 @@ function retireHero(){
   META.family[rec.id]=rec;
   if(META.retiredPool.length>=poolMax())META.retiredPool.shift();
   META.retiredPool.push(rec.id);
-  const essence=Math.floor(G.gold*.35)+G.wave*4;
+  const baseEssence=Math.floor(G.gold*.35)+trial*4;
+  const essence=Math.floor(baseEssence*(G.roadside?.essenceMult||1));
   META.legacyEssence+=essence;
   if(G.interval)clearInterval(G.interval);
-  addLog(`🏛 ${rec.name} sealed their saga at Trial ${G.wave}! +${essence} Allfather's Blessing.`,'laxiom');
+  addLog(`🏛 ${rec.name} sealed their saga at Trial ${trial}! +${essence} Allfather's Blessing.`,'laxiom');
   checkRagnarökUnlock();
   saveMeta();
   showRetireRelicChoice(rec, essence);
@@ -2768,7 +2800,9 @@ function pickBoon(id){
     META.family[rec.id]=rec;
     if(META.retiredPool.length>=poolMax())META.retiredPool.shift();
     META.retiredPool.push(rec.id);
-    META.legacyEssence+=80;
+    const victoryEssence=Math.floor(80*(G.roadside?.essenceMult||1));
+    META.legacyEssence+=victoryEssence;
+    rec.runResult.victoryEssence=victoryEssence;
     saveMeta();
     G.phase='VICTORY';
     checkRagnarökUnlock();
@@ -2923,6 +2957,17 @@ function renderRight(){
     html+=`<div class="sec-title">Rune-Gifts</div>`;
     G.boons.forEach(b=>html+=`<div style="margin:2px 0;font-size:11px" title="${b.desc}"><span style="color:${rc[b.rarity]||'#888'}">${b.icon}</span> ${b.name}</div>`);
   }
+  if(G.roadside&&G.roadside.resolveRelics&&G.roadside.resolveRelics.length){
+    html+=`<div class="sec-title">Resolve Relics</div>`;
+    G.roadside.resolveRelics.forEach(r=>html+=`<div style="margin:2px 0;font-size:11px" title="${r.desc}">${r.icon} ${r.name}</div>`);
+  }
+  if(G.roadside&&G.roadside.debts&&G.roadside.debts.length){
+    html+=`<div class="sec-title">Debts</div>`;
+    G.roadside.debts.forEach(d=>html+=`<div style="margin:2px 0;font-size:11px" title="${d.desc}">${d.icon} ${d.name}</div>`);
+  }
+  if((G.roadside?.goldMult||1)>1||(G.roadside?.essenceMult||1)>1){
+    html+=`<div style="font-size:10px;color:var(--txt3);margin-top:6px">Road Mult: Gold x${(G.roadside.goldMult||1).toFixed(2)}, Essence x${(G.roadside.essenceMult||1).toFixed(2)}</div>`;
+  }
   document.getElementById('right-content').innerHTML=html||`<div style="color:var(--txt3);font-size:11px;margin-top:8px">No Rune-Gifts yet.</div>`;
 }
 
@@ -2944,11 +2989,11 @@ function renderWavePreview(){
   const diffLabels=['Trivial','Easy','Moderate','Hard','Brutal'];
 
   let h=`<div class="slide-in" style="padding:16px">`;
-  if(G.retireAvailable){
+  if(G.roadsideAvailable){
     h+=`<div class="retire-banner">
-      <div class="retire-banner-title">🏛 RETIREMENT OPPORTUNITY</div>
-      <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">End your saga now and send ${G.hero.record?.name||'your hero'} to the Chosen of the Hall. Convert saga progress into genetic strength for future generations.</div>
-      <button class="btn btn-gold btn-sm" onclick="showRetireConfirm()">🏛 Retire Hero</button>
+      <div class="retire-banner-title">🔥 THE FIRE ON THE ROAD</div>
+      <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">Along the way, you see a light.<br>A hooded figure tends a fire and makes you an offer.</div>
+      <button class="btn btn-gold btn-sm" onclick="showRoadsideFire()">🔥 Approach the Fire</button>
     </div>`;
   }
   h+=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
@@ -3906,6 +3951,107 @@ function resumeAfterAllFatherGift(){
   renderAll();
   if(G.interval)clearInterval(G.interval);
   G.interval=setInterval(combatTick,100/G.speed);
+}
+
+
+function resolveRoadside(){
+  if(!G||!G.roadside)return;
+  if(G.roadside.used && typeof G.roadside.used[G.wave] !== 'undefined')G.roadside.used[G.wave]=true;
+  G.roadsideAvailable=false;
+  hideOverlay();
+  renderAll();
+}
+function getResolveRelicOffers(){
+  const chosen=new Set((G.roadside.resolveRelics||[]).map(r=>r.id));
+  const tagCounts={};
+  (G.boons||[]).forEach(b=>(b.tags||[]).forEach(t=>tagCounts[t]=(tagCounts[t]||0)+1));
+  const top=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const wanted=[];
+  top.forEach(t=>{
+    if(['Sustain'].includes(t))wanted.push('root_cup');
+    else if(['Tempo'].includes(t))wanted.push('wolf_step');
+    else if(['Bulwark','Shield'].includes(t))wanted.push('fired_ward');
+    else if(['Bleed'].includes(t))wanted.push('carvers_edge');
+    else if(['Poison'].includes(t))wanted.push('eitr_kiln');
+    else if(['Crit'].includes(t))wanted.push('sootglass_eye');
+  });
+  wanted.push('fired_ward','root_cup');
+  const offers=[];
+  wanted.forEach(id=>{if(offers.length<3&&!offers.some(o=>o.id===id)&&!chosen.has(id)){const r=RESOLVE_RELICS.find(x=>x.id===id);if(r)offers.push(r);}});
+  const pool=rshuffle(RESOLVE_RELICS.filter(r=>!chosen.has(r.id)&&!offers.some(o=>o.id===r.id)));
+  while(offers.length<3&&pool.length)offers.push(pool.shift());
+  return offers;
+}
+function applyRandomSacrifice(){
+  const opts=[];
+  const gearSlots=Object.entries(G.hero.gear||{}).filter(([k,v])=>v);
+  if(gearSlots.length)opts.push('gear');
+  if((G.hero.traits||[]).length)opts.push('trait');
+  if((G.gold||0)>0)opts.push('gold');
+  if((G.hero.hp||0)>1)opts.push('hp');
+  opts.push('reroll');
+  const pick=rpick(opts);
+  if(pick==='gear'){
+    const [slot,item]=rpick(gearSlots);
+    G.hero.gear[slot]=null;
+    applyGearMaxHPDelta(G.hero,item,null);
+    addLog(`⚱️ Sacrifice: Lost ${slot} — ${item.name}.`,'lstatus');
+  }else if(pick==='trait'){
+    const idx=ri(0,G.hero.traits.length-1); const tk=G.hero.traits[idx]; G.hero.traits.splice(idx,1);
+    if(tk==='ironblood')G.hero.def=Math.max(0,G.hero.def-5);
+    if(tk==='swift_born')G.hero.spd=Math.max(1,G.hero.spd-8);
+    if(tk==='lucky')G.hero.critChance=Math.max(0,G.hero.critChance-0.04);
+    if(tk==='resilient'){G.hero.maxHP=Math.max(1,G.hero.maxHP-25);G.hero.hp=Math.min(G.hero.hp,G.hero.maxHP);}
+    if(tk==='gambler'){G.hero.critChance=Math.max(0,G.hero.critChance-0.05);G.hero.def=Math.max(0,G.hero.def+2);}
+    if(tk==='vampiric_b')G.hero.lifesteal=Math.max(0,G.hero.lifesteal-0.03);
+    addLog(`⚱️ Sacrifice: Lost trait ${GTRAITS[tk]?.name||tk}.`,'lstatus');
+  }else if(pick==='gold'){
+    const loss=(G.gold>=10)?Math.max(10,Math.floor(G.gold*0.15)):Math.floor(G.gold*0.15);
+    G.gold=Math.max(0,G.gold-loss); addLog(`⚱️ Sacrifice: Lost ᛋ${loss}.`,'lstatus');
+  }else if(pick==='hp'){
+    const loss=Math.max(1,Math.floor(G.hero.hp*0.20)); G.hero.hp=Math.max(1,G.hero.hp-loss); addLog(`⚱️ Sacrifice: Bled ${loss} HP.`,'lstatus');
+  }else if(pick==='reroll'){
+    G.rerollCost+=12; addLog(`⚱️ Sacrifice: Reroll cost rises by 12.`,'lstatus');
+  }
+}
+function chooseRoadsideClay(){
+  const offers=getResolveRelicOffers();
+  const html=`<div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--amber);margin-bottom:8px">🧱 CLAY — Strengthen your resolve</div>
+  <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">Choose what you carry from the fire.</div>
+  <div style="display:flex;flex-direction:column;gap:8px">${offers.map(r=>`<div class="imprint-card" onclick="takeResolveRelic('${r.id}')"><div style="font-weight:800">${r.icon} ${r.name}</div><div style="font-size:10px;color:var(--txt2)">${r.desc}</div></div>`).join('')}</div>`;
+  showOverlayContent(html);
+}
+function takeResolveRelic(id){
+  const r=RESOLVE_RELICS.find(x=>x.id===id); if(!r)return;
+  if(!G.roadside.resolveRelics.some(x=>x.id===id))G.roadside.resolveRelics.push(JSON.parse(JSON.stringify(r)));
+  Object.entries(r.mults||{}).forEach(([k,v])=>{G.roadside.resolveMult[k]=Math.max(G.roadside.resolveMult[k]||1,v);});
+  addLog(`🧱 ${r.name} taken from the fire.`,'laxiom');
+  resolveRoadside();
+}
+function chooseRoadsideAsh(){
+  G.roadside.goldMult*=1.25; G.roadside.essenceMult*=1.20;
+  const used=new Set((G.roadside.debts||[]).map(d=>d.id));
+  const debtPool=DEBTS.filter(d=>!used.has(d.id));
+  if(debtPool.length){
+    const d=rpick(debtPool);
+    if(typeof d.apply==='function')d.apply(G);
+    G.roadside.debts.push({id:d.id,name:d.name,icon:d.icon,desc:d.desc,battleStart:(d.battleStart||[]).map(x=>({...x}))});
+    addLog(`⚱️ ${d.name} — ${d.desc}`,'laxiom');
+  }
+  applyRandomSacrifice();
+  resolveRoadside();
+}
+function showRoadsideFire(){
+  if(!G||!G.roadsideAvailable)return;
+  const html=`<div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--amber);margin-bottom:8px">🔥 THE FIRE ON THE ROAD</div>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Along the way, you see a light.<br>A hooded figure tends a fire and makes you an offer.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn" onclick="resolveRoadside();retireHero(G.wave-1)">💧 Water — Cut the thread.</button>
+      <button class="btn" onclick="chooseRoadsideClay()">🧱 Clay — Strengthen your resolve.</button>
+      <button class="btn" onclick="chooseRoadsideAsh()">⚱️ Ash — Pay the debt of another.</button>
+      <button class="btn btn-sm btn-ghost" onclick="resolveRoadside()">Keep Walking</button>
+    </div>`;
+  showOverlayContent(html);
 }
 
 function showRetireConfirm(){
