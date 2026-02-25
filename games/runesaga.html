@@ -1651,7 +1651,11 @@ function mkEnemy(arch,wave,boss){
   const baseSpdMult = 0.6 + 0.4 * mult;
   const spd = Math.max(5, Math.floor((b.spd + s.spd * w) * baseSpdMult * spdMult));
 
-  return{id:arch.id+'_'+ri(1000,9999),archId:arch.id,
+  const rootTouchedChance=(G&&G.tierFlags&&G.tierFlags.rootTouchedEnemyChance)||0;
+  const isRootTouchedWave=wave>=4&&wave<=8;
+  const rootTouched=!!(isRootTouchedWave&&!boss&&rng()<rootTouchedChance);
+
+  const enemy={id:arch.id+'_'+ri(1000,9999),archId:arch.id,
     // Layer 1: plain English name used in all combat references
     displayName:arch.displayName||arch.name||arch.id,
     // Layer 2: Norse name shown in trait line only
@@ -1667,9 +1671,19 @@ function mkEnemy(arch,wave,boss){
     _firstAtkDone:false,_hexCtr:0,_chargeCtr:0,_tankGuard:true,
     _tier2Done:false,
     elite:boss||false,dead:false,
-    rootTouched:false,
+    rootTouched,
     namedElite:false,
     signature:null};
+
+  if(rootTouched){
+    enemy.displayName='Root-Touched '+(arch.displayName||arch.name||arch.id);
+    enemy.name=enemy.displayName;
+    enemy.col='#2a1a3a';
+    enemy.hp=enemy.maxHP=Math.floor(enemy.hp*1.10);
+    enemy.atk=Math.floor(enemy.atk*1.10);
+  }
+
+  return enemy;
 }
 
 function addShieldToUnit(unit,amt){
@@ -1686,6 +1700,14 @@ function pickWaveTraits(wave) {
 function applyWaveTraitsToEnemies(){
   G.waveFlags={};
   G.waveTraits.forEach(t=>t.apply(G.enemies,G.hero,G));
+
+  if(G.tierFlags&&G.tierFlags.allWavesNiflheimTag){
+    if(!G.waveFlags._fimbulwinterApplied){
+      G.waveFlags._fimbulwinterApplied=true;
+      applyStatus(G.hero,'slow',1,3);
+      addLog('  ❄️ Fimbulwinter: a biting cold slows you.','lstatus');
+    }
+  }
 }
 
 // ═══ PASSIVE HELPERS ═══
@@ -1917,6 +1939,16 @@ function startBattle(){
   h.flags.secondWindUsed=false;
   applyWaveTraitsToEnemies();
   applyBattleStartBoons();
+
+  if(G.tierFlags&&G.tierFlags.allFatherLastGift&&G.wave===1&&!G._allFatherGiftOffered){
+    G._allFatherGiftOffered=true;
+    if(G.interval)clearInterval(G.interval);
+    G.phase='ALLFATHER_GIFT';
+    renderAll();
+    showAllFatherGift();
+    return;
+  }
+
   applyEnemyStartTraits();
   applyBattleStartTactics();
   if(G.waveFlags.heroStartVuln){applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');}
@@ -1941,14 +1973,19 @@ function combatTick(){
     G.statusTick=0;
     tickStatuses(G.hero,true);
     G.enemies.filter(e=>!e.dead).forEach(e=>tickStatuses(e,false));
-    if(G.waveFlags.toxicAir){
+    const toxicAirActive=G.waveFlags.toxicAir||(G.tierFlags&&G.tierFlags.toxicAirFromWave&&G.wave>=G.tierFlags.toxicAirFromWave);
+    if(toxicAirActive){
       G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.max(0,e.hp-1);if(e.hp<=0&&!e.dead){e.dead=true;onKill(e);}});
       heroDmg(1,null,'dot');
     }
     if(G.waveFlags.eRegen){
       G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.min(e.maxHP,e.hp+Math.floor(e.maxHP*G.waveFlags.eRegen));});
     }
-    const ren=passive('regen');if(ren)healHero(Math.floor(G.hero.maxHP*ren),'regen');
+    const ren=passive('regen');
+    if(ren){
+      const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
+      healHero(Math.floor(G.hero.maxHP*ren*(1+regenBonus)),'regen');
+    }
   }
   if(checkEnd())return;
 
@@ -2099,6 +2136,16 @@ function doEnemyAtk(enemy){
 
   if(enemy.lifesteal>0)enemy.hp=Math.min(enemy.maxHP,enemy.hp+Math.floor(actual*enemy.lifesteal));
 
+  if(enemy.rootTouched&&!enemy.dead){
+    if(enemy.archId==='bruiser'&&rng()<0.40){
+      applyStatus(G.hero,'vulnerable',1,2);
+      addLog(`  🌑 Root-Touched corruption: Vulnerable (2s)`,'lstatus');
+    }else if(enemy.archId==='striker'&&rng()<0.30){
+      applyStatus(G.hero,'poison',1,3);
+      addLog(`  🌑 Root-Touched eitr: Poison (3s)`,'lstatus');
+    }
+  }
+
   if(crit&&tier2Active&&arch&&arch.tier2Behavior==='dodgeAfterCrit'&&arch.tier2DodgeChance){
     enemy._tier2DodgePending=arch.tier2DodgeChance;
   }
@@ -2189,17 +2236,28 @@ function tickStatuses(unit,isHero){
     }
     if(k==='bleed'){
       let d=Math.floor((3+s.stacks)*bm);
+      if(!isHero&&G.tierFlags&&G.tierFlags.dotDamageBonus){
+        d=Math.floor(d*(1+G.tierFlags.dotDamageBonus));
+      }
       if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);}
       if(isHero)heroDmg(d,null,'dot');
       else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
     }
     if(k==='poison'){
       let d=Math.floor((2+s.stacks+vk)*pm);
+      if(!isHero&&G.tierFlags&&G.tierFlags.dotDamageBonus){
+        d=Math.floor(d*(1+G.tierFlags.dotDamageBonus));
+      }
       if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);}
       if(isHero)heroDmg(d,null,'dot');
       else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
     }
-    if(k==='regen'&&isHero)healHero(s.value||3,'regen');
+    if(k==='regen'&&isHero){
+      const baseHeal=s.value||3;
+      const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
+      const totalHeal=Math.floor(baseHeal*(1+regenBonus));
+      healHero(totalHeal,'regen');
+    }
   }
 }
 
@@ -2473,7 +2531,8 @@ function pickBoon(id){
 function doReroll(){
   if(G.gold<G.rerollCost)return;
   G.gold-=G.rerollCost;
-  G.rerollCost+=6;
+  const increase=(G.tierFlags&&G.tierFlags.rerollCostIncreaseOverride)||6;
+  G.rerollCost+=increase;
   genDraft();
   renderAll();
 }
@@ -3358,6 +3417,67 @@ function showOverlayContent(html){
   document.getElementById('overlay').style.display='flex';
 }
 function hideOverlay(){document.getElementById('overlay').style.display='none';}
+
+function showAllFatherGift(){
+  const owned=new Set(G.boons.map(b=>b.id));
+  const axioms=BOONS.filter(b=>b.rarity==='axiom'&&!owned.has(b.id));
+  const offered=rshuffle(axioms).slice(0,3);
+
+  if(!offered.length){
+    resumeAfterAllFatherGift();
+    return;
+  }
+
+  const html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;
+                color:var(--gold);margin-bottom:8px">ᛟ THE ALLFATHER'S LAST GIFT</div>
+    <div style="font-size:11px;color:var(--txt2);font-style:italic;margin-bottom:14px">
+      "He has nothing left to withhold."
+    </div>
+    <div style="font-size:11px;color:var(--txt3);margin-bottom:14px">
+      Choose one Rune Law. This is given freely — the cost is what comes next.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      ${offered.map(b=>`
+        <div class="boon-card rc-axiom" onclick="acceptAllFatherGift('${b.id}')">
+          <div style="font-size:9px;color:#d050ff;margin-bottom:4px">RUNE LAW</div>
+          <div><span style="font-size:14px">${b.icon}</span>
+               <span class="boon-name">${b.name.replace('RUNE: ','')}</span></div>
+          <div class="boon-desc" style="margin-top:3px">${b.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  showOverlayContent(html);
+}
+
+function acceptAllFatherGift(boonId){
+  const boon=BOONS.find(b=>b.id===boonId);
+  if(!boon)return;
+  G.boons.push(boon);
+  applyBoonEffectsOnPick(boon);
+  addLog(`ᛟ The Allfather's gift accepted: ${boon.name}`,'laxiom');
+  hideOverlay();
+  resumeAfterAllFatherGift();
+}
+
+function resumeAfterAllFatherGift(){
+  G.phase='BATTLE';
+  applyEnemyStartTraits();
+  applyBattleStartTactics();
+  if(G.waveFlags.heroStartVuln){
+    applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);
+    addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');
+  }
+  addLog(`⚔ Trial ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
+  NarrationEngine.reset();
+  const waveStartLine=MYTH_LINES.waveStart[G.wave];
+  if(waveStartLine)NarrationEngine.fire('waveStart',waveStartLine,'lstatus');
+  G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.displayName||e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
+  renderAll();
+  if(G.interval)clearInterval(G.interval);
+  G.interval=setInterval(combatTick,100/G.speed);
+}
 
 function showRetireConfirm(){
   const rec=G.hero.record;
