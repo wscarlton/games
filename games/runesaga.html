@@ -714,6 +714,157 @@ const BOONS=[
 {id:'second_wind',      name:'Second Wind',           rarity:'rare',    tags:['Sustain'],            icon:'🌬️',desc:'Once per battle, dropping below 30% HP heals 20% Max HP.', effects:[{t:'passive',k:'secondWind',v:.20}]},
 ];
 
+const MYTH_LINES = {
+  crit_first: [
+    'The Norns smiled.',
+    'Fate leaned in.',
+    'The thread tightens.',
+  ],
+  crit_third: [
+    'The thread sharpens.',
+    'The saga quickens.',
+    'Something ancient stirs.',
+  ],
+  crit_fifth: [
+    'Fate moves through you now.',
+    'The Norns weave faster.',
+    'Earned. Utterly earned.',
+  ],
+
+  nearDeath: [
+    'Even the dying wolf bites.',
+    'The thread frays — but holds.',
+    'Not yet. The saga is unfinished.',
+    'This is what the blood was shaped for.',
+  ],
+  nearDeathKill: [
+    'The saga grows heavier.',
+    'Death passed over. Not forgotten.',
+    'The root remembers this.',
+  ],
+
+  kill_first: [
+    'The saga grows.',
+  ],
+  kill_multi: [
+    'The Allfather watches.',
+    'Another thread cut.',
+  ],
+  rootDrinks: [
+    'The root drinks.',
+    'What falls, feeds.',
+  ],
+
+  levelUp: [
+    'Your saga is etched.',
+    'The blood strengthens.',
+    'The weave holds another layer.',
+  ],
+
+  waveStart: {
+    1:  'The first trial begins. Write something worth remembering.',
+    2:  'The second trial. The root stirs.',
+    3:  'Three trials. The Norns have noted you.',
+    4:  'The dead remember everything here.',
+    5:  'Halfway. The tree grows heavier above.',
+    6:  'The sixth trial. The strongest of the dead.',
+    7:  'Jotunheim sends its own. Brace.',
+    8:  'Eight trials survived. The root shifts.',
+    9:  'Three trials remain. The tree can feel you.',
+    10: 'The strong ones no longer wait.',
+    11: 'One thread from the end.',
+    12: 'The final trial. What you were shaped for.',
+  },
+
+  waveEnd: {
+    1:  'The first deed is written.',
+    4:  'The dead fell again. As they should.',
+    6:  'The sixth trial survives the saga. The tree breathes.',
+    12: 'All twelve trials. The thread held.',
+  },
+
+  axiomPicked: [
+    'The Allfather watches.',
+    'A Rune Law learned. The tree remembers.',
+    'This is why the trial exists.',
+  ],
+
+  shieldBroke: [
+    'The ward falls. Hold the line.',
+    'Exposed. Adapt.',
+  ],
+};
+
+const NarrationEngine = {
+  cooldowns: {},
+  waveCount: 0,
+  WAVE_QUOTA: 5,
+  COOLDOWN_TICKS: {
+    crit: 80,
+    nearDeath: 99999,
+    kill: 50,
+    levelUp: 99999,
+    generic: 40,
+  },
+  critCount: 0,
+  killCount: 0,
+  _narratedNearDeath: false,
+
+  reset() {
+    this.cooldowns = {};
+    this.waveCount = 0;
+    this.critCount = 0;
+    this.killCount = 0;
+    this._narratedNearDeath = false;
+  },
+
+  canFire(category) {
+    if (category === 'waveStart' || category === 'waveEnd') return true;
+    if (this.waveCount >= this.WAVE_QUOTA) return false;
+    const cooldown = this.COOLDOWN_TICKS[category] || 40;
+    const lastFired = this.cooldowns[category];
+    if (typeof lastFired !== 'number') return true;
+    return G ? (G.tick - lastFired) >= cooldown : true;
+  },
+
+  fire(category, linesOrLine, logClass) {
+    if (!this.canFire(category)) return;
+    const line = Array.isArray(linesOrLine) ? rpick(linesOrLine) : linesOrLine;
+    if (!line) return;
+    this.cooldowns[category] = G ? G.tick : 0;
+    if (category !== 'waveStart' && category !== 'waveEnd') this.waveCount++;
+    addLog(`  ${line}`, logClass || 'lstatus');
+  },
+
+  onCrit() {
+    this.critCount++;
+    if (this.critCount >= 5) this.fire('crit', MYTH_LINES.crit_fifth, 'lstatus');
+    else if (this.critCount >= 3) this.fire('crit', MYTH_LINES.crit_third, 'lstatus');
+    else this.fire('crit', MYTH_LINES.crit_first, 'lstatus');
+  },
+
+  onKill() {
+    this.killCount++;
+    if (G && G.tierFlags && G.tierFlags.killDropsMark && this.killCount >= 3) {
+      this.fire('kill', MYTH_LINES.rootDrinks, 'lstatus');
+    } else if (this.killCount === 1) {
+      this.fire('kill', MYTH_LINES.kill_first, 'lstatus');
+    } else if (this.killCount >= 4) {
+      this.fire('kill', MYTH_LINES.kill_multi, 'lstatus');
+    }
+  },
+
+  onNearDeath() {
+    if (this._narratedNearDeath) return;
+    this._narratedNearDeath = true;
+    this.fire('nearDeath', MYTH_LINES.nearDeath, 'lstatus');
+  },
+
+  onNearDeathKill() {
+    this.fire('generic', MYTH_LINES.nearDeathKill, 'lstatus');
+  },
+};
+
 // ═══ ENEMY ARCHETYPES ═══
 const ARCHETYPES = [
   // ── MIDGARD TIER (Trials 1–3) ─────────────────────────────────
@@ -1347,7 +1498,7 @@ function applyStatus(unit,key,stacks,dur,maxStacks){
 // ═══ DAMAGE / HEAL ═══
 function dealToEnemy(enemy,dmg){
   if(enemy.dead||dmg<=0)return 0;
-  if(enemy.archId==='tank'&&enemy._tankGuard){enemy._tankGuard=false;addLog(`  🛡 ${enemy.name} Iron Will negates!`,'lstatus');return 0;}
+  if(enemy.archId==='tank'&&enemy._tankGuard){enemy._tankGuard=false;addLog(`  🛡 ${enemy.displayName||enemy.name} Iron Will negates!`,'lstatus');return 0;}
 
   const sh=enemy.statuses.shield;
   if(sh&&sh.value>0){
@@ -1390,6 +1541,11 @@ function heroDmg(rawDmg,attacker,src){
 
   const prev=hero.hp;
   hero.hp=Math.max(0,hero.hp-rawDmg);
+
+  // Near-death narration (must check AFTER hp update, BEFORE undying)
+  if(hero.hp>0&&hero.hp<hero.maxHP*0.25){
+    NarrationEngine.onNearDeath();
+  }
   if(hero.hp<=0&&!hero.usedUndying&&hasP('undying')){
     hero.usedUndying=true;hero.hp=Math.floor(hero.maxHP*.35);
     addLog(`  🔄 UNDYING! Hero rises with ${hero.hp} HP!`,'laxiom');
@@ -1408,7 +1564,7 @@ function heroDmg(rawDmg,attacker,src){
 function shieldBreak(attacker){
   addLog(`  💔 Shield broken!`,'lshield');
   const bash=passive('shieldBash');
-  if(bash&&attacker&&!attacker.dead){dealToEnemy(attacker,bash);addLog(`  💥 Shield Bash! ${attacker.name} takes ${bash}!`,'lhit');}
+  if(bash&&attacker&&!attacker.dead){dealToEnemy(attacker,bash);addLog(`  💥 Shield Bash! ${attacker.displayName||attacker.name} takes ${bash}!`,'lhit');}
 }
 
 function healHero(amt,src){
@@ -1494,8 +1650,14 @@ function startBattle(){
   applyBattleStartTactics();
   if(G.waveFlags.heroStartVuln){applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');}
   G.phase='BATTLE';G.tick=0;G.statusTick=0;
-  addLog(`⚔ Wave ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
-  G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
+  addLog(`⚔ Trial ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
+
+  // Narration: wave start line
+  NarrationEngine.reset();
+  const waveStartLine=MYTH_LINES.waveStart[G.wave];
+  if(waveStartLine) NarrationEngine.fire('waveStart',waveStartLine,'lstatus');
+
+  G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.displayName||e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
   renderAll();
   if(G.interval)clearInterval(G.interval);
   G.interval=setInterval(combatTick,100/G.speed);
@@ -1566,14 +1728,16 @@ function doHeroAtk(){
   dmg=Math.max(1,dmg-effDef);
   const actual=dealToEnemy(target,dmg);
 
-  if(crit)addLog(`  ⚔ CRIT! ${target.name} ← ${actual}`,'lcrit');
-  else addLog(`  ⚔ ${target.name} ← ${actual}`,'lhit');
+  if(crit){
+    addLog(`  ⚔ CRIT! ${target.displayName||target.name} ← ${actual}`,'lcrit');
+    NarrationEngine.onCrit();
+  } else addLog(`  ⚔ ${target.displayName||target.name} ← ${actual}`,'lhit');
 
   const ls=Math.floor(actual*(es.lifesteal||0));if(ls>0)healHero(ls,'ls');
   if(hasTrait('serrated')&&rng()<.22&&!target.dead)applyStatus(target,'bleed',1,2);
 
   trigBoon('onHit',h,target);
-  const sh=passive('shred');if(sh && !target.dead){const before=target.def;target.def=Math.max(0,target.def-sh);if(target.def!==before)addLog(`  🪨 Sunder! ${target.name} DEF -${before-target.def}`,'lstatus');}
+  const sh=passive('shred');if(sh && !target.dead){const before=target.def;target.def=Math.max(0,target.def-sh);if(target.def!==before)addLog(`  🪨 Sunder! ${target.displayName||target.name} DEF -${before-target.def}`,'lstatus');}
 
   if(crit)trigBoon('onCrit',h,target);
   const sc=passive('stunCrit');if(crit&&sc&&rng()<sc&&!target.dead){applyStatus(target,'stun',1,1);addLog(`  💫 Stun!`,'lstatus');}
@@ -1585,13 +1749,13 @@ function doHeroAtk(){
     if(t2){
       const td2=Math.max(1,Math.floor(heroAtk())-t2.def);
       dealToEnemy(t2,td2);
-      addLog(`  ⚔⚔ Twin! ${t2.name} ← ${td2}`,'lhit');
+      addLog(`  ⚔⚔ Twin! ${t2.displayName||t2.name} ← ${td2}`,'lhit');
     }
   }
   if(doEcho&&!target.dead){
     const ed=Math.max(1,Math.floor(heroAtk()*.5)-effDef);
     dealToEnemy(target,ed);
-    addLog(`  🔁 Echo! ${target.name} ← ${ed}`,'laxiom');
+    addLog(`  🔁 Echo! ${target.displayName||target.name} ← ${ed}`,'laxiom');
   }
 }
 
@@ -1680,7 +1844,12 @@ function doEnemyAtk(enemy){
 }
 
 function onKill(enemy){
-  addLog(`  💀 ${enemy.name} slain!`,'ldeath');
+  addLog(`  💀 ${enemy.displayName||enemy.name} slain!`,'ldeath');
+  // Near-death kill narration
+  if(G.hero.hp<G.hero.maxHP*0.25){
+    NarrationEngine.onNearDeathKill();
+  }
+  NarrationEngine.onKill();
   if(G.waveFlags.enraged){
     G.enemies.filter(e=>!e.dead).forEach(e=>e.atk+=15);
     addLog(`  😡 Enraged! +15 ATK!`,'lstatus');
@@ -1738,6 +1907,8 @@ function checkEnd(){
     checkLevelUp();
     G.rerollCost=10;
     genDraft();
+    const waveEndLine=MYTH_LINES.waveEnd[G.wave];
+    if(waveEndLine) NarrationEngine.fire('waveEnd',waveEndLine,'lstatus');
     G.phase='REWARDS';
     renderAll();
     return true;
@@ -1750,6 +1921,7 @@ function checkLevelUp(){
     G.xp-=G.xpNeeded;G.level++;G.xpNeeded=Math.floor(G.xpNeeded*1.35);
     G.hero.maxHP+=18;G.hero.hp=Math.min(G.hero.maxHP,G.hero.hp+18);G.hero.atk+=3;G.hero.def+=1;
     addLog(`🌟 Level Up → Lv.${G.level}! (+18 HP +3 ATK +1 DEF)`,'laxiom');
+    NarrationEngine.fire('levelUp',MYTH_LINES.levelUp,'lstatus');
   }
 }
 
@@ -1948,6 +2120,9 @@ function pickBoon(id){
   G.boons.push(boon);
   applyBoonEffectsOnPick(boon);
   addLog(`📦 Drafted: ${boon.name} [${boon.rarity}]`,'laxiom');
+  if(boon.rarity==='axiom'){
+    NarrationEngine.fire('generic',MYTH_LINES.axiomPicked,'laxiom');
+  }
   G.draft=[];
 
   if(G.wave>=G.maxWaves){
