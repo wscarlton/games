@@ -1838,11 +1838,12 @@ function mkEnemy(arch,wave,boss){
   const spdMult = (G && G.tierFlags && G.tierFlags.enemySPDMult) || 1.0;
 
   const baseHP = b.hp + s.hp * w;
-  const hp = Math.max(1, Math.floor(baseHP * mult * ragnarökHPMult));
-  const atk = Math.max(1, Math.floor((b.atk + s.atk * w) * mult));
-  const def = Math.max(0, Math.floor((b.def + s.def * w) * mult));
+  const enemyTuningMult = 0.90; // global enemy stat softening
+  const hp = Math.max(1, Math.floor(baseHP * mult * ragnarökHPMult * enemyTuningMult));
+  const atk = Math.max(1, Math.floor((b.atk + s.atk * w) * mult * enemyTuningMult));
+  const def = Math.max(0, Math.floor((b.def + s.def * w) * mult * enemyTuningMult));
   const baseSpdMult = 0.6 + 0.4 * mult;
-  const spd = Math.max(5, Math.floor((b.spd + s.spd * w) * baseSpdMult * spdMult));
+  const spd = Math.max(5, Math.floor((b.spd + s.spd * w) * baseSpdMult * spdMult * enemyTuningMult));
 
   const rootTouchedChance=(G&&G.tierFlags&&G.tierFlags.rootTouchedEnemyChance)||0;
   const isRootTouchedWave=wave>=4&&wave<=8;
