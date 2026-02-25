@@ -3210,6 +3210,7 @@ function renderRetiredPool(){
       <div class="hc-stats">HP:${derived.maxHP} ATK:${Math.round(derived.atk)} DEF:${Math.round(derived.def)} SPD:${derived.spd}</div>
       <div class="hc-stats">CRIT:${Math.round(derived.critChance*100)}% EVA:${Math.round(derived.evasion*100)}%</div>
       <div class="hc-stats" style="margin-top:3px">Breeds left: <span style="color:var(--gold);font-weight:800">${uses.left}/${uses.max}</span></div>
+      ${rec.equippedGear&&Object.values(rec.equippedGear).some(Boolean)?`<div style="font-size:9px;color:var(--txt3);margin-top:4px">⚒ ${Object.values(rec.equippedGear).filter(Boolean).map(i=>`<span style="color:${rarityColor(i.rarity)}">${i.name}</span>`).join(', ')} bequeathed</div>`:''}
       ${rec.traits.length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:5px">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait" title="${gt.desc}">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
       <div style="margin-top:8px">
         ${EV_KEYS.map(k=>`<div style="display:flex;align-items:center;gap:5px;margin:2px 0">
@@ -3338,8 +3339,36 @@ function doBreed(){
   </div>`;
 }
 
+function inheritGearFromParent(childId,parentId){
+  const parentRec=META.family[parentId];
+  const childRec=META.family[childId];
+  if(!parentRec||!childRec||isFallenHero(parentId))return;
+  if(!parentRec.equippedGear)return;
+  childRec.inheritedGear={};
+  Object.entries(parentRec.equippedGear).forEach(([slot,item])=>{
+    if(!item)return;
+    const copy=JSON.parse(JSON.stringify(item));
+    copy.sagaHistory=copy.sagaHistory||[];
+    if(copy.sagaHistory.length>=3)copy.sagaHistory.shift();
+    copy.sagaHistory.push(`Inherited by ${childRec.name}`);
+    childRec.inheritedGear[slot]=copy;
+  });
+  META.family[childId]=childRec;
+}
+
 function startWithChild(heroId){
   const rec=META.family[heroId];if(!rec)return;
+  if(rec.parentIds&&rec.parentIds.length){
+    const bestParentId=rec.parentIds.reduce((best,pid)=>{
+      const p=META.family[pid], b=META.family[best];
+      const pWave=(p?.runResult?.wave||0), bWave=(b?.runResult?.wave||0);
+      const pFallen=isFallenHero(pid), bFallen=isFallenHero(best);
+      if(bFallen&&!pFallen)return pid;
+      if(!bFallen&&pFallen)return best;
+      return pWave>=bWave?pid:best;
+    },rec.parentIds[0]);
+    inheritGearFromParent(heroId,bestParentId);
+  }
   initGame(null,rec.evs,rec.traits,rec);
 }
 
@@ -3510,6 +3539,7 @@ function showHeroDetail(id){
   const isFallen=META.fallenLedger.includes(id);
   const status=isRetired?'Retired ★':isFallen?'Fallen ☠':'Active';
   const statusColor=isRetired?'var(--gold)':isFallen?'var(--red)':'var(--cyan)';
+  const gearItems=rec.equippedGear?Object.entries(rec.equippedGear).filter(([s,item])=>item):[];
   document.getElementById('hero-detail-panel').innerHTML=`<div class="slide-in" style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:16px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
@@ -3548,6 +3578,18 @@ function showHeroDetail(id){
         "${sagaPage}"
       </div>
     </div>
+    ${gearItems.length?`
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:5px">BEQUEATHED GEAR</div>
+        ${gearItems.map(([slot,item])=>`
+          <div style="font-size:10px;color:${rarityColor(item.rarity)};margin:3px 0">
+            ⚒ ${item.name}
+            ${item.sagaHistory?.length?`<span style="color:var(--txt3);font-style:italic"> — "${item.sagaHistory[item.sagaHistory.length-1]}"</span>`:''}
+            ${item.passiveBonus?`<span style="color:var(--green)"> · ${item.passiveBonus.label}</span>`:''}
+          </div>
+        `).join('')}
+      </div>
+    `:''}
   </div>`;
 }
 
@@ -4302,6 +4344,56 @@ function showRetireRelicChoice(rec,essence){
   showOverlayContent(html);
 }
 
+function showBequeathChoice(rec,essence){
+  if(!G||!G.hero||!G.hero.gear){proceedAfterBequeath(rec,essence);return;}
+  const gearSlots=Object.entries(G.hero.gear).filter(([slot,item])=>item!==null);
+  if(!gearSlots.length){proceedAfterBequeath(rec,essence);return;}
+  const html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--gold);margin-bottom:8px">⚒ WHAT REMAINS</div>
+    <div style="font-size:11px;color:var(--txt2);margin-bottom:14px">Choose one item to pass to your bloodline. It will be available to the next hero bred from ${rec.name}.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      ${gearSlots.map(([slot,item])=>{
+        const waveBonus=Math.min(3,Math.floor((rec.runResult?.wave||1)/6));
+        const primaryStatLabel={weapon:'ATK',armor:'DEF',talisman:'EVA'}[slot]||slot;
+        return `<div class="imprint-card" style="border-color:${rarityBorderColor(item.rarity)}" onclick="bequeathGear('${rec.id}','${slot}',${waveBonus})">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800;color:${rarityColor(item.rarity)}">${item.name}</div><div style="font-size:9px;color:var(--txt3)">${item.rarity.toUpperCase()}</div></div>
+          <div style="font-size:10px;color:var(--txt2);margin-top:3px">${(item.affixes||[]).map(a=>a.label).join(' · ')||'No affixes'}</div>
+          ${item.sagaHistory?.length?`<div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:3px">"${item.sagaHistory[item.sagaHistory.length-1]}"</div>`:''}
+          ${item.notches>0?`<div style="font-size:9px;color:var(--amber);margin-top:2px">${item.notches} Notch${item.notches>1?'es':''}${item.sundered?' — SUNDERED':''}</div>`:''}
+          ${waveBonus>0?`<div style="font-size:9px;color:var(--green);margin-top:2px">Legacy bonus: +${waveBonus} ${primaryStatLabel} for the next wielder</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn btn-sm btn-ghost" style="width:100%" onclick="skipBequeath('${rec.id}',${essence})">Bequeath nothing — carry on</button>
+  `;
+  showOverlayContent(html);
+}
+function gearSlotPrimaryStat(slot){return {weapon:'atk',armor:'def',talisman:'evasion'}[slot]||'atk';}
+function bequeathGear(heroId,slot,waveBonus){
+  const rec=META.family[heroId];
+  const item=(G&&G.hero&&G.hero.gear)?G.hero.gear[slot]:null;
+  if(!rec||!item){proceedAfterBequeath(rec,META.legacyEssence);return;}
+  item.sagaHistory=item.sagaHistory||[];
+  if(item.sagaHistory.length>=3)item.sagaHistory.shift();
+  item.sagaHistory.push(`Last wielded by ${rec.name}, Trial ${rec.runResult?.wave||'?'}`);
+  const primaryStat=gearSlotPrimaryStat(slot);
+  if(waveBonus>0)item.passiveBonus={stat:primaryStat,value:waveBonus,label:`+${waveBonus} legacy (${rec.name})`};
+  item.forgedBy=heroId; item.forgedByName=rec.name;
+  rec.equippedGear=rec.equippedGear||{};
+  rec.equippedGear[slot]=JSON.parse(JSON.stringify(item));
+  META.family[heroId]=rec;
+  saveMeta();
+  hideOverlay();
+  addLog(`⚒ ${item.name} bequeathed. It will find the next worthy hand.`,'laxiom');
+  proceedAfterBequeath(rec,META.legacyEssence);
+}
+function skipBequeath(heroId,essence){hideOverlay();proceedAfterBequeath(META.family[heroId],essence);}
+function proceedAfterBequeath(rec,essence){
+  const axiomBoons=G?G.boons.filter(b=>b.rarity==='axiom'):[];
+  if(axiomBoons.length>0)showImprintOffer(rec,axiomBoons,essence);
+  else showRetireSummary(rec,essence,null);
+}
+
 function acceptRelic(heroId,relicKey){
   const rec=META.family[heroId];
   if(!rec)return;
@@ -4314,9 +4406,7 @@ function acceptRelic(heroId,relicKey){
   updateMetaHeader();
   hideOverlay();
   try{addLog(`🗿 Relic forged: ${relicKey} — the mastery endures.`,'laxiom');}catch(e){}
-  const axiomBoons=G?G.boons.filter(b=>b.rarity==='axiom'):[];
-  if(axiomBoons.length>0)showImprintOffer(rec,axiomBoons,META.legacyEssence);
-  else showRetireSummary(rec,META.legacyEssence,null);
+  showBequeathChoice(rec,META.legacyEssence);
 }
 
 // --- Breeding actions state ---
@@ -4596,6 +4686,16 @@ function breedHeroes(idA, idB, opts){
     const childRec = breedHeroes(a, b, opts);
     if(!childRec) return;
 
+    const bestParentId=[a,b].reduce((best,pid)=>{
+      const p=META.family[pid], bRec=META.family[best];
+      const pWave=(p?.runResult?.wave||0), bWave=(bRec?.runResult?.wave||0);
+      const pF=isFallenHero(pid), bF=isFallenHero(best);
+      if(bF&&!pF)return pid;
+      if(!bF&&pF)return best;
+      return pWave>=bWave?pid:best;
+    },a);
+    inheritGearFromParent(childRec.id,bestParentId);
+
     consumeBreedUse(a);
     consumeBreedUse(b);
     saveMeta();
@@ -4614,6 +4714,7 @@ function breedHeroes(idA, idB, opts){
         <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC STATS</div>
         ${[['MaxHP',derived.maxHP],['ATK',Math.round(derived.atk)],['DEF',Math.round(derived.def)],['SPD',derived.spd],['Crit',Math.round(derived.critChance*100)+'%']].map(([l,v])=>`<div class="srow"><span class="sl" style="font-size:12px">${l}</span><span class="sv" style="font-size:12px;color:var(--green)">${v}</span></div>`).join('')}
         ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
+        ${childRec.inheritedGear&&Object.values(childRec.inheritedGear).some(Boolean)?`<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;text-align:left"><div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px">INHERITED GEAR</div>${Object.values(childRec.inheritedGear).filter(Boolean).map(item=>`<div style="font-size:10px;color:${rarityColor(item.rarity)};margin:2px 0">⚒ ${item.name}${item.passiveBonus?`<span style="color:var(--green)"> · ${item.passiveBonus.label}</span>`:''}</div>`).join('')}</div>`:''}
       </div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">You choose the next thread — Run as ${childRec.name}</button>
