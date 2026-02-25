@@ -550,7 +550,8 @@ body{
     </div>
     <div style="margin-left:auto;display:flex;gap:14px;align-items:center;font-size:12px;font-family:'Share Tech Mono',monospace">
       <span style="color:var(--gold)">ᛋ <span id="leg-essence">0</span> Essence</span>
-      <span style="color:var(--salvage)">ᚱ <span id="leg-salvage">0</span> Relics</span>
+      <span style="color:var(--salvage)">ᚱ <span id="leg-salvage">0</span> Rune-Shards</span>
+      <span style="color:var(--gold)">🗿 <span id="leg-relics">0</span> Relics</span>
       <button class="btn btn-sm btn-danger" onclick="hideLegacy()">✕ Return to Run</button>
     </div>
   </div>
@@ -629,6 +630,10 @@ const STATUS={
   tempo:{name:'Tempo',icon:'⚡',cls:'sb-tempo',desc:'+3 SPD per stack'},
   regen:{name:'Regen',icon:'💚',cls:'sb-regen',desc:'Heals HP per sec'},
 };
+
+const REALM_TIERS=[];
+const BOSS_SIGNATURES={};
+const CURSED_BARGAINS=[];
 
 // ═══ BOONS ═══
 const BOONS=[
@@ -747,6 +752,12 @@ let META={
   upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
   unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),
   nextHeroId:1,
+  ragnarökTier:0,
+  ragnarökActive:0,
+  eliteRoster:{},
+  relics:0,
+  hasSeenOpening:false,
+  houseName:null,
 };
 
 function saveMeta(){
@@ -760,6 +771,11 @@ function loadMeta(){
     const m=JSON.parse(raw);
     META={...META,...m};
     META.unlockedTraits=new Set(m.unlockedTraits||[]);
+    if(typeof META.ragnarökTier!=='number')META.ragnarökTier=0;
+    if(typeof META.ragnarökActive!=='number')META.ragnarökActive=0;
+    if(!META.eliteRoster||typeof META.eliteRoster!=='object')META.eliteRoster={};
+    if(typeof META.relics!=='number')META.relics=0;
+    if(typeof META.hasSeenOpening!=='boolean')META.hasSeenOpening=false;
   }catch(e){}
 }
 function exportSave(){
@@ -1014,12 +1030,23 @@ function initGame(seedVal,evs,traits,parentRecord){
     retireWaves:[3,5,8,10,12],
     runBoons:[],
     pendingTactic:null,pendingTacticPaid:false,activeTactic:null,tacticOffers:[],waveGoldMult:1,
+    ragnarökActive:META.ragnarökActive||0,
+    tierFlags:{},
+    forgeStallItem:null,
   };
   updateMetaHeader();
   genWave();
+  applyRagnarökTiers(G);
   renderAll();
   updateDifficultyUI();
 }
+
+// Stub — fully implemented in Prompt 6
+function applyRagnarökTiers(G){
+  G.tierFlags={};
+  // Tier effects applied here once RAGNARÖK_TIERS is defined
+}
+
 function startFirstHero(seedVal){
   const rec=mkHeroRecord(genName(0,null,null),0,[],emptyEVs(),[]);
   META.family[rec.id]=rec;
@@ -1790,6 +1817,7 @@ function updateHeader(){
 function updateMetaHeader(){
   const el1=document.getElementById('leg-essence');if(el1)el1.textContent=META.legacyEssence;
   const el2=document.getElementById('leg-salvage');if(el2)el2.textContent=META.salvage;
+  const el3=document.getElementById('leg-relics');if(el3)el3.textContent=META.relics||0;
   const hs=document.getElementById('hdr-salvage');if(hs)hs.textContent=META.salvage;
 }
 
@@ -2498,7 +2526,8 @@ function doResetMeta(){
   if(!confirm('Reset ALL legacy data? This cannot be undone.'))return;
   localStorage.removeItem(META_KEY);
   META={legacyEssence:0,salvage:0,retiredPool:[],fallenLedger:[],family:{},upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
-    unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),nextHeroId:1};
+    unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),nextHeroId:1,
+    ragnarökTier:0,ragnarökActive:0,eliteRoster:{},relics:0,hasSeenOpening:false,houseName:null,aspects:{},scarTokens:{}};
   saveMeta();setLegacyTab('upgrades');updateMetaHeader();
 }
 
@@ -2893,6 +2922,10 @@ function normalizeMeta(){
     META.aspects[a].rank = aspectRankFromXp(META.aspects[a].xp);
   }
   META.relics = Math.max(0, Math.floor(META.relics||0));
+  if(typeof META.ragnarökTier !== 'number') META.ragnarökTier = 0;
+  if(typeof META.ragnarökActive !== 'number') META.ragnarökActive = 0;
+  if(!META.eliteRoster || typeof META.eliteRoster !== 'object') META.eliteRoster = {};
+  if(typeof META.hasSeenOpening !== 'boolean') META.hasSeenOpening = false;
   if(!META.scarTokens || typeof META.scarTokens !== 'object') META.scarTokens = {};
   for(const k of Object.keys(META.scarTokens)){
     META.scarTokens[k] = Math.max(0, Math.floor(META.scarTokens[k]||0));
