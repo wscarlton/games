@@ -712,6 +712,113 @@ const BOONS=[
 {id:'second_wind',      name:'Second Wind',           rarity:'rare',    tags:['Sustain'],            icon:'🌬️',desc:'Once per battle, dropping below 30% HP heals 20% Max HP.', effects:[{t:'passive',k:'secondWind',v:.20}]},
 ];
 
+const GEAR_TEMPLATES={
+  weapon_iron_seax:{slot:'weapon',baseName:'Iron Seax',rarity:'common',loreNote:'A short blade, practical and honest.',affixes:[{stat:'atk',value:8,label:'+8 ATK'}]},
+  weapon_ulfberht:{slot:'weapon',baseName:'Ulfberht Blade',rarity:'uncommon',loreNote:'Forged with runes in the steel.',affixes:[{stat:'atk',value:14,label:'+14 ATK'},{stat:'critChance',value:0.06,label:'+6% Crit'}]},
+  weapon_gram_shard:{slot:'weapon',baseName:"Gram's Shard",rarity:'rare',loreNote:'A fragment of the sword that slew Fáfnir.',affixes:[{stat:'atk',value:18,label:'+18 ATK'},{stat:'critChance',value:0.10,label:'+10% Crit'},{stat:'onCritBleedChance',value:0.20,label:'On Crit: 20% chance — Bleed (3s)'}]},
+  weapon_dainsleif:{slot:'weapon',baseName:'Dáinsleif',rarity:'epic',loreNote:'"Drawn blade never sheathes unsated."',flavor:'It will not rest until it has fed.',affixes:[{stat:'atk',value:24,label:'+24 ATK'},{stat:'critChance',value:0.15,label:'+15% Crit'},{stat:'executionBonus',value:0.22,label:'+22% dmg below 30%'}]},
+  weapon_tyrfing:{slot:'weapon',baseName:'Tyrfing',rarity:'legendary',loreNote:'"Cursed to cause three great evils."',flavor:'Power without mercy.',affixes:[{stat:'atk',value:30,label:'+30 ATK'},{stat:'critChance',value:0.18,label:'+18% Crit'},{stat:'permAtkOnKill',value:4,label:'Kills grant +4 permanent ATK'},{stat:'cursedDamageMult',value:0.08,label:'CURSED: +8% damage taken'}]},
+  weapon_gungnir_echo:{slot:'weapon',baseName:"Gungnir's Echo",rarity:'axiom',loreNote:"The Allfather's spear never misses.",flavor:'True weapon. True path.',affixes:[{stat:'atk',value:20,label:'+20 ATK'},{stat:'defPen',value:0.40,label:'Ignore 40% DEF'},{stat:'accuracySet',value:0.99,label:'Accuracy set to 99%'}]},
+  armor_hide_wrap:{slot:'armor',baseName:'Hide Wrap',rarity:'common',loreNote:'Rough but better than nothing.',affixes:[{stat:'def',value:6,label:'+6 DEF'}]},
+  armor_chain_rings:{slot:'armor',baseName:'Chainmail Rings',rarity:'uncommon',loreNote:'Dvergar-forged links.',affixes:[{stat:'def',value:12,label:'+12 DEF'},{stat:'maxHP',value:20,label:'+20 Max HP'}]},
+  armor_rune_plate:{slot:'armor',baseName:'Rune-Plate',rarity:'rare',loreNote:'Protection-runes burned into the steel.',affixes:[{stat:'def',value:18,label:'+18 DEF'},{stat:'maxHP',value:35,label:'+35 Max HP'},{stat:'shieldOnBattleStart',value:15,label:'Battle start: +15 Shield'}]},
+  armor_ulfr_hide:{slot:'armor',baseName:'Ulfr Hide',rarity:'epic',loreNote:'Skinned from a Jotunheim cave-wolf.',affixes:[{stat:'def',value:22,label:'+22 DEF'},{stat:'maxHP',value:50,label:'+50 Max HP'},{stat:'dotResist',value:0.30,label:'Take 30% less Bleed/Poison'}]},
+  talisman_runestone:{slot:'talisman',baseName:'Carved Runestone',rarity:'common',loreNote:'A ward carved in haste.',affixes:[{stat:'evasion',value:0.04,label:'+4% Evasion'}]},
+  talisman_valknut:{slot:'talisman',baseName:'Valknut Amulet',rarity:'uncommon',loreNote:"Three interlocked triangles. Odin's mark.",affixes:[{stat:'critDmg',value:0.25,label:'+25% Crit Damage'},{stat:'evasion',value:0.04,label:'+4% Evasion'}]},
+  talisman_yggdrasil_leaf:{slot:'talisman',baseName:'Yggdrasil Leaf',rarity:'rare',loreNote:'Fallen from a branch that no longer exists.',affixes:[{stat:'lifesteal',value:0.06,label:'+6% Lifesteal'},{stat:'regenPct',value:0.02,label:'Regen 2% HP/sec'}]},
+  talisman_norns_thread:{slot:'talisman',baseName:"Norn's Thread",rarity:'epic',loreNote:'Spun from the fate of a hero who almost survived.',affixes:[{stat:'critChance',value:0.10,label:'+10% Crit Chance'},{stat:'lifesteal',value:0.08,label:'+8% Lifesteal'},{stat:'evasion',value:0.05,label:'+5% Evasion'}]},
+};
+
+function generateGearItem(templateId,template,wave){
+  return {id:templateId+'_'+ri(10000,99999),templateId,name:template.baseName,slot:template.slot,rarity:template.rarity,flavor:template.flavor||null,loreNote:template.loreNote||null,affixes:template.affixes.map(a=>({...a})),notches:0,sundered:false,sagaHistory:[],forgedBy:null,forgedByName:null,passiveBonus:null};
+}
+function getGearEffectiveAffixes(gear){
+  if(!gear)return[];
+  const mult=gear.sundered?0.70:1.0;
+  return gear.affixes.map(affix=>({...affix,effectiveValue:typeof affix.value==='number'?affix.value*mult:affix.value,label:gear.sundered?`${affix.label} ⚠SUNDERED`:affix.label}));
+}
+function gearCost(item){
+  const base={common:8,uncommon:14,rare:22,epic:35,legendary:55,axiom:80};
+  return (base[item.rarity]||15)+Math.floor((item.notches||0)*-1.5);
+}
+function rarityColor(rarity){
+  const map={common:'#6060a0',uncommon:'#50a050',rare:'#6060d8',epic:'#a040c0',legendary:'var(--gold)',axiom:'#d050ff'};
+  return map[rarity]||'#888';
+}
+function rarityBorderColor(rarity){
+  const map={common:'#3a3a5a',uncommon:'#2a5a2a',rare:'#2a2a7a',epic:'#5a2a7a',legendary:'#7a5a00',axiom:'#7a20b0'};
+  return map[rarity]||'var(--border2)';
+}
+function genForgeStallItem(wave){
+  const rw={common:40,uncommon:25,rare:15,epic:8,legendary:3,axiom:1};
+  const boost=Math.min(wave,10);
+  rw.common=Math.max(10,rw.common-boost*2);
+  rw.rare+=boost;
+  rw.epic+=Math.floor(boost/2);
+  const templates=Object.entries(GEAR_TEMPLATES);
+  const picked=rwgt(templates,([id,t])=>rw[t.rarity]||1);
+  if(!picked)return null;
+  return generateGearItem(picked[0],picked[1],wave);
+}
+function hasSunderedGear(){
+  if(!G||!G.hero||!G.hero.gear)return false;
+  return Object.values(G.hero.gear).some(item=>item&&item.sundered);
+}
+
+const NOTCH_HISTORY_TEMPLATES=[
+  wave=>`Bloodied at Trial ${wave}`,
+  wave=>`Scarred in the ${wave<=3?'Midgard':wave<=6?'Helheim':wave<=9?'Jotunheim':'Muspelheim'} crossing`,
+  wave=>`Worn thin at Trial ${wave}`,
+  wave=>`Notched by the battle at Trial ${wave}`,
+];
+function tryAddNotch(gear,wave){
+  if(!gear||gear.sundered)return;
+  if(rng()>0.15)return;
+  gear.notches=Math.min(5,(gear.notches||0)+1);
+  if(gear.sagaHistory&&gear.sagaHistory.length<3)gear.sagaHistory.push(rpick(NOTCH_HISTORY_TEMPLATES)(wave));
+  if(gear.notches>=5&&!gear.sundered){
+    gear.sundered=true;
+    addLog(`⚠ ${gear.name} is Sundered. Visit the Forge Stall to recondition it.`,'lstatus');
+  }
+}
+function addNotchesToHeroGear(wave){
+  if(!G||!G.hero||!G.hero.gear)return;
+  Object.values(G.hero.gear).forEach(item=>{if(item)tryAddNotch(item,wave);});
+}
+function reconditionGear(slot){
+  if(!G||!G.hero||!G.hero.gear)return;
+  const item=G.hero.gear[slot];
+  if(!item||!item.sundered)return;
+  const cost=10+((META.upgrades&&META.upgrades.evCap)||0);
+  if(META.salvage<cost){addLog(`ᚱ ${cost} Rune-Shards required to recondition ${item.name}.`,'lstatus');return;}
+  META.salvage-=cost;
+  item.notches=0; item.sundered=false;
+  if(rng()<0.20+((META.upgrades&&META.upgrades.evCap)||0)*0.05){
+    const numericalAffixes=item.affixes.filter(a=>typeof a.value==='number'&&a.value>0);
+    if(numericalAffixes.length){
+      const target=rpick(numericalAffixes);
+      const improvement=Math.max(1,Math.floor(target.value*0.15));
+      target.value+=improvement;
+      target.label+=` (+${improvement} reconditioned)`;
+      addLog(`⚒ ${item.name} reconditioned! One affix improved.`,'laxiom');
+    }else addLog(`⚒ ${item.name} reconditioned.`,'lstatus');
+  }else addLog(`⚒ ${item.name} reconditioned.`,'lstatus');
+  item.sagaHistory=item.sagaHistory||[];
+  item.sagaHistory.push(`Reforged at Trial ${G.wave}`);
+  if(item.sagaHistory.length>3)item.sagaHistory.shift();
+  saveMeta(); updateMetaHeader(); renderAll();
+}
+function buyGear(){
+  const item=G.forgeStallItem;
+  if(!item)return;
+  const cost=gearCost(item);
+  if(G.gold<cost)return;
+  G.gold-=cost;
+  G.hero.gear[item.slot]=item;
+  G.forgeStallItem=null;
+  addLog(`⚒ Equipped: ${item.name}`,'lheal');
+  renderAll();
+}
 const MYTH_LINES = {
   crit_first: [
     'The Norns smiled.',
@@ -1498,7 +1605,9 @@ function newHero(evs,traits,record){
     evs:{...evs},
     traits:[...traits],
     record:record||null,
+    gear:{weapon:null,armor:null,talisman:null},
   };
+  if(record&&record.inheritedGear)Object.assign(h.gear,record.inheritedGear);
   applyGeneticTraitStats(h);
   return h;
 }
@@ -1728,6 +1837,39 @@ function effectiveStats(){
   const s={atk:h.atk+(h.permStats.atk||0),def:h.def,spd:h.spd,critChance:h.critChance,critDmg:h.critDmg,lifesteal:h.lifesteal,evasion:h.evasion,accuracy:h.accuracy};
   const il=passive('axiomIronLaw');if(il)s.atk+=Math.floor(s.def*il);
   if(hasP('axiomKinetic'))s.critChance+=h.spd*.002;
+
+  h.cursedMult=1;
+  if(h.gear){
+    Object.values(h.gear).forEach(item=>{
+      if(!item)return;
+      const affixes=getGearEffectiveAffixes(item);
+      affixes.forEach(affix=>{
+        const v=affix.effectiveValue;
+        if(typeof v!=='number')return;
+        if(affix.stat==='atk')s.atk+=v;
+        if(affix.stat==='def')s.def+=v;
+        if(affix.stat==='spd')s.spd+=v;
+        if(affix.stat==='critChance')s.critChance=Math.min(0.9,s.critChance+v);
+        if(affix.stat==='critDmg')s.critDmg+=v;
+        if(affix.stat==='evasion')s.evasion=Math.min(0.6,s.evasion+v);
+        if(affix.stat==='lifesteal')s.lifesteal=Math.min(0.4,s.lifesteal+v);
+        if(affix.stat==='accuracySet')s.accuracy=v;
+        if(affix.stat==='defPen')s._gearDefPen=(s._gearDefPen||0)+v;
+        if(affix.stat==='executionBonus')s._gearExecutionBonus=(s._gearExecutionBonus||0)+v;
+        if(affix.stat==='regenPct')s._gearRegenPct=(s._gearRegenPct||0)+v;
+        if(affix.stat==='dotResist')s._gearDotResist=(s._gearDotResist||0)+v;
+        if(affix.stat==='cursedDamageMult')h.cursedMult=Math.max(h.cursedMult||1,1+v);
+      });
+      if(item.passiveBonus){
+        const pb=item.passiveBonus;
+        if(pb.stat==='atk'&&typeof pb.value==='number')s.atk+=pb.value;
+        if(pb.stat==='def'&&typeof pb.value==='number')s.def+=pb.value;
+      }
+    });
+    s.critChance=Math.min(0.9,Math.max(0,s.critChance));
+    s.evasion=Math.min(0.6,Math.max(0,s.evasion));
+    s.lifesteal=Math.min(0.4,Math.max(0,s.lifesteal));
+  }
   return s;
 }
 
@@ -1912,6 +2054,14 @@ function applyBattleStartBoons(){
     if(ef.t==='onBattleStart'&&ef.ef==='shield')addShieldToUnit(G.hero,ef.amt);
   }
   if(hasTrait('aegis'))addShieldToUnit(G.hero,8);
+  if(G.hero.gear){
+    Object.values(G.hero.gear).forEach(item=>{
+      if(!item)return;
+      getGearEffectiveAffixes(item).forEach(affix=>{
+        if(affix.stat==='shieldOnBattleStart'&&typeof affix.effectiveValue==='number')addShieldToUnit(G.hero,Math.floor(affix.effectiveValue));
+      });
+    });
+  }
 }
 
 
@@ -1994,6 +2144,8 @@ function combatTick(){
       const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
       healHero(Math.floor(G.hero.maxHP*ren*(1+regenBonus)),'regen');
     }
+    const ges=effectiveStats();
+    if(ges._gearRegenPct)healHero(Math.floor(G.hero.maxHP*ges._gearRegenPct),'regen');
   }
   if(checkEnd())return;
 
@@ -2035,14 +2187,29 @@ function doHeroAtk(){
   let effDef=target.def;
   if(hasP('necroticPoison')&&target.statuses.poison)effDef=Math.max(0,effDef-target.statuses.poison.stacks*passive('necroticPoison'));
   const dp=passive('defpen');if(dp)effDef=Math.floor(effDef*(1-dp));
+  const gearDp=es._gearDefPen||0;if(gearDp>0)effDef=Math.floor(effDef*(1-gearDp));
   if(crit){const cdp=passive('critDefpen');if(cdp)effDef=Math.floor(effDef*(1-cdp));}
 
   const exec=passive('executioner');if(exec&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*(1+exec));
+  const gearExec=es._gearExecutionBonus||0;if(gearExec&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*(1+gearExec));
   if(hasTrait('executioner_b')&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*1.15);
   if(target.statuses.vulnerable)dmg=Math.floor(dmg*1.30);
 
   dmg=Math.max(1,dmg-effDef);
   const actual=dealToEnemy(target,dmg);
+
+  if(G.hero.gear){
+    Object.values(G.hero.gear).forEach(item=>{
+      if(!item)return;
+      getGearEffectiveAffixes(item).forEach(affix=>{
+        if(affix.stat==='onCritBleedChance'&&crit&&!target.dead){if(rng()<affix.effectiveValue)applyStatus(target,'bleed',1,3);}
+        if(affix.stat==='permAtkOnKill'&&target.dead){
+          G.hero.permStats.atk=(G.hero.permStats.atk||0)+Math.floor(affix.effectiveValue);
+          addLog(`  ⚔ Tyrfing feeds. +${Math.floor(affix.effectiveValue)} permanent ATK.`,'laxiom');
+        }
+      });
+    });
+  }
 
   if(crit){
     addLog(`  ⚔ CRIT! ${target.displayName||target.name} ← ${actual}`,'lcrit');
@@ -2247,7 +2414,7 @@ function tickStatuses(unit,isHero){
       if(!isHero&&G.tierFlags&&G.tierFlags.dotDamageBonus){
         d=Math.floor(d*(1+G.tierFlags.dotDamageBonus));
       }
-      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);}
+      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));}
       if(isHero)heroDmg(d,null,'dot');
       else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
     }
@@ -2256,7 +2423,7 @@ function tickStatuses(unit,isHero){
       if(!isHero&&G.tierFlags&&G.tierFlags.dotDamageBonus){
         d=Math.floor(d*(1+G.tierFlags.dotDamageBonus));
       }
-      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);}
+      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));}
       if(isHero)heroDmg(d,null,'dot');
       else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
     }
@@ -2292,6 +2459,8 @@ function checkEnd(){
     genDraft();
     const waveEndLine=MYTH_LINES.waveEnd[G.wave];
     if(waveEndLine) NarrationEngine.fire('waveEnd',waveEndLine,'lstatus');
+    addNotchesToHeroGear(G.wave);
+    G.forgeStallItem=genForgeStallItem(G.wave);
     G.phase='REWARDS';
     renderAll();
     return true;
@@ -2638,6 +2807,17 @@ function renderHero(){
     G.boons.forEach(b=>html+=`<div class="inv-item ii-${b.rarity}" title="${b.name}: ${b.desc}">${b.icon}</div>`);
     html+=`</div>`;
   }
+  const gearSlots=G.hero.gear?Object.entries(G.hero.gear).filter(([slot,item])=>item):[];
+  if(gearSlots.length){
+    html+=`<div class="sec-title" style="margin-top:7px">Gear</div><div style="display:flex;flex-direction:column;gap:3px">`;
+    gearSlots.forEach(([slot,item])=>{
+      const sunTag=item.sundered?' <span style="color:var(--amber);font-size:9px">⚠SUNDERED</span>':'';
+      const notchPips=item.notches>0?('<span style="font-size:9px;color:var(--txt3)"> '+'◆'.repeat(item.notches)+'</span>'):'';
+      const tt=`${item.affixes.map(a=>a.label).join(', ')}${item.loreNote?'\n'+item.loreNote:''}`;
+      html+=`<div title="${tt}" style="font-size:10px;color:${rarityColor(item.rarity)}">${slot.toUpperCase()}: ${item.name}${sunTag}${notchPips}</div>`;
+    });
+    html+=`</div>`;
+  }
   document.getElementById('hero-content').innerHTML=html;
 }
 
@@ -2829,50 +3009,75 @@ function renderRewards(){
     {id:'crit',icon:'🎯',name:'+CRIT',cost:20,desc:'+6% Crit'},
   ];
   const hpPct=Math.max(0,G.hero.hp/G.hero.maxHP*100);
+  const showForge=!!(G.forgeStallItem||hasSunderedGear());
   let h=`<div class="slide-in" style="padding:16px">
     <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:12px">🏆 Wave ${G.wave} Complete!</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div>
-        <div class="sec-title">ᛋ Shop (${G.gold} gold)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-          ${shop.map(s=>`<div class="shop-btn${G.gold<s.cost?' sb-disabled':''}" onclick="shopBuy('${s.id}')" title="${s.desc}">
-            <div class="sb-name">${s.icon} ${s.name}</div><div class="sb-cost">ᛋ${s.cost}</div><div class="sb-desc">${s.desc}</div>
-          </div>`).join('')}
-        </div>
-        ${(()=>{
-          if(!(G.tierFlags&&G.tierFlags.cursedBargainInShop&&!G.cursedBargainUsedThisWave))return '';
-          const bargain=G._waveBargainOffer||(G._waveBargainOffer=rpick(CURSED_BARGAINS));
-          return `
-            <div style="margin-top:10px;border-top:1px solid rgba(220,60,20,.3);padding-top:10px">
-              <div class="sec-title" style="color:var(--amber)">⚠ The Norns Offer a Bargain</div>
-              <div style="background:#120a06;border:1px solid rgba(220,60,20,.4);border-radius:5px;padding:10px;margin:4px 0">
-                <div style="font-weight:700;color:var(--amber);margin-bottom:3px">${bargain.icon} ${bargain.name}</div>
-                <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">${bargain.desc}</div>
-                <button class="btn btn-sm btn-danger${(!bargain.isFree&&G.gold<bargain.cost)?' sb-disabled':''}"
-                        onclick="takeCursedBargain('${bargain.id}')">
-                  Accept${bargain.isFree?'':` (ᛋ${bargain.cost})`}
-                </button>
-              </div>
-            </div>
-          `;
-        })()}
-        <div style="margin-top:8px;font-size:10px;color:var(--txt3)">
-          HP: <span style="color:${hpPct>60?'var(--green)':hpPct>30?'var(--amber)':'var(--red)'}">${G.hero.hp}/${G.hero.maxHP} (${Math.round(hpPct)}%)</span>
-        </div>
-      </div>
-      <div>
-        <div class="sec-title">📦 Draft (pick 1)</div>
-        ${G.draft.length?G.draft.map(b=>`
-          <div class="boon-card rc-${b.rarity}" onclick="pickBoon('${b.id}')" style="margin-bottom:6px">
-            <div class="boon-rar rar-${b.rarity}">${b.rarity.toUpperCase()}</div>
-            <div><span style="font-size:14px">${b.icon}</span> <span class="boon-name">${b.name}</span></div>
-            <div class="boon-desc" style="margin-top:3px">${b.desc}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">${b.tags.map(t=>`<span class="tag t-${t}">${t}</span>`).join('')}</div>
-          </div>`).join(''):`<div style="color:var(--txt3);font-size:12px">No more boons!</div>`}
-        ${G.draft.length?`<button class="btn btn-sm btn-ghost" style="width:100%;margin-top:4px" onclick="doReroll()">🔄 Reroll (ᛋ${G.rerollCost})${G.gold<G.rerollCost?' — need gold':''}</button>`:''}
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr${showForge?' 1fr':''};gap:14px">`;
+
+  h+=`<div>
+    <div class="sec-title">ᛋ Shop (${G.gold} gold)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+      ${shop.map(s=>`<div class="shop-btn${G.gold<s.cost?' sb-disabled':''}" onclick="shopBuy('${s.id}')" title="${s.desc}">
+        <div class="sb-name">${s.icon} ${s.name}</div><div class="sb-cost">ᛋ${s.cost}</div><div class="sb-desc">${s.desc}</div>
+      </div>`).join('')}
     </div>
+    ${(()=>{
+      if(!(G.tierFlags&&G.tierFlags.cursedBargainInShop&&!G.cursedBargainUsedThisWave))return '';
+      const bargain=G._waveBargainOffer||(G._waveBargainOffer=rpick(CURSED_BARGAINS));
+      return `
+        <div style="margin-top:10px;border-top:1px solid rgba(220,60,20,.3);padding-top:10px">
+          <div class="sec-title" style="color:var(--amber)">⚠ The Norns Offer a Bargain</div>
+          <div style="background:#120a06;border:1px solid rgba(220,60,20,.4);border-radius:5px;padding:10px;margin:4px 0">
+            <div style="font-weight:700;color:var(--amber);margin-bottom:3px">${bargain.icon} ${bargain.name}</div>
+            <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">${bargain.desc}</div>
+            <button class="btn btn-sm btn-danger${(!bargain.isFree&&G.gold<bargain.cost)?' sb-disabled':''}" onclick="takeCursedBargain('${bargain.id}')">Accept${bargain.isFree?'':` (ᛋ${bargain.cost})`}</button>
+          </div>
+        </div>
+      `;
+    })()}
+    <div style="margin-top:8px;font-size:10px;color:var(--txt3)">HP: <span style="color:${hpPct>60?'var(--green)':hpPct>30?'var(--amber)':'var(--red)'}">${G.hero.hp}/${G.hero.maxHP} (${Math.round(hpPct)}%)</span></div>
   </div>`;
+
+  h+=`<div>
+    <div class="sec-title">📦 Draft (pick 1)</div>
+    ${G.draft.length?G.draft.map(b=>`
+      <div class="boon-card rc-${b.rarity}" onclick="pickBoon('${b.id}')" style="margin-bottom:6px">
+        <div class="boon-rar rar-${b.rarity}">${b.rarity.toUpperCase()}</div>
+        <div><span style="font-size:14px">${b.icon}</span> <span class="boon-name">${b.name}</span></div>
+        <div class="boon-desc" style="margin-top:3px">${b.desc}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">${b.tags.map(t=>`<span class="tag t-${t}">${t}</span>`).join('')}</div>
+      </div>`).join(''):`<div style="color:var(--txt3);font-size:12px">No more boons!</div>`}
+    ${G.draft.length?`<button class="btn btn-sm btn-ghost" style="width:100%;margin-top:4px" onclick="doReroll()">🔄 Reroll (ᛋ${G.rerollCost})${G.gold<G.rerollCost?' — need gold':''}</button>`:''}
+  </div>`;
+
+  if(showForge){
+    h+=`<div>
+      <div class="sec-title">⚒ Forge Stall</div>
+      ${G.forgeStallItem?`
+        <div style="background:var(--bg2);border:1px solid ${rarityBorderColor(G.forgeStallItem.rarity)};border-radius:5px;padding:10px;margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;color:${rarityColor(G.forgeStallItem.rarity)};margin-bottom:3px">${G.forgeStallItem.rarity.toUpperCase()}</div>
+          <div style="font-weight:700;font-size:12px">${G.forgeStallItem.name}</div>
+          ${G.forgeStallItem.loreNote?`<div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:2px">${G.forgeStallItem.loreNote}</div>`:''}
+          <div style="font-size:10px;color:var(--txt2);margin-top:4px">${G.forgeStallItem.affixes.map(a=>a.label).join(' · ')}</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:3px">Slot: ${G.forgeStallItem.slot.toUpperCase()}${G.hero.gear&&G.hero.gear[G.forgeStallItem.slot]?` · Replaces: ${G.hero.gear[G.forgeStallItem.slot].name}`:' · Slot empty'}</div>
+          <button class="btn btn-sm btn-amber${G.gold<gearCost(G.forgeStallItem)?' sb-disabled':''}" style="margin-top:8px;width:100%" onclick="buyGear()">Equip (ᛋ${gearCost(G.forgeStallItem)})</button>
+        </div>
+      `:'<div style="font-size:11px;color:var(--txt3)">Nothing forged this trial.</div>'}
+      ${hasSunderedGear()?`
+        <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+          <div style="font-size:10px;color:var(--amber);font-weight:700;margin-bottom:4px">⚒ Recondition</div>
+          ${Object.entries(G.hero.gear||{}).filter(([s,item])=>item?.sundered).map(([slot,item])=>`
+            <div style="margin:4px 0;font-size:11px;display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--amber)">${item.name}</span>
+              <button class="btn btn-sm btn-salvage${META.salvage<10?' sb-disabled':''}" onclick="reconditionGear('${slot}')">ᚱ10</button>
+            </div>
+          `).join('')}
+        </div>
+      `:''}
+    </div>`;
+  }
+
+  h+=`</div></div>`;
   return h;
 }
 
