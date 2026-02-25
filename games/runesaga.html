@@ -743,6 +743,31 @@ function getGearEffectiveAffixes(gear){
   const mult=gear.sundered?0.70:1.0;
   return gear.affixes.map(affix=>({...affix,effectiveValue:typeof affix.value==='number'?affix.value*mult:affix.value,label:gear.sundered?`${affix.label} ⚠SUNDERED`:affix.label}));
 }
+
+function gearMaxHPAffixValue(item){
+  if(!item)return 0;
+  return getGearEffectiveAffixes(item).reduce((sum,affix)=>{
+    if(affix.stat==='maxHP'&&typeof affix.effectiveValue==='number')return sum+affix.effectiveValue;
+    return sum;
+  },0);
+}
+function applyGearMaxHPDelta(hero,oldItem,newItem){
+  if(!hero)return;
+  const oldMaxHP=gearMaxHPAffixValue(oldItem);
+  const newMaxHP=gearMaxHPAffixValue(newItem);
+  const delta=Math.floor(newMaxHP-oldMaxHP);
+  if(delta===0)return;
+  hero.maxHP=Math.max(10,hero.maxHP+delta);
+  if(delta>0)hero.hp=Math.min(hero.maxHP,hero.hp+delta);
+  else hero.hp=Math.min(hero.hp,hero.maxHP);
+}
+function applyAllGearMaxHP(hero){
+  if(!hero||!hero.gear)return;
+  const total=Object.values(hero.gear).reduce((sum,item)=>sum+gearMaxHPAffixValue(item),0);
+  if(total<=0)return;
+  hero.maxHP=Math.max(10,hero.maxHP+Math.floor(total));
+  hero.hp=Math.min(hero.maxHP,hero.hp+Math.floor(total));
+}
 function gearCost(item){
   const base={common:8,uncommon:14,rare:22,epic:35,legendary:55,axiom:80};
   return (base[item.rarity]||15)+Math.floor((item.notches||0)*-1.5);
@@ -804,8 +829,11 @@ function reconditionGear(slot){
     if(numericalAffixes.length){
       const target=rpick(numericalAffixes);
       const improvement=Math.max(1,Math.floor(target.value*0.15));
+      const oldMaxHP=gearMaxHPAffixValue(item);
       target.value+=improvement;
       target.label+=` (+${improvement} reconditioned)`;
+      const newMaxHP=gearMaxHPAffixValue(item);
+      if(newMaxHP!==oldMaxHP){const before={...item,affixes:item.affixes.map(a=>({...a}))};before.affixes=before.affixes.map(a=>a.stat==='maxHP'&&typeof a.value==='number'?{...a,value:a.value-improvement}:a);applyGearMaxHPDelta(G.hero,before,item);}
       addLog(`⚒ ${item.name} reconditioned! One affix improved.`,'laxiom');
     }else addLog(`⚒ ${item.name} reconditioned.`,'lstatus');
   }else addLog(`⚒ ${item.name} reconditioned.`,'lstatus');
@@ -820,7 +848,9 @@ function buyGear(){
   const cost=gearCost(item);
   if(G.gold<cost)return;
   G.gold-=cost;
+  const oldGear=G.hero.gear[item.slot];
   G.hero.gear[item.slot]=item;
+  applyGearMaxHPDelta(G.hero,oldGear,item);
   G.forgeStallItem=null;
   addLog(`⚒ Equipped: ${item.name}`,'lheal');
   renderAll();
@@ -1619,6 +1649,7 @@ function newHero(evs,traits,record){
   };
   if(record&&record.inheritedGear)Object.assign(h.gear,record.inheritedGear);
   applyGeneticTraitStats(h);
+  applyAllGearMaxHP(h);
   return h;
 }
 function applyGeneticTraitStats(h){
@@ -1875,6 +1906,7 @@ function effectiveStats(){
         if(affix.stat==='lifesteal')s.lifesteal=Math.min(0.4,s.lifesteal+v);
         if(affix.stat==='accuracySet')s.accuracy=v;
         if(affix.stat==='defPen')s._gearDefPen=(s._gearDefPen||0)+v;
+        if(affix.stat==='maxHP')s._gearMaxHP=(s._gearMaxHP||0)+v;
         if(affix.stat==='executionBonus')s._gearExecutionBonus=(s._gearExecutionBonus||0)+v;
         if(affix.stat==='regenPct')s._gearRegenPct=(s._gearRegenPct||0)+v;
         if(affix.stat==='dotResist')s._gearDotResist=(s._gearDotResist||0)+v;
