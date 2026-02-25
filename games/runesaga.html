@@ -612,17 +612,17 @@ function emptyEVs(){return{hp:0,atk:0,def:0,spd:0,crit:0,eva:0,acc:0,ls:0};}
 // ═══ GENETIC TRAITS ═══
 const GTRAITS={
   serrated:{name:'Serrated',icon:'🗡',desc:'On hit: 22% chance to apply 1 Bleed (2s).',color:'#ff7070'},
-  aegis:{name:'Aegis Born',icon:'🛡',desc:'Battle start: gain 8 Shield.',color:'#80a8ff'},
-  skirmisher:{name:'Skirmisher',icon:'💨',desc:'+8 SPD when below 50% HP.',color:'#80d0ff'},
+  aegis:{name:'Skjald-Born',icon:'🛡',desc:'Battle start: gain 8 Shield.',color:'#80a8ff'},
+  skirmisher:{name:'Raider-Born',icon:'💨',desc:'+8 SPD when below 50% HP.',color:'#80d0ff'},
   venomkiss:{name:'Venomkiss',icon:'☠',desc:'Poison ticks deal +1 extra damage.',color:'#70d870'},
-  gambler:{name:'Gambler',icon:'🎲',desc:'+5% Crit Chance, −2 DEF.',color:'#e8c048'},
+  gambler:{name:'Fate-Bold',icon:'🎲',desc:'+5% Crit Chance, −2 DEF.',color:'#e8c048'},
   spite:{name:'Spite',icon:'🌵',desc:'Reflect 8% of damage taken as true dmg.',color:'#d0d060'},
   ironblood:{name:'Iron Blood',icon:'⚙',desc:'+5 DEF.',color:'#90a8c8'},
   swift_born:{name:'Swift Born',icon:'⚡',desc:'+8 SPD.',color:'#c080ff'},
-  lucky:{name:'Lucky Strike',icon:'🍀',desc:'+4% Crit Chance.',color:'#60e090'},
-  resilient:{name:'Resilient',icon:'❤',desc:'+25 Max HP.',color:'#80e080'},
-  predatory:{name:'Predatory',icon:'🐆',desc:'+3 ATK when below 50% HP.',color:'#f08040'},
-  vampiric_b:{name:'Vampiric Blood',icon:'🧛',desc:'+3% Lifesteal.',color:'#d070d8'},
+  lucky:{name:'Fortune-Touched',icon:'🍀',desc:'+4% Crit Chance.',color:'#60e090'},
+  resilient:{name:'Hardened',icon:'❤',desc:'+25 Max HP.',color:'#80e080'},
+  predatory:{name:'Wolf-Blood',icon:'🐆',desc:'+3 ATK when below 50% HP.',color:'#f08040'},
+  vampiric_b:{name:'Wound-Drinker Blood',icon:'🧛',desc:'+3% Lifesteal.',color:'#d070d8'},
   tenacious:{name:'Tenacious',icon:'🔰',desc:'Below 25% HP: take 40% less damage.',color:'#60b8ff'},
   executioner_b:{name:"Executor's Blood",icon:'💀',desc:'+15% dmg to enemies below 30% HP.',color:'#ff5050'},
 };
@@ -650,71 +650,71 @@ const BOONS=[
   {id:'iron_skin',name:'Iron Skin',rarity:'common',tags:['Bulwark'],icon:'🛡',desc:'+22 Defense.',effects:[{t:'stat',s:'def',v:22}]},
   {id:'battle_fury',name:'Battle Fury',rarity:'common',tags:['Crit'],icon:'⚔',desc:'+14 Attack.',effects:[{t:'stat',s:'atk',v:14}]},
   {id:'thick_blood',name:'Thick Blood',rarity:'common',tags:['Sustain'],icon:'❤',desc:'+65 Max HP.',effects:[{t:'stat',s:'maxHP',v:65},{t:'stat',s:'hp',v:65}]},
-  {id:'sharp_edge',name:'Sharp Edge',rarity:'common',tags:['Crit'],icon:'🗡',desc:'+9% Crit Chance.',effects:[{t:'stat',s:'critChance',v:.09}]},
-  {id:'swift_strikes',name:'Swift Strikes',rarity:'common',tags:['Tempo'],icon:'💨',desc:'+18 Speed.',effects:[{t:'stat',s:'spd',v:18}]},
+  {id:'sharp_edge',name:'Keen Edge',rarity:'common',tags:['Crit'],icon:'🗡',desc:'+9% Crit Chance.',effects:[{t:'stat',s:'critChance',v:.09}]},
+  {id:'swift_strikes',name:'Stormblows',rarity:'common',tags:['Tempo'],icon:'💨',desc:'+18 Speed.',effects:[{t:'stat',s:'spd',v:18}]},
   {id:'blood_sense',name:'Blood Sense',rarity:'common',tags:['Bleed'],icon:'🩸',desc:'Attacks apply 1 Bleed (3s).',effects:[{t:'onHit',ef:'status',st:'bleed',sk:1,dur:3}]},
-  {id:'toxic_touch',name:'Toxic Touch',rarity:'common',tags:['Poison'],icon:'☠',desc:'Attacks apply 1 Poison (4s).',effects:[{t:'onHit',ef:'status',st:'poison',sk:1,dur:4}]},
-  {id:'vampiric',name:'Vampiric',rarity:'common',tags:['Sustain'],icon:'🧛',desc:'+8% Lifesteal.',effects:[{t:'stat',s:'lifesteal',v:.08}]},
+  {id:'toxic_touch',name:'Eitr-Touch',rarity:'common',tags:['Poison'],icon:'☠',desc:'Attacks apply 1 Poison (4s).',effects:[{t:'onHit',ef:'status',st:'poison',sk:1,dur:4}]},
+  {id:'vampiric',name:"Draugr's Thirst",rarity:'common',tags:['Sustain'],icon:'🩸',desc:'+8% Lifesteal.',effects:[{t:'stat',s:'lifesteal',v:.08}]},
   {id:'bulwark_start',name:'Bulwark',rarity:'common',tags:['Bulwark','Shield'],icon:'🔰',desc:'Start each battle with 35 Shield.',effects:[{t:'onBattleStart',ef:'shield',amt:35}]},
-  {id:'dodge_step',name:'Dodge Step',rarity:'common',tags:['Tempo'],icon:'💃',desc:'+9% Evasion.',effects:[{t:'stat',s:'evasion',v:.09}]},
-  {id:'steady_aim',name:'Steady Aim',rarity:'common',tags:['Crit'],icon:'🎯',desc:'+25% Crit Damage.',effects:[{t:'stat',s:'critDmg',v:.25}]},
+  {id:'dodge_step',name:'Skirmish-Step',rarity:'common',tags:['Tempo'],icon:'💃',desc:'+9% Evasion.',effects:[{t:'stat',s:'evasion',v:.09}]},
+  {id:'steady_aim',name:"Ullr's Eye",rarity:'common',tags:['Crit'],icon:'🎯',desc:'+25% Crit Damage.',effects:[{t:'stat',s:'critDmg',v:.25}]},
   {id:'reinforced',name:'Reinforced',rarity:'common',tags:['Bulwark'],icon:'🏰',desc:'+12 Defense, +20 Max HP.',effects:[{t:'stat',s:'def',v:12},{t:'stat',s:'maxHP',v:20},{t:'stat',s:'hp',v:20}]},
   {id:'honed_reflex',name:'Honed Reflex',rarity:'common',tags:['Tempo','Crit'],icon:'⚡',desc:'+12 Speed, +5% Crit Chance.',effects:[{t:'stat',s:'spd',v:12},{t:'stat',s:'critChance',v:.05}]},
 
   {id:'hemorrhage',name:'Hemorrhage',rarity:'uncommon',tags:['Bleed'],icon:'💢',desc:'Bleed deals 70% more damage.',effects:[{t:'passive',k:'bleedMult',v:1.70}]},
-  {id:'virulent',name:'Virulent',rarity:'uncommon',tags:['Poison'],icon:'🧪',desc:'Poison deals 70% more damage.',effects:[{t:'passive',k:'poisonMult',v:1.70}]},
+  {id:'virulent',name:'Festering',rarity:'uncommon',tags:['Poison'],icon:'🧪',desc:'Poison deals 70% more damage.',effects:[{t:'passive',k:'poisonMult',v:1.70}]},
   {id:'shield_bash',name:'Shield Bash',rarity:'uncommon',tags:['Bulwark','Thorns'],icon:'💥',desc:'When Shield breaks, deal 22 true dmg.',effects:[{t:'passive',k:'shieldBash',v:22}]},
-  {id:'crit_surge',name:'Critical Surge',rarity:'uncommon',tags:['Crit'],icon:'⚡',desc:'Crits apply Vulnerable (3s) to enemy.',effects:[{t:'onCrit',ef:'statusEnemy',st:'vulnerable',sk:1,dur:3}]},
-  {id:'tempo_rise',name:'Tempo Rise',rarity:'uncommon',tags:['Tempo'],icon:'🌀',desc:'Each kill grants +1 Tempo stack.',effects:[{t:'onKill',ef:'status',st:'tempo',sk:1,dur:9999}]},
+  {id:'crit_surge',name:'Wound-Open',rarity:'uncommon',tags:['Crit'],icon:'⚡',desc:'Crits apply Vulnerable (3s) to enemy.',effects:[{t:'onCrit',ef:'statusEnemy',st:'vulnerable',sk:1,dur:3}]},
+  {id:'tempo_rise',name:'Battle-Rise',rarity:'uncommon',tags:['Tempo'],icon:'🌀',desc:'Each kill grants +1 Tempo stack.',effects:[{t:'onKill',ef:'status',st:'tempo',sk:1,dur:9999}]},
   {id:'executioner',name:'Executioner',rarity:'uncommon',tags:['Execute'],icon:'💀',desc:'+28% damage to enemies below 30% HP.',effects:[{t:'passive',k:'executioner',v:.28}]},
   {id:'thorns',name:'Thorns',rarity:'uncommon',tags:['Thorns'],icon:'🌵',desc:'Reflect 22% of damage taken.',effects:[{t:'passive',k:'thorns',v:.22}]},
   {id:'battle_trance',name:'Battle Trance',rarity:'uncommon',tags:['Tempo'],icon:'🔁',desc:'Every 5th attack deals +90% bonus dmg.',effects:[{t:'passive',k:'trance',v:5}]},
   {id:'twin_strike',name:'Twin Strike',rarity:'uncommon',tags:['Tempo','Crit'],icon:'⚔',desc:'22% chance to attack twice per swing.',effects:[{t:'passive',k:'twin',v:.22}]},
   {id:'bleed_weak',name:'Bleeding Edge',rarity:'uncommon',tags:['Bleed'],icon:'🗡',desc:'Bleed also applies Weak to target.',effects:[{t:'passive',k:'bleedWeak',v:true}]},
-  {id:'poison_slow',name:'Numbing Toxin',rarity:'uncommon',tags:['Poison'],icon:'🐌',desc:'Applying Poison also Slows the enemy.',effects:[{t:'passive',k:'poisonSlow',v:true}]},
+  {id:'poison_slow',name:'Dulling Eitr',rarity:'uncommon',tags:['Poison'],icon:'🐌',desc:'Applying Poison also Slows the enemy.',effects:[{t:'passive',k:'poisonSlow',v:true}]},
   {id:'guard_mark',name:"Guardian's Mark",rarity:'uncommon',tags:['Bulwark','Sustain'],icon:'✨',desc:'+45 Max HP, +10 Defense.',effects:[{t:'stat',s:'maxHP',v:45},{t:'stat',s:'hp',v:45},{t:'stat',s:'def',v:10}]},
 
   {id:'necrotic',name:'Necrotic Touch',rarity:'rare',tags:['Poison'],icon:'🧟',desc:'Each Poison stack reduces enemy DEF by 3.',effects:[{t:'passive',k:'necroticPoison',v:3}]},
   {id:'vanguard',name:'Vanguard',rarity:'rare',tags:['Bulwark','Shield'],icon:'🛡',desc:'Taking damage grants 10 Shield.',effects:[{t:'onDmg',ef:'shield',amt:10}]},
   {id:'rampage',name:'Rampage',rarity:'rare',tags:['Execute','Tempo'],icon:'😤',desc:'Each kill grants +7 ATK (this battle).',effects:[{t:'onKill',ef:'tempStat',s:'atk',v:7}]},
-  {id:'soul_rend',name:'Soul Rend',rarity:'rare',tags:['Arcane'],icon:'👻',desc:'22% of damage bypasses enemy Defense.',effects:[{t:'passive',k:'defpen',v:.22}]},
-  {id:'overwhelming',name:'Overwhelming Force',rarity:'rare',tags:['Crit','Arcane'],icon:'💪',desc:'Crits ignore 55% of enemy Defense.',effects:[{t:'passive',k:'critDefpen',v:.55}]},
-  {id:'predator',name:'Predator Instinct',rarity:'rare',tags:['Execute','Sustain'],icon:'🐆',desc:'+22% ATK when below 50% HP.',effects:[{t:'passive',k:'predator',v:.22}]},
+  {id:'soul_rend',name:'Spirit Rend',rarity:'rare',tags:['Arcane'],icon:'👻',desc:'22% of damage bypasses enemy Defense.',effects:[{t:'passive',k:'defpen',v:.22}]},
+  {id:'overwhelming',name:'Crusher',rarity:'rare',tags:['Crit','Arcane'],icon:'💪',desc:'Crits ignore 55% of enemy Defense.',effects:[{t:'passive',k:'critDefpen',v:.55}]},
+  {id:'predator',name:'Wolf-Hunger',rarity:'rare',tags:['Execute','Sustain'],icon:'🐆',desc:'+22% ATK when below 50% HP.',effects:[{t:'passive',k:'predator',v:.22}]},
   {id:'crimson_tide',name:'Crimson Tide',rarity:'rare',tags:['Bleed'],icon:'🌊',desc:'Bleed also Slows the target.',effects:[{t:'passive',k:'bleedSlow',v:true}]},
-  {id:'arcane_surge',name:'Arcane Surge',rarity:'rare',tags:['Arcane'],icon:'🔮',desc:'Every 4th attack: +90% magic dmg (ignores DEF).',effects:[{t:'passive',k:'arcane',v:4}]},
-  {id:'living_armor',name:'Living Armor',rarity:'rare',tags:['Sustain'],icon:'💚',desc:'Regen 3% Max HP per second.',effects:[{t:'passive',k:'regen',v:.03}]},
+  {id:'arcane_surge',name:'Galdr-Surge',rarity:'rare',tags:['Arcane'],icon:'🔮',desc:'Every 4th attack: +90% magic dmg (ignores DEF).',effects:[{t:'passive',k:'arcane',v:4}]},
+  {id:'living_armor',name:'Root-Bound Plate',rarity:'rare',tags:['Sustain'],icon:'💚',desc:'Regen 3% Max HP per second.',effects:[{t:'passive',k:'regen',v:.03}]},
   {id:'berserker',name:"Berserker's Heart",rarity:'rare',tags:['Execute','Tempo'],icon:'💢',desc:'Below 30% HP: +40% ATK, +20% SPD.',effects:[{t:'passive',k:'berserk',atk:.40,spd:.20,thr:.30}]},
 
   {id:'death_mark',name:'Death Mark',rarity:'epic',tags:['Execute','Bleed'],icon:'☠',desc:'On kill, next attack deals +160% bonus dmg.',effects:[{t:'onKill',ef:'flag',f:'deathMark',v:1}]},
-  {id:'plague_lord',name:'Plague Lord',rarity:'epic',tags:['Poison'],icon:'☣',desc:'Applying Poison spreads 1 stack to all enemies.',effects:[{t:'passive',k:'plagueLord',v:true}]},
-  {id:'void_strike',name:'Void Strike',rarity:'epic',tags:['Arcane'],icon:'🌀',desc:'Every 8th attack deals 3× damage (ignores DEF).',effects:[{t:'passive',k:'void',v:8}]},
-  {id:'apex_predator',name:'Apex Predator',rarity:'epic',tags:['Execute'],icon:'🦁',desc:'Each kill grants permanent +6 ATK.',effects:[{t:'onKill',ef:'permStat',s:'atk',v:6}]},
+  {id:'plague_lord',name:'Eitr-Lord',rarity:'epic',tags:['Poison'],icon:'☣',desc:'Applying Poison spreads 1 stack to all enemies.',effects:[{t:'passive',k:'plagueLord',v:true}]},
+  {id:'void_strike',name:'Ginnunga-Strike',rarity:'epic',tags:['Arcane'],icon:'🌀',desc:'Every 8th attack deals 3× damage (ignores DEF).',effects:[{t:'passive',k:'void',v:8}]},
+  {id:'apex_predator',name:'Hunt-King',rarity:'epic',tags:['Execute'],icon:'🦁',desc:'Each kill grants permanent +6 ATK.',effects:[{t:'onKill',ef:'permStat',s:'atk',v:6}]},
   {id:'undying',name:'Undying',rarity:'epic',tags:['Sustain'],icon:'🔄',desc:'Once per battle, revive with 35% HP.',effects:[{t:'passive',k:'undying',v:true}]},
 
-  {id:'chain_lightning',name:'Chain Lightning',rarity:'legendary',tags:['Arcane','Tempo'],icon:'⚡',desc:'Crits splash 55% dmg to a random other enemy.',effects:[{t:'onCrit',ef:'splash',v:.55}]},
+  {id:'chain_lightning',name:"Thor's Lash",rarity:'legendary',tags:['Arcane','Tempo'],icon:'⚡',desc:'Crits splash 55% dmg to a random other enemy.',effects:[{t:'onCrit',ef:'splash',v:.55}]},
   {id:'eternal_hunger',name:'Eternal Hunger',rarity:'legendary',tags:['Sustain','Execute'],icon:'🌑',desc:'+30% Lifesteal. Overhealing becomes Shield.',effects:[{t:'stat',s:'lifesteal',v:.30},{t:'passive',k:'overhealShield',v:true}]},
 
-  {id:'ax_opening',name:'RUNE: Opening Strike',rarity:'axiom',tags:['Axiom','Crit'],icon:'💫',desc:'First hit each battle always crits.',effects:[{t:'passive',k:'axiomOpen',v:true}]},
-  {id:'ax_aegis',name:'RUNE: Aegis Protocol',rarity:'axiom',tags:['Axiom','Shield','Sustain'],icon:'💎',desc:'Overhealing becomes Shield.',effects:[{t:'passive',k:'overhealShield',v:true}]},
+  {id:'ax_opening',name:'RUNE: First Blood',rarity:'axiom',tags:['Axiom','Crit'],icon:'💫',desc:'First hit each battle always crits.',effects:[{t:'passive',k:'axiomOpen',v:true}]},
+  {id:'ax_aegis',name:'RUNE: Shield Law',rarity:'axiom',tags:['Axiom','Shield','Sustain'],icon:'💎',desc:'Overhealing becomes Shield.',effects:[{t:'passive',k:'overhealShield',v:true}]},
   {id:'ax_crimson',name:'RUNE: Crimson Law',rarity:'axiom',tags:['Axiom','Bleed'],icon:'🩸',desc:'Applying Bleed also applies Weak.',effects:[{t:'passive',k:'axiomCrimson',v:true}]},
-  {id:'ax_ghost',name:'RUNE: Ghost Step',rarity:'axiom',tags:['Axiom','Tempo'],icon:'👻',desc:'When you dodge, gain +2 Tempo stacks.',effects:[{t:'onDodge',ef:'status',st:'tempo',sk:2,dur:9999}]},
+  {id:'ax_ghost',name:'RUNE: Shade-Step',rarity:'axiom',tags:['Axiom','Tempo'],icon:'👻',desc:'When you dodge, gain +2 Tempo stacks.',effects:[{t:'onDodge',ef:'status',st:'tempo',sk:2,dur:9999}]},
   {id:'ax_echo',name:'RUNE: Echo Strike',rarity:'axiom',tags:['Axiom','Tempo'],icon:'🔁',desc:'Every 3rd attack repeats at 50% power.',effects:[{t:'passive',k:'axiomEcho',v:3}]},
   {id:'ax_iron_law',name:'RUNE: Iron Law',rarity:'axiom',tags:['Axiom','Bulwark'],icon:'⚖',desc:'20% of your Defense adds to Attack.',effects:[{t:'passive',k:'axiomIronLaw',v:.20}]},
-  {id:'ax_harvest',name:'RUNE: Soul Harvest',rarity:'axiom',tags:['Axiom','Sustain'],icon:'⚗',desc:'Kills restore 20% Max HP.',effects:[{t:'onKill',ef:'healPct',v:.20}]},
-  {id:'ax_wrath',name:'RUNE: Wrath Engine',rarity:'axiom',tags:['Axiom','Crit'],icon:'🔥',desc:'Crits grant Rage stacks (+4 ATK each, max 15).',effects:[{t:'onCrit',ef:'status',st:'rage',sk:1,dur:9999,mx:15}]},
-  {id:'ax_fortress',name:'RUNE: Fortress Mind',rarity:'axiom',tags:['Axiom','Bulwark','Shield'],icon:'🏯',desc:'Shield absorbs entire hits, not just damage.',effects:[{t:'passive',k:'axiomFortress',v:true}]},
-  {id:'ax_kinetic',name:'RUNE: Kinetic Edge',rarity:'axiom',tags:['Axiom','Crit','Tempo'],icon:'💠',desc:'Every 10 SPD = +2% Crit Chance.',effects:[{t:'passive',k:'axiomKinetic',v:true}]},
-  {id:'ax_plague',name:'RUNE: Plague Vector',rarity:'axiom',tags:['Axiom','Poison','Bleed'],icon:'🦠',desc:'Status effects last 60% longer.',effects:[{t:'passive',k:'axiomPlague',v:1.6}]},
+  {id:'ax_harvest',name:'RUNE: Death Harvest',rarity:'axiom',tags:['Axiom','Sustain'],icon:'⚗',desc:'Kills restore 20% Max HP.',effects:[{t:'onKill',ef:'healPct',v:.20}]},
+  {id:'ax_wrath',name:'RUNE: Berserkr Law',rarity:'axiom',tags:['Axiom','Crit'],icon:'🔥',desc:'Crits grant Rage stacks (+4 ATK each, max 15).',effects:[{t:'onCrit',ef:'status',st:'rage',sk:1,dur:9999,mx:15}]},
+  {id:'ax_fortress',name:'RUNE: Stone Resolve',rarity:'axiom',tags:['Axiom','Bulwark','Shield'],icon:'🏯',desc:'Shield absorbs entire hits, not just damage.',effects:[{t:'passive',k:'axiomFortress',v:true}]},
+  {id:'ax_kinetic',name:'RUNE: Storm-Edge',rarity:'axiom',tags:['Axiom','Crit','Tempo'],icon:'💠',desc:'Every 10 SPD = +2% Crit Chance.',effects:[{t:'passive',k:'axiomKinetic',v:true}]},
+  {id:'ax_plague',name:'RUNE: Eitr Thread',rarity:'axiom',tags:['Axiom','Poison','Bleed'],icon:'🦠',desc:'Status effects last 60% longer.',effects:[{t:'passive',k:'axiomPlague',v:1.6}]},
   {id:'ax_mirror',name:'RUNE: Mirror Law',rarity:'axiom',tags:['Axiom','Thorns'],icon:'🪞',desc:'30% of damage taken is reflected as true dmg.',effects:[{t:'passive',k:'axiomMirror',v:.30}]},
 
-{id:'precision_optics', name:'Precision Optics',      rarity:'common',  tags:['Crit'],                icon:'🔭',desc:'+8% Accuracy.', effects:[{t:'stat',s:'accuracy',v:.08}]},
+{id:'precision_optics', name:'Hawk-Sight',      rarity:'common',  tags:['Crit'],                icon:'🔭',desc:'+8% Accuracy.', effects:[{t:'stat',s:'accuracy',v:.08}]},
 {id:'cleaving_arc',     name:'Cleaving Arc',          rarity:'uncommon',tags:['Execute','Tempo'],     icon:'🪓',desc:'On hit: splash 35% damage to a random other enemy.', effects:[{t:'onHit',ef:'splash',v:.35}]},
 {id:'frost_touch',      name:'Frost Touch',           rarity:'uncommon',tags:['Tempo'],              icon:'❄️',desc:'On hit: apply Slow (2s).', effects:[{t:'onHit',ef:'statusEnemy',st:'slow',sk:1,dur:2}]},
 {id:'sunder_blows',     name:'Sunder Blows',          rarity:'uncommon',tags:['Arcane'],             icon:'🪨',desc:'On hit: reduce enemy DEF by 2 (stacks, battle).', effects:[{t:'passive',k:'shred',v:2}]},
-{id:'sniper_protocol',  name:'Sniper Protocol',       rarity:'uncommon',tags:['Crit'],               icon:'🎯',desc:'Attacks target the lowest-HP enemy.', effects:[{t:'passive',k:'targetLowest',v:true}]},
-{id:'ward_protocol',    name:'Ward Protocol',         rarity:'rare',    tags:['Bulwark'],            icon:'🧿',desc:'Once per battle, the first debuff applied to you is negated.', effects:[{t:'passive',k:'wardDebuff',v:true}]},
-{id:'antitoxin_glands', name:'Antitoxin Glands',      rarity:'rare',    tags:['Sustain'],            icon:'🧬',desc:'Take 40% less Bleed/Poison damage.', effects:[{t:'passive',k:'dotResist',v:.60}]},
-{id:'stunning_crits',   name:'Stunning Crits',        rarity:'rare',    tags:['Crit'],               icon:'💫',desc:'Crits have 18% chance to Stun (1s).', effects:[{t:'passive',k:'stunCrit',v:.18}]},
+{id:'sniper_protocol',  name:"Huntsman's Mark",       rarity:'uncommon',tags:['Crit'],               icon:'🎯',desc:'Attacks target the lowest-HP enemy.', effects:[{t:'passive',k:'targetLowest',v:true}]},
+{id:'ward_protocol',    name:'Runic Ward',         rarity:'rare',    tags:['Bulwark'],            icon:'🧿',desc:'Once per battle, the first debuff applied to you is negated.', effects:[{t:'passive',k:'wardDebuff',v:true}]},
+{id:'antitoxin_glands', name:'Hardened Blood',      rarity:'rare',    tags:['Sustain'],            icon:'🧬',desc:'Take 40% less Bleed/Poison damage.', effects:[{t:'passive',k:'dotResist',v:.60}]},
+{id:'stunning_crits',   name:'Reel-Blow',        rarity:'rare',    tags:['Crit'],               icon:'💫',desc:'Crits have 18% chance to Stun (1s).', effects:[{t:'passive',k:'stunCrit',v:.18}]},
 {id:'second_wind',      name:'Second Wind',           rarity:'rare',    tags:['Sustain'],            icon:'🌬️',desc:'Once per battle, dropping below 30% HP heals 20% Max HP.', effects:[{t:'passive',k:'secondWind',v:.20}]},
 ];
 
@@ -1105,7 +1105,7 @@ const ARCHETYPES = [
   },
   {
     id: 'warden',
-    displayName: 'Hel-Chieftain',
+    displayName: 'Barrow-Lord',
     norseName: 'Hersir',
     realmTier: 'helheim',
     icon: '🧿', col: '#5a4a10',
@@ -1147,7 +1147,7 @@ const ARCHETYPES = [
   {
     id: 'bombardier',
     displayName: 'Rune-Smith',
-    norseName: 'Dvergar Engineer',
+    norseName: 'Dvergar Forge-Master',
     realmTier: 'muspelheim',
     icon: '💣', col: '#6a4000',
     base: { hp:68, atk:30, def:10, spd:20, cc:.10, cd:2.0 },
@@ -1164,14 +1164,14 @@ const WAVE_TRAITS=[
   {id:'armored',name:'Armored',icon:'🏰',desc:'Enemies gain +25% Defense.',apply(es){es.forEach(e=>e.def=Math.floor(e.def*1.25));}},
   {id:'frenzied',name:'Frenzied',icon:'😤',desc:'Enemies gain +20% Speed.',apply(es){es.forEach(e=>e.spd=Math.floor(e.spd*1.20));}},
   {id:'toxic_air',name:'Toxic Air',icon:'☣',desc:'All units take 1 dmg/sec.',apply(es,h,Gx){Gx.waveFlags.toxicAir=true;}},
-  {id:'glass',name:'Glass Cannon',icon:'🔪',desc:'Enemies: -25% HP, +30% ATK.',apply(es){es.forEach(e=>{e.hp=e.maxHP=Math.floor(e.hp*.75);e.atk=Math.floor(e.atk*1.30);});}},
-  {id:'blessed',name:'Blessed',icon:'✨',desc:'Enemies start with 20% HP as Shield.',apply(es){es.forEach(e=>addShieldToUnit(e,Math.floor(e.hp*.20)));}},
+  {id:'glass',name:'Reckless Rage',icon:'🔪',desc:'Enemies: -25% HP, +30% ATK.',apply(es){es.forEach(e=>{e.hp=e.maxHP=Math.floor(e.hp*.75);e.atk=Math.floor(e.atk*1.30);});}},
+  {id:'blessed',name:'Runed',icon:'✨',desc:'Enemies start with 20% HP as Shield.',apply(es){es.forEach(e=>addShieldToUnit(e,Math.floor(e.hp*.20)));}},
   {id:'enraged',name:'Enraged',icon:'😡',desc:'Enemies gain +15 ATK when ally dies.',apply(es,h,Gx){Gx.waveFlags.enraged=true;}},
-  {id:'regenerating',name:'Regenerating',icon:'💚',desc:'Enemies regen 2% HP/sec.',apply(es,h,Gx){Gx.waveFlags.eRegen=.02;}},
+  {id:'regenerating',name:'Wound-Knit',icon:'💚',desc:'Enemies regen 2% HP/sec.',apply(es,h,Gx){Gx.waveFlags.eRegen=.02;}},
   {id:'elite_wave',name:'Elite',icon:'⭐',desc:'One enemy becomes Elite (+65% stats).',apply(es){if(es.length){const e=es[0];e.elite=true;e.hp=e.maxHP=Math.floor(e.hp*1.65);e.atk=Math.floor(e.atk*1.65);e.def=Math.floor(e.def*1.5);e.name='Elite '+e.name;}}},
   {id:'quickened',name:'Quickened',icon:'💨',desc:'Enemies +15% SPD, +10% Crit Chance.',apply(es){es.forEach(e=>{e.spd=Math.floor(e.spd*1.15);e.cc=Math.min(.8,(e.cc||.05)+.10);});}},
   {id:'echo_atk',name:'Echo Barrage',icon:'🔊',desc:'Enemies 25% chance to attack twice.',apply(es,h,Gx){Gx.waveFlags.eEcho=true;}},
-  {id:'reinforcements',name:'Reinforcements',icon:'🚨',desc:'+1 additional enemy joins the wave.',apply(es,h,Gx){if(es.length<8){const arch=rpick(ARCHETYPES);es.push(mkEnemy(arch,Gx.wave,false));}}},
+  {id:'reinforcements',name:'Horde-Call',icon:'🚨',desc:'+1 additional enemy joins the wave.',apply(es,h,Gx){if(es.length<8){const arch=rpick(ARCHETYPES);es.push(mkEnemy(arch,Gx.wave,false));}}},
   {id:'marked_prey',name:'Marked Prey',icon:'🎯',desc:'Battle start: hero becomes Vulnerable (3s). Enemies gain +10% Crit Chance.',apply(es,h,Gx){es.forEach(e=>{e.cc=Math.min(.8,(e.cc||.05)+.10);});Gx.waveFlags.heroStartVuln=3;}},
 ];
 
@@ -1463,12 +1463,12 @@ function updateDifficultyUI(){
 // TACTICS (pre-wave prep; cost paid when you start the trial)
 // ─────────────────────────────────────────────────────────────
 const TACTICS=[
-  {id:'t_focus_threat',  name:'Focus: Threat',   icon:'🎯', cost:12, kind:'target', mode:'threat', desc:'Hero targets the highest ATK enemy first.'},
-  {id:'t_focus_wounded', name:'Focus: Wounded',  icon:'🩸', cost:10, kind:'target', mode:'wounded', desc:'Hero targets the lowest HP% enemy first.'},
+  {id:'t_focus_threat',  name:'Mark: Strongest',   icon:'🎯', cost:12, kind:'target', mode:'threat', desc:'Hero targets the highest ATK enemy first.'},
+  {id:'t_focus_wounded', name:'Mark: Broken',  icon:'🩸', cost:10, kind:'target', mode:'wounded', desc:'Hero targets the lowest HP% enemy first.'},
   {id:'t_fortify',       name:'Fortify',         icon:'🛡', cost:11, kind:'start',  desc:'+30 Shield and Regen for 8s at battle start.'},
   {id:'t_ambush',        name:'Ambush',          icon:'🗡', cost:14, kind:'start',  desc:'Your first attack deals double damage.'},
-  {id:'t_sabotage',      name:'Sabotage',        icon:'🧨', cost:12, kind:'start',  desc:'Enemies start with -15% Defense.'},
-  {id:'t_flare',         name:'Flare',           icon:'🔥', cost:12, kind:'start',  desc:'Enemies start Vulnerable for 3s.'},
+  {id:'t_sabotage',      name:'Weaken',        icon:'🧨', cost:12, kind:'start',  desc:'Enemies start with -15% Defense.'},
+  {id:'t_flare',         name:'Expose',           icon:'🔥', cost:12, kind:'start',  desc:'Enemies start Vulnerable for 3s.'},
   {id:'t_greed',         name:'Greed',           icon:'🪙', cost:8,  kind:'econ',   desc:'+30% Saga-Marks for this trial.'},
 ];
 const TACTIC_BY_ID=Object.fromEntries(TACTICS.map(t=>[t.id,t]));
@@ -1487,7 +1487,7 @@ const BOSS_SIGNATURES={
     }
   },
   tank:{
-    name:'Unyielding Aegis',
+    name:'Unyielding Skjald',
     desc:'Below 50% HP, gains 15 Shield per attack received.',
     apply(enemy){
       if(enemy.hp<enemy.maxHP*0.5){
@@ -1507,7 +1507,7 @@ const BOSS_SIGNATURES={
     }
   },
   _default:{
-    name:'Eldritch Force',
+    name:'Root-Power',
     desc:'Gains +3 ATK per enemy slain this trial.',
     apply(){/* handled via wave flags */}
   },
@@ -1525,13 +1525,13 @@ const CURSED_BARGAINS=[
     }
   },
   {
-    id:'cb_glass_soul',name:'Glass Soul',icon:'💎',
+    id:'cb_glass_soul',name:'Glass Heart',icon:'💎',
     desc:'+25% Crit Chance. Evasion set to 0 permanently.',
     cost:30,
     apply(G){
       G.hero.critChance=Math.min(0.9,G.hero.critChance+0.25);
       G.hero.evasion=0;
-      addLog('⚠ Glass Soul accepted. Fortune without flinching.','laxiom');
+      addLog('⚠ Glass Heart accepted. Fortune without flinching.','laxiom');
     }
   },
   {
@@ -1619,10 +1619,10 @@ function applyBattleStartTactics(){
     addLog(`  🗡 Ambush: first strike empowered`,'lstatus');
   } else if(t.id==='t_sabotage'){
     G.enemies.filter(e=>!e.dead).forEach(e=>{e.def=Math.max(0,Math.floor(e.def*0.85));});
-    addLog(`  🧨 Sabotage: enemies DEF reduced`,'lstatus');
+    addLog(`  🧨 Weaken: enemies DEF reduced`,'lstatus');
   } else if(t.id==='t_flare'){
     G.enemies.filter(e=>!e.dead).forEach(e=>applyStatus(e,'vulnerable',1,3));
-    addLog(`  🔥 Flare: enemies Vulnerable (3s)`,'lstatus');
+    addLog(`  🔥 Expose: enemies Vulnerable (3s)`,'lstatus');
   } else if(t.id==='t_greed'){
     G.waveGoldMult=1.30;
     addLog(`  🪙 Greed: +30% Saga-Marks this trial`,'lstatus');
@@ -2023,7 +2023,7 @@ function heroDmg(rawDmg,attacker,src){
   const sh=hero.statuses.shield;
   if(sh&&sh.value>0){
     if(hasP('axiomFortress')){
-      addLog(`  🏯 Fortress Mind: hit negated!`,'laxiom');
+      addLog(`  🏯 Stone Resolve: hit negated!`,'laxiom');
       sh.value-=1;
       if(sh.value<=0){delete hero.statuses.shield;shieldBreak(attacker);}
       return 0;
@@ -4920,7 +4920,7 @@ function aspectsHTML(){
     </div>
     <div class="sec-title" style="margin-top:0">Bloodline Aspects</div>
     ${rows}
-    <div style="font-size:10px;color:var(--txt3);margin-top:8px">Earn Aspect XP by retiring or winning. Each family develops a distinct identity over generations.</div>
+    <div style="font-size:10px;color:var(--txt3);margin-top:8px">Earn Aspect XP by retiring or winning. Each family develops a distinct identity over generations. (Venom aspect lore: Venom (Eitr))</div>
   </div>`;
 }
 function setHouseNameFromInput(){
