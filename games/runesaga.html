@@ -1233,6 +1233,14 @@ function consumeBreedUse(id){
   }
 }
 
+function isFallenHero(id){
+  return !!(META && Array.isArray(META.fallenLedger) && META.fallenLedger.includes(id));
+}
+function canHeroBreed(id){
+  const rec = META && META.family ? META.family[id] : null;
+  return !!(rec && !isFallenHero(id) && getBreedUses(rec).left>0);
+}
+
 // ═══ HERO RECORD ═══
 function mkHeroId(){return 'H'+(META.nextHeroId++);}
 function mkHeroRecord(name,gen,parentIds,evs,traits){
@@ -2317,25 +2325,25 @@ function computeEarnedEVs(){
 function retireHero(){
   const rec=G.hero.record;
   const earnedEVs=computeEarnedEVs();
-  rec.runResult={outcome:'retired',wave:G.wave,boons:G.boons.map(b=>b.id),axioms:G.boons.filter(b=>b.rarity==='axiom').map(b=>b.id),level:G.level,earnedEVs,ts:Date.now()};
+  rec.runResult={
+    outcome:'retired',wave:G.wave,
+    boons:G.boons.map(b=>b.id),
+    axioms:G.boons.filter(b=>b.rarity==='axiom').map(b=>b.id),
+    level:G.level,earnedEVs,ts:Date.now()
+  };
   assignBreedUses(rec, calcBreedUsesForRetire());
   const cap=evCap();
   EV_KEYS.forEach(k=>rec.evs[k]=Math.min(cap,(rec.evs[k]||0)+(earnedEVs[k]||0)));
-
   META.family[rec.id]=rec;
   if(META.retiredPool.length>=poolMax())META.retiredPool.shift();
   META.retiredPool.push(rec.id);
-
   const essence=Math.floor(G.gold*.35)+G.wave*4;
   META.legacyEssence+=essence;
-
   if(G.interval)clearInterval(G.interval);
-  addLog(`🏛 ${rec.name} retired at Wave ${G.wave}! +${essence} Essence.`,'laxiom');
+  addLog(`🏛 ${rec.name} sealed their saga at Trial ${G.wave}! +${essence} Allfather's Blessing.`,'laxiom');
+  checkRagnarökUnlock();
   saveMeta();
-
-  const axiomBoons=G.boons.filter(b=>b.rarity==='axiom');
-  if(axiomBoons.length>0)showImprintOffer(rec,axiomBoons,essence);
-  else showRetireSummary(rec,essence,earnedEVs);
+  showRetireRelicChoice(rec, essence);
 }
 
 function showImprintOffer(rec,axiomBoons,essence){
@@ -2962,7 +2970,7 @@ function toggleBreedSelect(id){
 }
 
 function renderRetiredPool(){
-  const heroes=META.retiredPool.map(id=>META.family[id]).map(r=>{if(r){const u=getBreedUses(r);if(typeof r.breedUsesMax!=='number' || r.breedUsesMax<=0){r.breedUsesMax=u.max; r.breedUsesLeft=u.left;} } return r;}).filter(r=>r && getBreedUses(r).left>0);
+  const heroes=META.retiredPool.map(id=>META.family[id]).map(r=>{if(r){const u=getBreedUses(r);if(typeof r.breedUsesMax!=='number' || r.breedUsesMax<=0){r.breedUsesMax=u.max; r.breedUsesLeft=u.left;} } return r;}).filter(r=>r && canHeroBreed(r.id));
   if(!heroes.length){
     return `<div style="text-align:center;padding:40px;color:var(--txt3)">
       <div style="font-size:32px;margin-bottom:12px">🏛</div>
@@ -3022,8 +3030,8 @@ function renderBreeding(){
     </div>`;
   }
   const recA=META.family[BREED_SELECTED[0]],recB=META.family[BREED_SELECTED[1]];
+  if(!recA||!recB||isFallenHero(recA.id)||isFallenHero(recB.id))return `<div style="color:var(--red);padding:20px">A fallen hero cannot enter the Breeding Chamber. Their saga is closed.</div>`;
   const usesA=getBreedUses(recA), usesB=getBreedUses(recB);
-  if(!recA||!recB)return `<div style="color:var(--red);padding:20px">Invalid selection.</div>`;
 
   const cap=evCap();
   const previewEVs={};EV_KEYS.forEach(k=>previewEVs[k]=Math.min(cap,Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2)));
@@ -3944,74 +3952,166 @@ function applyBirthGift(hero, rec){
   };
 })();
 
-// --- Fallen harvest overlay (Relic vs Scar token) ---
+// --- Fallen scar/relic choice systems ---
 const SCAR_KEYS = ['frayed_nerves','cold_iron','brittle_edge','grave_salt'];
 
-function showFallenHarvest(heroId, salvageEarned){
-  const rec = META.family[heroId];
-  if(!rec) return;
+function deriveScarCandidates(){
+  const all=[...SCAR_KEYS];
+  const weights={frayed_nerves:1,cold_iron:1,brittle_edge:1,grave_salt:1};
+  const es=(G&&Array.isArray(G.enemies))?G.enemies:[];
+
+  if(es.some(e=>e.archId==='frost'||e.realmTier==='niflheim')){weights.cold_iron+=3;weights.frayed_nerves+=1;}
+  if(G&&G.hero&&G.hero.critChance>0.20)weights.brittle_edge+=2;
+  if(G&&G._narratedNearDeath)weights.frayed_nerves+=2;
+  if(es.some(e=>e.elite))weights.grave_salt+=2;
+
+  const candidates=[];
+  const pool=[...all];
+  while(candidates.length<3&&pool.length>0){
+    const pick=rwgt(pool,k=>weights[k]||1);
+    candidates.push(pick);
+    pool.splice(pool.indexOf(pick),1);
+  }
+  return candidates;
+}
+
+const SCAR_REASON_TEXT={
+  frayed_nerves:'The pressure never let up.',
+  cold_iron:'The cold found the gaps.',
+  brittle_edge:'Striking harder was never the answer.',
+  grave_salt:'Aggression left no room for defense.',
+};
+
+function showFallenScarChoice(heroId,salvageEarned){
+  const rec=META.family[heroId];
+  if(!rec){showStartScreen();return;}
   normalizeMeta();
-  const picks = rshuffle(SCAR_KEYS).slice(0,3);
-  const html = `
-    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--salvage);margin-bottom:8px">ᚱ FALLEN HARVEST</div>
-    <div style="color:var(--txt2);font-size:12px;margin-bottom:12px">
-      ${rec.name} fell at Wave ${rec.runResult?.wave||'?'}.
-      You recovered <span style="color:var(--salvage);font-weight:700">ᚱ${salvageEarned}</span>.
-      Decide what the failure becomes.
+
+  const candidates=deriveScarCandidates();
+  const html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
+                color:var(--red);margin-bottom:8px">☠ SAGA CLOSED</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:4px">
+      ${rec.name} fell at Trial ${rec.runResult?.wave||'?'}.
     </div>
-
-    <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px">
-      <div style="background:rgba(20,18,40,.75);border:1px solid rgba(144,80,232,.25);border-radius:8px;padding:12px;text-align:left">
-        <div style="font-weight:800;color:var(--gold);margin-bottom:4px">🗿 Refine into a Relic</div>
-        <div style="color:var(--txt2);font-size:11px;margin-bottom:8px">Gain <strong>1 Relic</strong> (used for Splice to lock a trait into a child).</div>
-        <button class="btn btn-gold" style="width:100%" onclick="harvestRelic('${heroId}')">Gain +1 Relic</button>
-      </div>
-
-      <div style="background:rgba(10,20,18,.65);border:1px solid rgba(48,208,192,.25);border-radius:8px;padding:12px;text-align:left">
-        <div style="font-weight:800;color:var(--salvage);margin-bottom:4px">🩹 Forge a Scar Token</div>
-        <div style="color:var(--txt2);font-size:11px;margin-bottom:8px">Choose a scar (power + drawback). Gain <strong>1 Scar Token</strong> you can implant via Splice.</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          ${picks.map(k=>{
-            const gt = GTRAITS[k];
-            return `<div class="imprint-card" onclick="harvestScar('${heroId}','${k}')">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="font-weight:800;color:#d090ff">${gt?gt.icon:''} ${gt?gt.name:k}</div>
-                <div style="font-size:10px;color:var(--salvage)">+1 token</div>
-              </div>
-              <div style="font-size:10px;color:var(--txt2);margin-top:4px">${gt?gt.desc:''}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
+    <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:16px">
+      "The saga passed to the next."
     </div>
-
-    <div style="color:var(--txt3);font-size:10px">Relics: ${META.relics} · Scar Tokens: ${totalScarTokens()}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--txt);margin-bottom:10px">
+      What did this saga teach the blood?
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      ${candidates.map(scarKey=>{
+        const gt=GTRAITS[scarKey];
+        return `
+          <div class="imprint-card" onclick="acceptScar('${heroId}','${scarKey}')">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:800;color:#d090ff">${gt?.icon||'🩹'} ${gt?.name||scarKey}</div>
+              <div style="font-size:9px;color:var(--salvage)">SCAR TOKEN +1</div>
+            </div>
+            <div style="font-size:10px;color:var(--txt2);margin-top:4px">${gt?.desc||''}</div>
+            <div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:3px">
+              ${SCAR_REASON_TEXT[scarKey]||''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--txt3);border-top:1px solid var(--border);padding-top:8px">
+      ᚱ${salvageEarned} Rune-Shards recovered. Fallen heroes cannot breed or bequeath gear.
+    </div>
   `;
   showOverlayContent(html);
 }
 
-function harvestRelic(heroId){
-  const rec = META.family[heroId];
-  if(!rec) return;
+function acceptScar(heroId,scarKey){
+  const rec=META.family[heroId];
+  if(!rec)return;
   normalizeMeta();
-  META.relics += 1;
-  if(rec.runResult) rec.runResult.harvest = 'relic';
-  META.family[heroId] = rec;
-  saveMeta(); updateMetaHeader();
+  addScarToken(scarKey,1);
+  try{META.unlockedTraits.add(scarKey);}catch(e){}
+  if(rec.runResult)rec.runResult.harvest='scar:'+scarKey;
+  META.family[heroId]=rec;
+  saveMeta();
+  updateMetaHeader();
   hideOverlay();
+  try{addLog(`🩹 Scar etched: ${GTRAITS[scarKey]?.name||scarKey} — the blood remembers.`,'laxiom');}catch(e){}
+  showStartScreen();
 }
-function harvestScar(heroId, scarKey){
-  const rec = META.family[heroId];
-  if(!rec) return;
+
+const TAG_RELIC_MAP={
+  Bleed:{key:'relic_bleed_mastery',label:'Blood-Rite Mastery',icon:'🩸',desc:'When Spliced: child has 90% chance to inherit a Bleed-related trait.'},
+  Poison:{key:'relic_eitr_touch',label:'Eitr-Touch',icon:'☠',desc:'When Spliced: child has 90% chance to inherit a Poison-related trait.'},
+  Crit:{key:'relic_keen_eye',label:'Keen-Eye Technique',icon:'🎯',desc:'When Spliced: child inherits +5 bonus Crit EV.'},
+  Tempo:{key:'relic_stormswift',label:'Stormswift Legacy',icon:'⚡',desc:'When Spliced: child inherits +5 bonus SPD EV.'},
+  Bulwark:{key:'relic_ironwall',label:'Iron-Wall Lineage',icon:'🛡',desc:'When Spliced: child inherits +5 bonus DEF EV.'},
+  Axiom:{key:'relic_rune_law',label:'Rune Law Fragment',icon:'ᚢ',desc:'When Spliced: child has 70% chance to start with an Axiom boon in the first draft.'},
+  Execute:{key:'relic_wolf_oath',label:'Wolf-Oath',icon:'🐺',desc:'When Spliced: child has 90% chance to inherit an Execute-related trait.'},
+  Sustain:{key:'relic_lifeline',label:'Life-Root Binding',icon:'💚',desc:'When Spliced: child inherits +5 bonus HP EV.'},
+};
+
+function deriveRelicCandidates(rec){
+  const tagCounts={};
+  (rec.runResult?.boons||[]).forEach(boonId=>{
+    const boon=BOONS.find(b=>b.id===boonId);
+    if(boon)boon.tags.forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;});
+  });
+  const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([tag])=>tag);
+  const results=topTags.map(tag=>TAG_RELIC_MAP[tag]).filter(Boolean);
+  const allOptions=Object.values(TAG_RELIC_MAP);
+  while(results.length<3){
+    const fallback=allOptions.find(r=>!results.some(x=>x.key===r.key));
+    if(fallback)results.push(fallback);else break;
+  }
+  return results.slice(0,3);
+}
+
+function showRetireRelicChoice(rec,essence){
+  const candidates=deriveRelicCandidates(rec);
+  const html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
+                color:var(--gold);margin-bottom:8px">🏛 SAGA SEALED</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:4px">
+      ${rec.name} — Trial ${rec.runResult?.wave||'?'} · Lv.${rec.runResult?.level||1}
+    </div>
+    <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:16px">
+      "Let the blood carry the rest."
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--txt);margin-bottom:10px">
+      What does this saga leave behind?
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      ${candidates.map(r=>`
+        <div class="imprint-card" style="border-color:rgba(212,160,23,.4)" onclick="acceptRelic('${rec.id}','${r.key}')">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-weight:800;color:var(--gold)">${r.icon} ${r.label}</div>
+            <div style="font-size:9px;color:var(--amber)">RELIC +1</div>
+          </div>
+          <div style="font-size:10px;color:var(--txt2);margin-top:4px">${r.desc}</div>
+          <div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:3px">Usable in Splice during breeding to lock this mastery into a child.</div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--green)">+${essence} Allfather's Blessing · This hero may breed.</div>
+  `;
+  showOverlayContent(html);
+}
+
+function acceptRelic(heroId,relicKey){
+  const rec=META.family[heroId];
+  if(!rec)return;
   normalizeMeta();
-  addScarToken(scarKey, 1);
-  // Unlock into mutation pool once discovered
-  try{ META.unlockedTraits.add(scarKey); }catch(e){}
-  if(rec.runResult) rec.runResult.harvest = 'scar:' + scarKey;
-  META.family[heroId] = rec;
-  saveMeta(); updateMetaHeader();
+  META.relics+=1;
+  rec.relicType=relicKey;
+  if(rec.runResult)rec.runResult.harvest='relic:'+relicKey;
+  META.family[heroId]=rec;
+  saveMeta();
+  updateMetaHeader();
   hideOverlay();
-  try{ addLog(`🩹 Scar Token gained: ${GTRAITS[scarKey]?.name||scarKey}`,'laxiom'); }catch(e){}
+  try{addLog(`🗿 Relic forged: ${relicKey} — the mastery endures.`,'laxiom');}catch(e){}
+  const axiomBoons=G?G.boons.filter(b=>b.rarity==='axiom'):[];
+  if(axiomBoons.length>0)showImprintOffer(rec,axiomBoons,META.legacyEssence);
+  else showRetireSummary(rec,META.legacyEssence,null);
 }
 
 // --- Breeding actions state ---
@@ -4215,6 +4315,19 @@ function breedHeroes(idA, idB, opts){
     finalTraits = out.slice(0, maxTraits);
   }else{
     finalTraits = finalTraits.slice(0, maxTraits);
+  }
+
+  if(action==='splice'&&opts&&opts.spliceKind==='relic'&&opts.traitKey){
+    const relicEVBonus={
+      relic_keen_eye:{ev:'crit',bonus:5},
+      relic_stormswift:{ev:'spd',bonus:5},
+      relic_ironwall:{ev:'def',bonus:5},
+      relic_lifeline:{ev:'hp',bonus:5},
+    };
+    const relicBonus=relicEVBonus[opts.traitKey];
+    if(relicBonus){
+      childEVs[relicBonus.ev]=Math.min(cap,(childEVs[relicBonus.ev]||0)+relicBonus.bonus);
+    }
   }
 
   // Determine child aspect (from EV + traits)
@@ -4637,7 +4750,7 @@ function startFirstHero(){
       if(rec && rec.id){
         const saved = META.family[rec.id];
         const sal = saved?.runResult?.salvageEarned || 0;
-        showFallenHarvest(rec.id, sal);
+        showFallenScarChoice(rec.id, sal);
       }
     }catch(e){}
   };
