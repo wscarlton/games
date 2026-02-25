@@ -674,7 +674,7 @@ const BOONS=[
   {id:'poison_slow',name:'Dulling Eitr',rarity:'uncommon',tags:['Poison'],icon:'🐌',desc:'Applying Poison also Slows the enemy.',effects:[{t:'passive',k:'poisonSlow',v:true}]},
   {id:'guard_mark',name:"Guardian's Mark",rarity:'uncommon',tags:['Bulwark','Sustain'],icon:'✨',desc:'+45 Max HP, +10 Defense.',effects:[{t:'stat',s:'maxHP',v:45},{t:'stat',s:'hp',v:45},{t:'stat',s:'def',v:10}]},
 
-  {id:'necrotic',name:'Necrotic Touch',rarity:'rare',tags:['Poison'],icon:'🧟',desc:'Each Poison stack reduces enemy DEF by 3.',effects:[{t:'passive',k:'necroticPoison',v:3}]},
+  {id:'necrotic',name:'Corpse-Rot',rarity:'rare',tags:['Poison'],icon:'🧟',desc:'Each Poison stack reduces enemy DEF by 3.',effects:[{t:'passive',k:'necroticPoison',v:3}]},
   {id:'vanguard',name:'Vanguard',rarity:'rare',tags:['Bulwark','Shield'],icon:'🛡',desc:'Taking damage grants 10 Shield.',effects:[{t:'onDmg',ef:'shield',amt:10}]},
   {id:'rampage',name:'Rampage',rarity:'rare',tags:['Execute','Tempo'],icon:'😤',desc:'Each kill grants +7 ATK (this battle).',effects:[{t:'onKill',ef:'tempStat',s:'atk',v:7}]},
   {id:'soul_rend',name:'Spirit Rend',rarity:'rare',tags:['Arcane'],icon:'👻',desc:'22% of damage bypasses enemy Defense.',effects:[{t:'passive',k:'defpen',v:.22}]},
@@ -2087,7 +2087,7 @@ function trigBoon(evType,hero,target){
         const t2=rpick(others);
         const sd=Math.floor(heroAtk()*ef.v);
         dealToEnemy(t2,sd);
-        addLog(`  ⚡ Chain Lightning → ${t2.name} for ${sd}!`,'laxiom');
+        addLog(`  ⚡ Thor's Lash → ${t2.name} for ${sd}!`,'laxiom');
       }
     }
   }
@@ -2241,7 +2241,7 @@ function doHeroAtk(){
   if(h.flags.deathMark){dmg=Math.floor(dmg*2.6);h.flags.deathMark=0;addLog(`  ☠ Death Mark!`,'laxiom');}
   const tr=passive('trance');if(tr&&h.atkCount%tr===0){dmg=Math.floor(dmg*1.9);addLog(`  🔁 Battle Trance!`,'laxiom');}
   const arc=passive('arcane');if(arc&&h.atkCount%arc===0){const md=Math.floor(dmg*.9);addLog(`  🔮 Arcane Surge! +${md}`,'laxiom');dealToEnemy(target,md);}
-  const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog(`  🌀 VOID STRIKE! ${vd}!`,'laxiom');dealToEnemy(target,vd);if(target.dead)return;}
+  const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog(`  🌀 GINNUNGA-STRIKE! ${vd}!`,'laxiom');dealToEnemy(target,vd);if(target.dead)return;}
 
   const doEcho=hasP('axiomEcho')&&(h.atkCount%passive('axiomEcho')===0);
   if(crit)dmg=Math.floor(dmg*es.critDmg);
