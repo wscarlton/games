@@ -1239,6 +1239,36 @@ const WAVE_TRAITS=[
   {id:'marked_prey',name:'Marked Prey',icon:'🎯',desc:'Battle start: hero becomes Vulnerable (3s). Enemies gain +10% Crit Chance.',apply(es,h,Gx){es.forEach(e=>{e.cc=Math.min(.8,(e.cc||.05)+.10);});Gx.waveFlags.heroStartVuln=3;}},
 ];
 
+const MINOR_WAVE_TRAIT_IDS = ['armored','frenzied','glass','blessed','enraged','regenerating','quickened'];
+const MAJOR_WAVE_TRAIT_IDS = ['toxic_air','echo_atk','elite_wave'];
+
+const TRIAL_CONFIG = {
+  1:{slotsMin:2,slotsMax:2,bodyCap:2,minorTraitsMin:0,minorTraitsMax:0,majorTraitsMax:0,allowEliteTrait:false},
+  2:{slotsMin:2,slotsMax:2,bodyCap:3,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false},
+  3:{slotsMin:3,slotsMax:3,bodyCap:3,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false},
+  4:{slotsMin:2,slotsMax:3,bodyCap:5,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,forceGuardianEliteTank:true},
+  5:{slotsMin:3,slotsMax:3,bodyCap:4,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,maxAnchors:1},
+  6:{slotsMin:3,slotsMax:4,bodyCap:5,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:1,allowEliteTrait:false,forbidMajorIds:['echo_atk'],maxAnchors:2,forbidAnchorSwarm:true},
+  7:{slotsMin:4,slotsMax:4,bodyCap:6,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true},
+  8:{slotsMin:2,slotsMax:3,bodyCap:6,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,supportOnlyTraits:true,forbidWardenSwarm:true},
+  9:{slotsMin:3,slotsMax:4,bodyCap:5,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,maxAssassins:1,allowRemnantLeech:true},
+  10:{slotsMin:4,slotsMax:4,bodyCap:6,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,maxAssassins:1,maxRT:1},
+  11:{slotsMin:4,slotsMax:5,bodyCap:7,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,maxAssassins:2,forbidEchoWithAssassin:true},
+  12:{slotsMin:3,slotsMax:3,bodyCap:7,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,rootKing:true},
+};
+
+const TRIAL_POOLS = {
+  A:['bruiser','tank','striker','archer'],
+  B:['swarm','shaman','leech','warden'],
+  C:['assassin','frost','rt_bruiser','rt_shaman','rt_warden','rt_swarm'],
+};
+
+function isRTPoolEntry(id){ return typeof id==='string' && id.startsWith('rt_'); }
+function baseArchFromPoolEntry(id){ return isRTPoolEntry(id)?id.replace(/^rt_/,''):id; }
+function enemyBodiesForPick(id){ return baseArchFromPoolEntry(id)==='swarm'?3:1; }
+function trialBlock(wave){ if(wave<=4)return 1; if(wave<=8)return 2; return 3; }
+
+
 
 const RAGNARÖK_TIERS = [
   {
@@ -1760,11 +1790,11 @@ function initGame(seedVal,evs,traits,parentRecord){
     gold:30,xp:0,xpNeeded:80,level:1,
     boons:[],draft:[],rerollCost:10,
     enemies:[],waveTraits:[],waveFlags:{},waveGold:0,
-    bossWaves:[6,12],
+    bossWaves:[8,12],
     speed:1,tick:0,interval:null,statusTick:0,
     seed:seedVal,
     retireAvailable:false,
-    retireWaves:[3,5,8,10,12],
+    retireWaves:[],
     runBoons:[],
     pendingTactic:null,pendingTacticPaid:false,activeTactic:null,tacticOffers:[],waveGoldMult:1,
     ragnarökActive:META.ragnarökActive||0,
@@ -1838,7 +1868,7 @@ function startFirstHero(seedVal){
 // ═══ WAVE GENERATION ═══
 function genWave(){
   G.enemies=buildEnemies(G.wave);
-  G.waveTraits=pickWaveTraits(G.wave);
+  G.waveTraits=pickWaveTraitsByTrial(G.wave);
   G.waveFlags={};G.waveGold=0;
   G.waveGoldMult=1;
   G.activeTactic=null;
@@ -1846,101 +1876,122 @@ function genWave(){
   G._waveBargainOffer=null;
   G.pendingTactic=null;
   G.pendingTacticPaid=false;
+  G.waveFlags.rootKingRevive=(G.wave===12);
   genTacticOffers();
   G.retireAvailable=false;
   G.roadsideAvailable=!!(G.phase!=='GAME_OVER'&&(G.wave===5||G.wave===9)&&!(G.roadside&&G.roadside.used&&G.roadside.used[G.wave]));
   G.phase='WAVE_PREVIEW';
 }
 function buildEnemies(wave){
-  const isBoss=G.bossWaves.includes(wave);
-  const forceEliteAnyWave=G.tierFlags&&G.tierFlags.elitesOnAnyWave&&!isBoss&&rng()<0.25;
-  let count=Math.min(1+Math.floor(wave/3),isBoss?5:4);
-  if(isBoss&&G.tierFlags&&G.tierFlags.bossExtraEnemy)count=Math.min(count+1,6);
-  const out=[];
-  if(isBoss){
-    const bossArch=rpick(ARCHETYPES.filter(a=>['bruiser','tank','bombardier'].includes(a.id)));
-    const boss=mkEnemy(bossArch,wave,true);
-    if(G.tierFlags&&G.tierFlags.bossSignatureAbility){
-      boss.signature=BOSS_SIGNATURES[bossArch.id]||BOSS_SIGNATURES._default;
-    }
+  const cfg=TRIAL_CONFIG[wave]||{slotsMin:3,slotsMax:4,bodyCap:8};
+  const bodyCap=cfg.bodyCap||8;
+  const out=[]; const picks=[];
+  const counts={anchors:0,assassin:0,rt:0,hasWarden:false,hasSwarm:false};
+  const bossWave=(wave===8||wave===12);
+
+  const markPick=(pid)=>{
+    const base=baseArchFromPoolEntry(pid);
+    if(base==='warden'||base==='shaman')counts.anchors++;
+    if(base==='assassin')counts.assassin++;
+    if(isRTPoolEntry(pid))counts.rt++;
+    if(base==='warden')counts.hasWarden=true;
+    if(base==='swarm')counts.hasSwarm=true;
+  };
+  const canPick=(pid)=>{
+    const base=baseArchFromPoolEntry(pid);
+    const projected=picks.reduce((a,p)=>a+enemyBodiesForPick(p),0)+enemyBodiesForPick(pid);
+    if(projected>bodyCap)return false;
+    if(cfg.maxAnchors!=null&&(base==='warden'||base==='shaman')&&counts.anchors>=cfg.maxAnchors)return false;
+    if(cfg.maxAssassins!=null&&base==='assassin'&&counts.assassin>=cfg.maxAssassins)return false;
+    if(cfg.maxRT!=null&&isRTPoolEntry(pid)&&counts.rt>=cfg.maxRT)return false;
+    if((cfg.forbidAnchorSwarm||cfg.forbidWardenSwarm)&&((base==='swarm'&&counts.hasWarden)||(base==='warden'&&counts.hasSwarm)))return false;
+    return true;
+  };
+
+  if(wave===8){
+    const bossArch=ARCHETYPES.find(a=>a.id==='bombardier');
+    const boss=mkEnemy(bossArch,wave,true,{isBoss:true});
+    if(G.tierFlags&&G.tierFlags.bossSignatureAbility)boss.signature=BOSS_SIGNATURES[bossArch.id]||BOSS_SIGNATURES._default;
     out.push(boss);
   }
-  while(out.length<count)out.push(mkEnemy(rpick(ARCHETYPES),wave,forceEliteAnyWave&&out.length===0));
+  if(wave===12){
+    const bossArch=ARCHETYPES.find(a=>a.id==='warden');
+    const boss=mkEnemy(bossArch,wave,true,{isBoss:true,forceRootTouched:true});
+    boss.displayName='Root-King '+boss.displayName; boss.name=boss.displayName;
+    if(G.tierFlags&&G.tierFlags.bossSignatureAbility)boss.signature=BOSS_SIGNATURES[bossArch.id]||BOSS_SIGNATURES._default;
+    out.push(boss);
+  }
+
+  const fill=(pool,slots,maxAttempts=120)=>{let a=0;while(picks.length<slots&&a<maxAttempts){a++;const pid=rpick(pool);if(!canPick(pid))continue;picks.push(pid);markPick(pid);}};
+
+  if(wave>=1&&wave<=3){ fill(TRIAL_POOLS.A,ri(cfg.slotsMin,cfg.slotsMax),80); }
+  else if(wave===4){
+    if(canPick('swarm')){picks.push('swarm');markPick('swarm');}
+    const slots=ri(cfg.slotsMin,cfg.slotsMax);
+    let a=0;
+    while(picks.length<slots&&a<90){
+      a++;
+      let pid=rpick(TRIAL_POOLS.A);
+      if(cfg.forceGuardianEliteTank&&picks.length===slots-1)pid='tank';
+      if(!canPick(pid))continue;
+      picks.push(pid);markPick(pid);
+    }
+  }else if(wave>=5&&wave<=7){ fill(TRIAL_POOLS.B,ri(cfg.slotsMin,cfg.slotsMax),120); }
+  else if(wave===8){ fill(TRIAL_POOLS.B,ri(cfg.slotsMin,cfg.slotsMax),140); }
+  else if(wave>=9&&wave<=11){ const pool=[...TRIAL_POOLS.C]; if(wave===9&&cfg.allowRemnantLeech)pool.push('leech'); fill(pool,ri(cfg.slotsMin,cfg.slotsMax),150); }
+  else if(wave===12){ fill(['rt_bruiser','rt_shaman','rt_warden','rt_swarm','assassin','frost'],cfg.slotsMin,160); }
+
+  const forceEliteAnyWave=G.tierFlags&&G.tierFlags.elitesOnAnyWave&&!bossWave&&rng()<0.25;
+  let eliteSpent=false;
+  picks.forEach((pid)=>{
+    const arch=ARCHETYPES.find(a=>a.id===baseArchFromPoolEntry(pid)); if(!arch)return;
+    const opts={forceRootTouched:isRTPoolEntry(pid),isBoss:false};
+    if(wave===4&&cfg.forceGuardianEliteTank&&arch.id==='tank')opts.forceElite=true;
+    if(forceEliteAnyWave&&!eliteSpent){opts.forceElite=true; eliteSpent=true;}
+    out.push(mkEnemy(arch,wave,false,opts));
+  });
+
   const exp=[];
-  for(const e of out){
+  out.forEach(e=>{
     exp.push(e);
     if(e.archId==='swarm'){
       for(let i=1;i<3;i++){
+        if(exp.length>=bodyCap)break;
         const c={...JSON.parse(JSON.stringify(e)),id:e.id+'_'+i,actionMeter:rng()*.5,_isEcho:false};
         exp.push(c);
       }
     }
-  }
-  exp.forEach(e=>{
-    if(e.elite&&!e.namedElite){
-      const namedEntry=checkForNamedEliteReturn(e.archId);
-      if(namedEntry){
-        e.namedElite=true;
-        e.displayName=namedEntry.name;
-        e.name=namedEntry.name;
-      }
-    }
   });
-  return exp.slice(0,8);
+  exp.forEach(e=>{if(e.elite&&!e.namedElite){const n=checkForNamedEliteReturn(e.archId);if(n){e.namedElite=true;e.displayName=n.name;e.name=n.name;}}});
+  return exp.slice(0,bodyCap||8);
 }
-function mkEnemy(arch,wave,boss){
+function mkEnemy(arch,wave,boss,opts){
+  opts=opts||{};
   const waveScaleBonus = (G && G.tierFlags && G.tierFlags.enemyWaveScaleBonus) || 0;
   const effectiveWave = Math.min(wave + waveScaleBonus, 20);
   const w = effectiveWave - 1;
   const b = arch.base, s = arch.scl;
-
   const mult = (G && typeof G.difficulty === 'number') ? G.difficulty : 1;
-
   const activeTier = (G && G.ragnarökActive) || 0;
   const ragnarökHPMult = activeTier >= 1 ? 1.10 : 1.0;
-
   const spdMult = (G && G.tierFlags && G.tierFlags.enemySPDMult) || 1.0;
-
   const baseHP = b.hp + s.hp * w;
-  const enemyTuningMult = 0.90; // global enemy stat softening
+  const enemyTuningMult = 0.90;
   const hp = Math.max(1, Math.floor(baseHP * mult * ragnarökHPMult * enemyTuningMult));
   const atk = Math.max(1, Math.floor((b.atk + s.atk * w) * mult * enemyTuningMult));
   const def = Math.max(0, Math.floor((b.def + s.def * w) * mult * enemyTuningMult));
   const baseSpdMult = 0.6 + 0.4 * mult;
   const spd = Math.max(5, Math.floor((b.spd + s.spd * w) * baseSpdMult * spdMult * enemyTuningMult));
-
   const rootTouchedChance=(G&&G.tierFlags&&G.tierFlags.rootTouchedEnemyChance)||0;
-  const isRootTouchedWave=wave>=4&&wave<=8;
-  const rootTouched=!!(isRootTouchedWave&&!boss&&rng()<rootTouchedChance);
-
+  const canTierRootTouched=(wave>=9)&&!boss&&!opts.forceRootTouched&&!opts.noRootTouched;
+  const rootTouched=!!(opts.forceRootTouched||(canTierRootTouched&&rng()<rootTouchedChance));
   const enemy={id:arch.id+'_'+ri(1000,9999),archId:arch.id,
-    // Layer 1: plain English name used in all combat references
-    displayName:arch.displayName||arch.name||arch.id,
-    // Layer 2: Norse name shown in trait line only
-    norseName:arch.norseName||null,
-    // Keep name for backward-compat with log references
-    name:arch.displayName||arch.name||arch.id,
-    realmTier:arch.realmTier||'midgard',
-    icon:arch.icon,col:arch.col,
-    hp,maxHP:hp,atk,def,spd,
-    cc:arch.id==='striker'?Math.min(.7,b.cc+.25+.003*w):b.cc,cd:b.cd,
-    lifesteal:arch.ls||0,trait:arch.trait,td:arch.td,beh:arch.beh,
-    statuses:{},actionMeter:rng()*.5,
-    _firstAtkDone:false,_hexCtr:0,_chargeCtr:0,_tankGuard:true,
-    _tier2Done:false,
-    elite:boss||false,dead:false,
-    rootTouched,
-    namedElite:false,
-    signature:null};
-
-  if(rootTouched){
-    enemy.displayName='Root-Touched '+(arch.displayName||arch.name||arch.id);
-    enemy.name=enemy.displayName;
-    enemy.col='#2a1a3a';
-    enemy.hp=enemy.maxHP=Math.floor(enemy.hp*1.10);
-    enemy.atk=Math.floor(enemy.atk*1.10);
-  }
-
+    displayName:arch.displayName||arch.name||arch.id,norseName:arch.norseName||null,name:arch.displayName||arch.name||arch.id,
+    realmTier:arch.realmTier||'midgard',icon:arch.icon,col:arch.col,hp,maxHP:hp,atk,def,spd,
+    cc:arch.id==='striker'?Math.min(.7,b.cc+.25+.003*w):b.cc,cd:b.cd,lifesteal:arch.ls||0,trait:arch.trait,td:arch.td,beh:arch.beh,
+    statuses:{},actionMeter:rng()*.5,_firstAtkDone:false,_hexCtr:0,_chargeCtr:0,_tankGuard:true,_tier2Done:false,
+    elite:!!(boss||opts.forceElite),dead:false,rootTouched,namedElite:false,signature:null,isBoss:!!opts.isBoss,_rootKingRevived:false,_noEcho:false};
+  if(rootTouched){enemy.displayName='Root-Touched '+(arch.displayName||arch.name||arch.id);enemy.name=enemy.displayName;enemy.col='#2a1a3a';enemy.hp=enemy.maxHP=Math.floor(enemy.hp*1.10);enemy.atk=Math.floor(enemy.atk*1.10);}
   return enemy;
 }
 
@@ -1948,16 +1999,32 @@ function addShieldToUnit(unit,amt){
   if(!unit.statuses.shield)unit.statuses.shield={stacks:1,value:0,dur:9999};
   unit.statuses.shield.value+=amt;
 }
-function pickWaveTraits(wave) {
-  const minTraits = (G && G.tierFlags && G.tierFlags.minWaveTraits) || 0;
-  if (wave <= 2 && minTraits === 0) return [];
-  const n = (wave <= 4) ? Math.max(minTraits, 1) : (rng() < .45 ? 2 : 1);
-  return rshuffle([...WAVE_TRAITS]).slice(0, n);
+function pickWaveTraitsByTrial(wave) {
+  const cfg=TRIAL_CONFIG[wave]||{minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false};
+  const minTraits=(G&&G.tierFlags&&G.tierFlags.minWaveTraits)||0;
+  const minorPool=WAVE_TRAITS.filter(t=>MINOR_WAVE_TRAIT_IDS.includes(t.id));
+  let majorPool=WAVE_TRAITS.filter(t=>MAJOR_WAVE_TRAIT_IDS.includes(t.id));
+  if(!cfg.allowEliteTrait)majorPool=majorPool.filter(t=>t.id!=='elite_wave');
+  if(cfg.forbidMajorIds)majorPool=majorPool.filter(t=>!cfg.forbidMajorIds.includes(t.id));
+  const minorTarget=ri(cfg.minorTraitsMin||0,cfg.minorTraitsMax||0);
+  const majorTarget=((cfg.majorTraitsMax||0)>0&&majorPool.length&&rng()<0.45)?1:0;
+  const picked=[]; const used=new Set();
+  const pickFrom=(pool)=>{const opts=pool.filter(t=>!used.has(t.id)); if(!opts.length)return null; const t=rpick(opts); used.add(t.id); picked.push(t); return t;};
+  for(let i=0;i<minorTarget;i++)pickFrom(minorPool);
+  for(let i=0;i<Math.min(cfg.majorTraitsMax||0,majorTarget);i++)pickFrom(majorPool);
+  const maxSoft=(cfg.minorTraitsMax||0)+(cfg.majorTraitsMax||0)+1;
+  const floor=Math.min(maxSoft,minTraits||0);
+  while(picked.length<floor){if(!pickFrom([...minorPool,...majorPool]))break;}
+  if(wave===9&&(G.enemies||[]).some(e=>e.archId==='assassin')) return picked.filter(t=>!MAJOR_WAVE_TRAIT_IDS.includes(t.id));
+  if(wave===11&&cfg.forbidEchoWithAssassin&&(G.enemies||[]).filter(e=>e.archId==='assassin').length>=2) return picked.filter(t=>t.id!=='echo_atk');
+  if(wave===12&&picked.some(t=>t.id==='toxic_air')&&picked.some(t=>t.id==='echo_atk')) return picked.filter(t=>t.id!==(rng()<0.5?'toxic_air':'echo_atk'));
+  return picked;
 }
 
 function applyWaveTraitsToEnemies(){
   G.waveFlags={};
-  G.waveTraits.forEach(t=>t.apply(G.enemies,G.hero,G));
+  const traitTargets=(G.wave===8)?G.enemies.filter(e=>!e.isBoss):G.enemies;
+  G.waveTraits.forEach(t=>t.apply(traitTargets,G.hero,G));
 
   if(G.tierFlags&&G.tierFlags.allWavesNiflheimTag){
     if(!G.waveFlags._fimbulwinterApplied){
@@ -2263,6 +2330,9 @@ function startBattle(){
   NarrationEngine.reset();
   const waveStartLine=MYTH_LINES.waveStart[G.wave];
   if(waveStartLine) NarrationEngine.fire('waveStart',waveStartLine,'lstatus');
+  if(G.wave===4) addLog('  The dead should not walk here.','lstatus');
+  if(G.wave===5) addLog('  The root turns downward. The air grows thin.','lstatus');
+  if(G.wave===9) addLog('  Mist rises. The cold has teeth.','lstatus');
 
   G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.displayName||e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
   renderAll();
@@ -2469,12 +2539,12 @@ function doEnemyAtk(enemy){
   if(enemy.lifesteal>0)enemy.hp=Math.min(enemy.maxHP,enemy.hp+Math.floor(actual*enemy.lifesteal));
 
   if(enemy.rootTouched&&!enemy.dead){
-    if(enemy.archId==='bruiser'&&rng()<0.40){
-      applyStatus(G.hero,'vulnerable',1,2);
-      addLog(`  🌑 Root-Touched corruption: Vulnerable (2s)`,'lstatus');
-    }else if(enemy.archId==='striker'&&rng()<0.30){
-      applyStatus(G.hero,'poison',1,3);
-      addLog(`  🌑 Root-Touched eitr: Poison (3s)`,'lstatus');
+    if((enemy.archId==='bruiser'||enemy.archId==='warden')&&rng()<0.30){
+      applyStatus(G.hero,'vulnerable',1,3);
+      addLog(`  🌑 Root-Touched corruption: Vulnerable (3s)`,'lstatus');
+    }else if((enemy.archId==='shaman'||enemy.archId==='swarm')&&rng()<0.30){
+      applyStatus(G.hero,'poison',1,4);
+      addLog(`  🌑 Root-Touched eitr: Poison (4s)`,'lstatus');
     }
   }
 
@@ -2531,13 +2601,25 @@ function onKill(enemy){
     G.gold+=G.tierFlags.killDropsMark;
   }
 
-  if(G.tierFlags&&G.tierFlags.draugrEchoChance&&!enemy._isEcho){
+  if(G.wave===12&&G.waveFlags&&G.waveFlags.rootKingRevive&&!enemy.isBoss&&!enemy._isEcho&&!enemy._rootKingRevived){
+    setTimeout(()=>rootKingRevive(enemy),0);
+  }
+
+  if(G.tierFlags&&G.tierFlags.draugrEchoChance&&!enemy._isEcho&&!enemy._noEcho){
     if(rng()<G.tierFlags.draugrEchoChance){
       setTimeout(()=>draugrEchoRevive(enemy),0);
     }
   }
 
   trigBoon('onKill',G.hero,enemy);
+}
+
+function rootKingRevive(originalEnemy){
+  if(!G||G.phase!=='BATTLE')return;
+  const revivedHP=Math.max(1,Math.floor(originalEnemy.maxHP*0.25));
+  const risen={...JSON.parse(JSON.stringify(originalEnemy)),id:originalEnemy.id+'_risen',hp:revivedHP,maxHP:revivedHP,displayName:'Risen: '+(originalEnemy.displayName||originalEnemy.name),name:'Risen: '+(originalEnemy.displayName||originalEnemy.name),dead:false,_isEcho:false,_rootKingRevived:true,_noEcho:true,actionMeter:0.3,statuses:{},elite:false};
+  G.enemies.push(risen);
+  addLog(`  🜏 Níðhöggr's gnawing holds it — it rises again.`,'lstatus');
 }
 
 function draugrEchoRevive(originalEnemy){
@@ -2554,6 +2636,7 @@ function draugrEchoRevive(originalEnemy){
     actionMeter:0.3,
     statuses:{},
     elite:false,
+    _noEcho:true,
   };
   if(originalEnemy.archId==='frost'||originalEnemy.realmTier==='niflheim'){
     echo.statuses.slow={stacks:1,value:0,dur:4};
