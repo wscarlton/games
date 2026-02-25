@@ -2915,12 +2915,12 @@ function renderWavePreview(){
   if(G.retireAvailable){
     h+=`<div class="retire-banner">
       <div class="retire-banner-title">🏛 RETIREMENT OPPORTUNITY</div>
-      <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">End your run now and send ${G.hero.record?.name||'your hero'} to the Chosen of the Hall. Convert run progress into genetic strength for future generations.</div>
+      <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">End your saga now and send ${G.hero.record?.name||'your hero'} to the Chosen of the Hall. Convert saga progress into genetic strength for future generations.</div>
       <button class="btn btn-gold btn-sm" onclick="showRetireConfirm()">🏛 Retire Hero</button>
     </div>`;
   }
   h+=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:${isBoss?'var(--amber)':'var(--cyan)'}">${isBoss?'⭐ BOSS — ':''}WAVE ${G.wave}</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:${isBoss?'var(--amber)':'var(--cyan)'}">${isBoss?'⭐ BOSS — ':''}Trial ${G.wave}</div>
     <div style="display:flex;gap:3px;align-items:center">
       ${Array(5).fill(0).map((_,i)=>`<div class="diff-pip${i<diff?' dp-on':''}" ${i<diff?`style="background:${diffColors[diff-1]};border-color:${diffColors[diff-1]}"`:''}></div>`).join('')}
       <span style="font-size:11px;color:${diffColors[diff-1]};margin-left:5px;font-weight:700">${diffLabels[diff-1]}</span>
@@ -3014,7 +3014,7 @@ function renderBattle(){
   const alive=G.enemies.filter(e=>!e.dead),dead=G.enemies.filter(e=>e.dead);
   let h=`<div style="padding:12px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-      <span style="font-weight:800;font-size:14px;color:var(--red)" class="pulse">⚔ BATTLE — WAVE ${G.wave}</span>
+      <span style="font-weight:800;font-size:14px;color:var(--red)" class="pulse">⚔ BATTLE — TRIAL ${G.wave}</span>
     </div>`;
 
   alive.forEach(e=>{
@@ -3226,7 +3226,7 @@ function renderRetiredPool(){
     return `<div style="text-align:center;padding:40px;color:var(--txt3)">
       <div style="font-size:32px;margin-bottom:12px">🏛</div>
       <div style="font-size:13px">No retired heroes yet.</div>
-      <div style="font-size:11px;margin-top:6px">Complete a run and choose to retire your hero instead of fighting on.</div>
+      <div style="font-size:11px;margin-top:6px">Complete a saga and choose to retire your hero instead of fighting on.</div>
     </div>`;
   }
   let h=`<div>
@@ -3894,31 +3894,6 @@ function showRetireConfirm(){
   showOverlayContent(html);
 }
 
-function showStartScreen(){
-  closeDrawers();
-  const hasRetired=META.retiredPool.length>0;
-  let html=`
-    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:var(--violet);margin-bottom:10px;text-shadow:0 0 20px rgba(144,80,232,.6)">ᚠ RUNESAGA</div>
-    <p style="color:var(--txt2);margin:8px 0 18px;line-height:1.7;font-size:12px">Raise a champion. Forge a saga.<br>Invoke <span style="color:var(--violet)">Runes</span> · Build synergies · Carve your lineage.</p>`;
-  if(hasRetired){
-    html+=`<div style="background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.3);border-radius:5px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--txt2)">
-      🏛 You have <strong style="color:var(--gold)">${META.retiredPool.length}</strong> retired ${META.retiredPool.length===1?'hero':'heroes'} ready for breeding.
-      <span style="color:var(--txt3)">Go to Legacy → Breeding to create a stronger generation.</span>
-    </div>`;
-  }
-  html+=`<div style="margin:0 0 14px">
-      <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Saga Seed (optional)</label>
-      <input id="seed-input" type="text" placeholder="Leave blank for random"
-        style="width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 12px;border-radius:4px;font-size:12px;font-family:'Share Tech Mono',monospace;text-align:center;outline:none">
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:2;padding:11px" onclick="startNewRunFromOverlay()">▶ Begin New Saga (Founder)</button>
-      ${hasRetired?`<button class="btn btn-gold" style="flex:1;padding:11px" onclick="hideOverlay();showLegacy()">ᛟ Hero Hall</button>`:''}
-    </div>`;
-  showOverlayContent(html);
-  updateDifficultyUI();
-  syncChromeHeights();
-}
 function startNewRunFromOverlay(){
   const seed=(document.getElementById('seed-input')?.value||'').trim();
   hideOverlay();
