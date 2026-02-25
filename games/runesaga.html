@@ -638,8 +638,6 @@ const STATUS={
 };
 
 const REALM_TIERS=[];
-const BOSS_SIGNATURES={};
-const CURSED_BARGAINS=[];
 
 // ═══ BOONS ═══
 const BOONS=[
@@ -1320,6 +1318,101 @@ const TACTICS=[
 ];
 const TACTIC_BY_ID=Object.fromEntries(TACTICS.map(t=>[t.id,t]));
 
+const BOSS_SIGNATURES={
+  bruiser:{
+    name:'Serpent Surge',
+    desc:'Every 4th attack deals true damage equal to 15% of hero max HP.',
+    apply(enemy,h){
+      enemy._sigCtr=(enemy._sigCtr||0)+1;
+      if(enemy._sigCtr%4===0){
+        const trueDmg=Math.floor(h.maxHP*0.15);
+        heroDmg(trueDmg,enemy,'true');
+        addLog(`  ⭐ ${enemy.displayName||enemy.name} — Serpent Surge! ${trueDmg} true damage!`,'lcrit');
+      }
+    }
+  },
+  tank:{
+    name:'Unyielding Aegis',
+    desc:'Below 50% HP, gains 15 Shield per attack received.',
+    apply(enemy){
+      if(enemy.hp<enemy.maxHP*0.5){
+        addShieldToUnit(enemy,15);
+      }
+    }
+  },
+  bombardier:{
+    name:'Rune Surge',
+    desc:'Every 3rd attack also applies Vulnerable to the hero (3s).',
+    apply(enemy,h){
+      enemy._sigCtr=(enemy._sigCtr||0)+1;
+      if(enemy._sigCtr%3===0){
+        applyStatus(h,'vulnerable',1,3);
+        addLog(`  ⭐ ${enemy.displayName||enemy.name} — Rune Surge! Vulnerable.`,'lstatus');
+      }
+    }
+  },
+  _default:{
+    name:'Eldritch Force',
+    desc:'Gains +3 ATK per enemy slain this wave.',
+    apply(){/* handled via wave flags */}
+  },
+};
+
+const CURSED_BARGAINS=[
+  {
+    id:'cb_blood_price',name:'Blood Price',icon:'🩸',
+    desc:'+30 ATK for this saga. Hero takes +8% damage permanently.',
+    cost:25,
+    apply(G){
+      G.hero.atk+=30;
+      G.hero.cursedMult=(G.hero.cursedMult||1.0)*1.08;
+      addLog('⚠ Blood Price accepted. Power costs something.','laxiom');
+    }
+  },
+  {
+    id:'cb_glass_soul',name:'Glass Soul',icon:'💎',
+    desc:'+25% Crit Chance. Evasion set to 0 permanently.',
+    cost:30,
+    apply(G){
+      G.hero.critChance=Math.min(0.9,G.hero.critChance+0.25);
+      G.hero.evasion=0;
+      addLog('⚠ Glass Soul accepted. Fortune without flinching.','laxiom');
+    }
+  },
+  {
+    id:'cb_norn_debt',name:"Norn's Debt",icon:'🌀',
+    desc:'Gain 50 Saga-Marks now. End-of-trial gold reduced by 20%.',
+    cost:0,isFree:true,
+    apply(G){
+      G.gold+=50;
+      G.waveGoldMult=(G.waveGoldMult||1.0)*0.80;
+      G.hero._nornDebt=true;
+      addLog("⚠ Norn's Debt accepted. The weavers remember.",'laxiom');
+    }
+  },
+  {
+    id:'cb_iron_hunger',name:'Iron Hunger',icon:'⚙',
+    desc:'+20 DEF. Lifesteal reduced to 0.',
+    cost:20,
+    apply(G){
+      G.hero.def+=20;
+      G.hero.lifesteal=0;
+      addLog('⚠ Iron Hunger accepted. Defense before all else.','laxiom');
+    }
+  },
+];
+
+function takeCursedBargain(id){
+  const bargain=CURSED_BARGAINS.find(b=>b.id===id);
+  if(!bargain)return;
+  if(!bargain.isFree&&G.gold<bargain.cost)return;
+  if(!bargain.isFree)G.gold-=bargain.cost;
+  bargain.apply(G);
+  G.cursedBargainUsedThisWave=true;
+  G._waveBargainOffer=null;
+  renderAll();
+}
+
 function genTacticOffers(){
   // 3 random options each wave (keeps the loop fresh without hiding the core shop)
   const pool=[...TACTICS];
@@ -1503,6 +1596,8 @@ function genWave(){
   G.waveFlags={};G.waveGold=0;
   G.waveGoldMult=1;
   G.activeTactic=null;
+  G.cursedBargainUsedThisWave=false;
+  G._waveBargainOffer=null;
   G.pendingTactic=null;
   G.pendingTacticPaid=false;
   genTacticOffers();
@@ -1511,16 +1606,25 @@ function genWave(){
 }
 function buildEnemies(wave){
   const isBoss=G.bossWaves.includes(wave);
+  const forceEliteAnyWave=G.tierFlags&&G.tierFlags.elitesOnAnyWave&&!isBoss&&rng()<0.25;
   let count=Math.min(1+Math.floor(wave/3),isBoss?5:4);
+  if(isBoss&&G.tierFlags&&G.tierFlags.bossExtraEnemy)count=Math.min(count+1,6);
   const out=[];
-  if(isBoss){out.push(mkEnemy(rpick(ARCHETYPES.filter(a=>['bruiser','tank','bombardier'].includes(a.id))),wave,true));}
-  while(out.length<count)out.push(mkEnemy(rpick(ARCHETYPES),wave,false));
+  if(isBoss){
+    const bossArch=rpick(ARCHETYPES.filter(a=>['bruiser','tank','bombardier'].includes(a.id)));
+    const boss=mkEnemy(bossArch,wave,true);
+    if(G.tierFlags&&G.tierFlags.bossSignatureAbility){
+      boss.signature=BOSS_SIGNATURES[bossArch.id]||BOSS_SIGNATURES._default;
+    }
+    out.push(boss);
+  }
+  while(out.length<count)out.push(mkEnemy(rpick(ARCHETYPES),wave,forceEliteAnyWave&&out.length===0));
   const exp=[];
   for(const e of out){
     exp.push(e);
     if(e.archId==='swarm'){
       for(let i=1;i<3;i++){
-        const c={...JSON.parse(JSON.stringify(e)),id:e.id+'_'+i,actionMeter:rng()*.5};
+        const c={...JSON.parse(JSON.stringify(e)),id:e.id+'_'+i,actionMeter:rng()*.5,_isEcho:false};
         exp.push(c);
       }
     }
@@ -1679,6 +1783,10 @@ function dealToEnemy(enemy,dmg){
 function heroDmg(rawDmg,attacker,src){
   const hero=G.hero;
   if(rawDmg<=0)return 0;
+
+  if(hero.cursedMult&&hero.cursedMult>1.0){
+    rawDmg=Math.floor(rawDmg*hero.cursedMult);
+  }
 
   if(hasTrait('tenacious')&&hero.hp<hero.maxHP*.25)rawDmg=Math.floor(rawDmg*.60);
 
@@ -2004,6 +2112,19 @@ function doEnemyAtk(enemy){
     heroDmg(e2,enemy,'echo');
     addLog(`  🔊 Echo! ${e2}`,'lhit');
   }
+
+  if(G.tierFlags&&G.tierFlags.emberSparkChance&&G.wave>=(G.tierFlags.muspelheimTagFromWave||7)){
+    if(rng()<G.tierFlags.emberSparkChance){
+      const sparkDmg=Math.max(1,Math.floor(enemy.atk*0.15)-G.hero.def);
+      heroDmg(sparkDmg,enemy,'ember');
+      addLog(`  🔥 Ember spark! ${sparkDmg} fire damage.`,'lstatus');
+      applyStatus(G.hero,'bleed',1,2);
+    }
+  }
+
+  if(enemy.signature&&typeof enemy.signature.apply==='function'){
+    enemy.signature.apply(enemy,G.hero);
+  }
 }
 
 function onKill(enemy){
@@ -2018,7 +2139,40 @@ function onKill(enemy){
     addLog(`  😡 Enraged! +15 ATK!`,'lstatus');
   }
   G.waveGold+=ri(3,7);
+
+  if(G.tierFlags&&G.tierFlags.killDropsMark){
+    G.gold+=G.tierFlags.killDropsMark;
+  }
+
+  if(G.tierFlags&&G.tierFlags.draugrEchoChance&&!enemy._isEcho){
+    if(rng()<G.tierFlags.draugrEchoChance){
+      setTimeout(()=>draugrEchoRevive(enemy),0);
+    }
+  }
+
   trigBoon('onKill',G.hero,enemy);
+}
+
+function draugrEchoRevive(originalEnemy){
+  if(!G||G.phase!=='BATTLE')return;
+  const echoHP=Math.floor(originalEnemy.maxHP*0.25);
+  const echo={
+    ...JSON.parse(JSON.stringify(originalEnemy)),
+    id:originalEnemy.id+'_echo',
+    hp:echoHP,maxHP:echoHP,
+    displayName:'Echo: '+(originalEnemy.displayName||originalEnemy.name),
+    name:'Echo: '+(originalEnemy.displayName||originalEnemy.name),
+    dead:false,
+    _isEcho:true,
+    actionMeter:0.3,
+    statuses:{},
+    elite:false,
+  };
+  if(originalEnemy.archId==='frost'||originalEnemy.realmTier==='niflheim'){
+    echo.statuses.slow={stacks:1,value:0,dur:4};
+  }
+  G.enemies.push(echo);
+  addLog(`  💀 The dead remember — ${originalEnemy.displayName||originalEnemy.name} rises!`,'lstatus');
 }
 
 function tickStatuses(unit,isHero){
@@ -2618,6 +2772,23 @@ function renderRewards(){
             <div class="sb-name">${s.icon} ${s.name}</div><div class="sb-cost">ᛋ${s.cost}</div><div class="sb-desc">${s.desc}</div>
           </div>`).join('')}
         </div>
+        ${(()=>{
+          if(!(G.tierFlags&&G.tierFlags.cursedBargainInShop&&!G.cursedBargainUsedThisWave))return '';
+          const bargain=G._waveBargainOffer||(G._waveBargainOffer=rpick(CURSED_BARGAINS));
+          return `
+            <div style="margin-top:10px;border-top:1px solid rgba(220,60,20,.3);padding-top:10px">
+              <div class="sec-title" style="color:var(--amber)">⚠ The Norns Offer a Bargain</div>
+              <div style="background:#120a06;border:1px solid rgba(220,60,20,.4);border-radius:5px;padding:10px;margin:4px 0">
+                <div style="font-weight:700;color:var(--amber);margin-bottom:3px">${bargain.icon} ${bargain.name}</div>
+                <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">${bargain.desc}</div>
+                <button class="btn btn-sm btn-danger${(!bargain.isFree&&G.gold<bargain.cost)?' sb-disabled':''}"
+                        onclick="takeCursedBargain('${bargain.id}')">
+                  Accept${bargain.isFree?'':` (ᛋ${bargain.cost})`}
+                </button>
+              </div>
+            </div>
+          `;
+        })()}
         <div style="margin-top:8px;font-size:10px;color:var(--txt3)">
           HP: <span style="color:${hpPct>60?'var(--green)':hpPct>30?'var(--amber)':'var(--red)'}">${G.hero.hp}/${G.hero.maxHP} (${Math.round(hpPct)}%)</span>
         </div>
