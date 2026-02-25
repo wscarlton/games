@@ -1033,6 +1033,114 @@ const WAVE_TRAITS=[
 ];
 
 
+const RAGNARÖK_TIERS = [
+  {
+    tier: 1, name: 'First Root Darkens',
+    omen: 'The cold comes earlier than it should.',
+    revealStage: 'none',
+    apply(G) { /* enemyHPMult handled in mkEnemy */ }
+  },
+  {
+    tier: 2, name: 'The Wolves Stir',
+    omen: 'They move in patterns now, not just hunger.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.archetypeBehaviors = true; }
+  },
+  {
+    tier: 3, name: 'Mist Thickens',
+    omen: 'The boundary between realms grows soft.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.minWaveTraits = 1; }
+  },
+  {
+    tier: 4, name: 'The Dead Remember',
+    omen: 'Some do not stay fallen.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.draugrEchoChance = 0.15; }
+  },
+  {
+    tier: 5, name: 'Jörmungandr Stirs',
+    omen: 'The ocean trembles. Something beneath has shifted weight.',
+    revealStage: 'indirect',
+    apply(G) { G.tierFlags.bossExtraEnemy = true; G.tierFlags.bossSignatureAbility = true; }
+  },
+  {
+    tier: 6, name: 'The Norns Bargain',
+    omen: 'Fate has a price. The question is whether you recognize it.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.cursedBargainInShop = true; }
+  },
+  {
+    tier: 7, name: 'Surtr Sends Scouts',
+    omen: 'Ash on the wind. The fire-realm reaches.',
+    revealStage: 'surtr',
+    apply(G) { G.tierFlags.muspelheimTagFromWave = 7; G.tierFlags.emberSparkChance = 0.20; }
+  },
+  {
+    tier: 8, name: 'Bifröst Cracks',
+    omen: 'The bridge between worlds fractures. Passage grows costly.',
+    revealStage: 'none',
+    apply(G) {
+      G.tierFlags.startingGoldReduction = 8;
+      G.tierFlags.rerollCostIncreaseOverride = 4;
+    }
+  },
+  {
+    tier: 9, name: 'Root Harvest',
+    omen: 'What falls feeds what grows beneath.',
+    revealStage: 'root',
+    apply(G) { G.tierFlags.killDropsMark = 1; }
+  },
+  {
+    tier: 10, name: 'Elites Without Season',
+    omen: 'The strong ones no longer wait for invitation.',
+    revealStage: 'indirect',
+    apply(G) {
+      G.tierFlags.elitesOnAnyWave    = true;
+      G.tierFlags.namedElitesActive  = true;
+      G.tierFlags.eliteSecondPhase   = true;
+    }
+  },
+  {
+    tier: 11, name: 'Fimbulwinter Arrives',
+    omen: 'Three winters without summer. The realms remember what cold means.',
+    revealStage: 'fimbulwinter',
+    apply(G) {
+      G.tierFlags.allWavesNiflheimTag   = true;
+      G.tierFlags.heroPermanentSPDPenalty = 5;
+      G.tierFlags.regenBoonBonus         = 0.40;
+    }
+  },
+  {
+    tier: 12, name: "The Gnawer's Influence Spreads",
+    omen: 'Root-corruption reaches the middle trials.',
+    revealStage: 'gnawer_indirect',
+    apply(G) { G.tierFlags.rootTouchedEnemyChance = 0.30; }
+  },
+  {
+    tier: 13, name: 'Eitr in the Air',
+    omen: 'The world-venom rises. Everything breathes it.',
+    revealStage: 'eitr',
+    apply(G) { G.tierFlags.toxicAirFromWave = 5; G.tierFlags.dotDamageBonus = 0.20; }
+  },
+  {
+    tier: 14, name: 'Twilight Accelerates',
+    omen: 'The end, when it comes, will come fast.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.enemySPDMult = 1.20; G.tierFlags.heroSPDBonus = 10; }
+  },
+  {
+    tier: 15, name: 'True Ragnarök',
+    omen: 'Níðhöggr no longer gnaws. It tears.',
+    revealStage: 'nidhoggr',
+    apply(G) {
+      G.tierFlags.enemyWaveScaleBonus = 2;
+      G.tierFlags.allFatherLastGift   = true;
+    }
+  },
+];
+
+
 // ═══ META PERSISTENT STATE ═══
 const META_KEY='axiom_meta_v3';
 let META={
@@ -1334,10 +1442,52 @@ function initGame(seedVal,evs,traits,parentRecord){
 }
 
 // Stub — fully implemented in Prompt 6
-function applyRagnarökTiers(G){
-  G.tierFlags={};
-  // Tier effects applied here once RAGNARÖK_TIERS is defined
+function applyRagnarökTiers(G) {
+  G.tierFlags = {};
+  const activeTier = G.ragnarökActive || 0;
+  for (let i = 0; i < activeTier && i < RAGNARÖK_TIERS.length; i++) {
+    const tierDef = RAGNARÖK_TIERS[i];
+    if (tierDef && typeof tierDef.apply === 'function') {
+      tierDef.apply(G);
+    }
+  }
+
+  if (G.tierFlags.startingGoldReduction) {
+    G.gold = Math.max(0, G.gold - G.tierFlags.startingGoldReduction);
+  }
+
+  if (G.tierFlags.heroPermanentSPDPenalty && G.hero) {
+    G.hero.spd = Math.max(5, G.hero.spd - G.tierFlags.heroPermanentSPDPenalty);
+  }
+
+  if (G.tierFlags.heroSPDBonus && G.hero) {
+    G.hero.spd += G.tierFlags.heroSPDBonus;
+  }
 }
+
+function checkRagnarökUnlock() {
+  if (!G) return;
+  const currentActive = G.ragnarökActive || 0;
+  const currentUnlocked = META.ragnarökTier || 0;
+  if (currentActive < currentUnlocked) return;
+
+  const completedWave = G.wave;
+  const isVictory = G.phase === 'VICTORY';
+  const isRetireDeep = (completedWave >= 8);
+
+  if (!isVictory && !isRetireDeep) return;
+
+  const newTier = Math.min(15, currentUnlocked + 1);
+  if (newTier <= currentUnlocked) return;
+
+  META.ragnarökTier = newTier;
+  if (G.hero && G.hero.record) {
+    G.hero.record.ragnarökStamp = newTier;
+  }
+  saveMeta();
+  addLog(`ᚢ The root darkens further. Ragnarök Tier ${newTier} — ${rootDepthLabel(newTier)} — unlocked.`, 'laxiom');
+}
+
 
 function startFirstHero(seedVal){
   const rec=mkHeroRecord(genName(0,null,null),0,[],emptyEVs(),[]);
@@ -1378,14 +1528,24 @@ function buildEnemies(wave){
   return exp.slice(0,8);
 }
 function mkEnemy(arch,wave,boss){
-  const w=wave-1,b=arch.base,s=arch.scl;
-  const mult=(G && typeof G.difficulty==='number')?G.difficulty:1;
+  const waveScaleBonus = (G && G.tierFlags && G.tierFlags.enemyWaveScaleBonus) || 0;
+  const effectiveWave = Math.min(wave + waveScaleBonus, 20);
+  const w = effectiveWave - 1;
+  const b = arch.base, s = arch.scl;
 
-  const baseHP=b.hp+s.hp*w;
-  const hp=Math.max(1,Math.floor(baseHP*mult));
-  const atk=Math.max(1,Math.floor((b.atk+s.atk*w)*mult));
-  const def=Math.max(0,Math.floor((b.def+s.def*w)*mult));
-  const spdMult=0.6+0.4*mult;const spd=Math.max(5,Math.floor((b.spd+s.spd*w)*spdMult));
+  const mult = (G && typeof G.difficulty === 'number') ? G.difficulty : 1;
+
+  const activeTier = (G && G.ragnarökActive) || 0;
+  const ragnarökHPMult = activeTier >= 1 ? 1.10 : 1.0;
+
+  const spdMult = (G && G.tierFlags && G.tierFlags.enemySPDMult) || 1.0;
+
+  const baseHP = b.hp + s.hp * w;
+  const hp = Math.max(1, Math.floor(baseHP * mult * ragnarökHPMult));
+  const atk = Math.max(1, Math.floor((b.atk + s.atk * w) * mult));
+  const def = Math.max(0, Math.floor((b.def + s.def * w) * mult));
+  const baseSpdMult = 0.6 + 0.4 * mult;
+  const spd = Math.max(5, Math.floor((b.spd + s.spd * w) * baseSpdMult * spdMult));
 
   return{id:arch.id+'_'+ri(1000,9999),archId:arch.id,
     // Layer 1: plain English name used in all combat references
@@ -1407,15 +1567,18 @@ function mkEnemy(arch,wave,boss){
     namedElite:false,
     signature:null};
 }
+
 function addShieldToUnit(unit,amt){
   if(!unit.statuses.shield)unit.statuses.shield={stacks:1,value:0,dur:9999};
   unit.statuses.shield.value+=amt;
 }
-function pickWaveTraits(wave){
-  if(wave<=2)return[];
-  const n=wave<=4?1:(rng()<.45?2:1);
-  return rshuffle([...WAVE_TRAITS]).slice(0,n);
+function pickWaveTraits(wave) {
+  const minTraits = (G && G.tierFlags && G.tierFlags.minWaveTraits) || 0;
+  if (wave <= 2 && minTraits === 0) return [];
+  const n = (wave <= 4) ? Math.max(minTraits, 1) : (rng() < .45 ? 2 : 1);
+  return rshuffle([...WAVE_TRAITS]).slice(0, n);
 }
+
 function applyWaveTraitsToEnemies(){
   G.waveFlags={};
   G.waveTraits.forEach(t=>t.apply(G.enemies,G.hero,G));
@@ -2143,6 +2306,7 @@ function pickBoon(id){
     META.legacyEssence+=80;
     saveMeta();
     G.phase='VICTORY';
+    checkRagnarökUnlock();
     renderAll();
     return;
   }
@@ -2323,6 +2487,31 @@ function renderWavePreview(){
       h+=`<div class="trait-card"><div class="ticon">${t.icon}</div><div><div class="tname">${t.name}</div><div class="tdesc">${t.desc}</div></div></div>`;
     });
     h+=`<div style="height:8px"></div>`;
+  }
+
+  const activeTier=G.ragnarökActive||0;
+  if(activeTier>0){
+    const activeTiers=RAGNARÖK_TIERS.slice(0,activeTier);
+    h+=`
+      <div class="sec-title" style="margin-top:10px">
+        ${rootDepthIcon(activeTier)} Root Depth ${activeTier} — Active Omens
+        <button onclick="
+          var tl=document.getElementById('tier-list-wave');
+          tl.style.display=(tl.style.display==='none'?'block':'none');
+        " style="float:right;background:none;border:none;color:var(--txt3);cursor:pointer;font-size:10px;margin-top:2px">
+          Show/Hide
+        </button>
+      </div>
+      <div id="tier-list-wave" style="display:none;margin-bottom:8px">
+        ${activeTiers.map(t=>`
+          <div style="font-size:10px;color:var(--txt3);margin:2px 0;padding:3px 6px;
+                      background:var(--bg2);border-radius:3px;border-left:2px solid var(--border2)">
+            <span style="color:var(--amber);font-weight:700">${t.tier}.</span>
+            ${t.name} — <em>${t.omen}</em>
+          </div>
+        `).join('')}
+      </div>
+    `;
   }
 
 
@@ -3860,6 +4049,10 @@ function aspectsHTML(){
       <div style="font-weight:900;color:var(--gold)">ᛟ House ${META.houseName}</div>
       <div style="font-size:10px;color:var(--txt3)">Relics: 🗿${META.relics} · Scar Tokens: 🩹${totalScarTokens()}</div>
     </div>
+    <div style="font-size:10px;color:var(--txt3);margin-top:4px">
+      Ragnarök: ${rootDepthIcon(META.ragnarökTier)} Tier ${META.ragnarökTier || 0} unlocked
+      ${META.ragnarökTier > 0 ? `· "${rootDepthLabel(META.ragnarökTier)}"` : '· No tier unlocked yet'}
+    </div>
     <div style="font-size:10px;color:var(--txt3);margin-bottom:8px">Rename House:</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <input id="house-name-input" value="${(META.houseName||'')}" style="flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 10px;border-radius:6px;font-size:12px;font-family:'Share Tech Mono',monospace;outline:none">
@@ -4128,6 +4321,7 @@ function startFirstHero(){
   const _retireHero = retireHero;
   retireHero = function(){
     try{ awardAspectXPFromRun('retired'); }catch(e){}
+    try{ checkRagnarökUnlock(); }catch(e){}
     _retireHero();
     // ensure persisted
     try{ saveMeta(); }catch(e){}
