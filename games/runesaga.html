@@ -175,6 +175,11 @@ body{
   display:flex;align-items:flex-start;gap:10px;
 }
 .enemy-card.ec-elite{border-color:var(--amber2);background:#141008;}
+.enemy-card.ec-root-touched {
+  border-color: #4a1a6a;
+  background: #0e0818;
+  box-shadow: 0 0 8px rgba(100, 20, 140, 0.3);
+}
 .eicon{width:38px;height:38px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
 .einfo{flex:1;min-width:0;}
 .ename{font-weight:700;font-size:13px;}
@@ -490,6 +495,7 @@ body{
     <div style="width:1px;height:20px;background:var(--border2)"></div>
     <span class="wave-num" id="hdr-wave">Wave 1/12</span>
     <span style="font-size:11px;color:var(--txt3)" id="hdr-lvl">Lv.1</span>
+    <div id="hdr-root-depth" style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--txt3)"></div>
     <div style="display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--gold)">ᛋ<span id="hdr-gold">0</span></div>
     <div style="display:flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--salvage)">ᚱ<span id="hdr-salvage">0</span></div>
     <div style="margin-left:auto;display:flex;gap:8px">
@@ -547,10 +553,12 @@ body{
       <div class="ltab" id="ltab-fallen" onclick="setLegacyTab('fallen')">Fallen Saga</div>
       <div class="ltab" id="ltab-tree" onclick="setLegacyTab('tree')">Family Tree</div>
       <div class="ltab" id="ltab-upgrades" onclick="setLegacyTab('upgrades')">Runesmith</div>
+      <div class="ltab" id="ltab-codex" onclick="setLegacyTab('codex')">📖 Codex</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:14px;align-items:center;font-size:12px;font-family:'Share Tech Mono',monospace">
       <span style="color:var(--gold)">ᛋ <span id="leg-essence">0</span> Essence</span>
-      <span style="color:var(--salvage)">ᚱ <span id="leg-salvage">0</span> Relics</span>
+      <span style="color:var(--salvage)">ᚱ <span id="leg-salvage">0</span> Rune-Shards</span>
+      <span style="color:var(--gold)">🗿 <span id="leg-relics">0</span> Relics</span>
       <button class="btn btn-sm btn-danger" onclick="hideLegacy()">✕ Return to Run</button>
     </div>
   </div>
@@ -630,6 +638,8 @@ const STATUS={
   regen:{name:'Regen',icon:'💚',cls:'sb-regen',desc:'Heals HP per sec'},
 };
 
+const REALM_TIERS=[];
+
 // ═══ BOONS ═══
 const BOONS=[
   {id:'iron_skin',name:'Iron Skin',rarity:'common',tags:['Bulwark'],icon:'🛡',desc:'+22 Defense.',effects:[{t:'stat',s:'def',v:22}]},
@@ -703,20 +713,415 @@ const BOONS=[
 {id:'second_wind',      name:'Second Wind',           rarity:'rare',    tags:['Sustain'],            icon:'🌬️',desc:'Once per battle, dropping below 30% HP heals 20% Max HP.', effects:[{t:'passive',k:'secondWind',v:.20}]},
 ];
 
-// ═══ ENEMY ARCHETYPES ═══
-const ARCHETYPES=[
-  {id:'bruiser',name:'Bruiser',icon:'💪',col:'#a03020',base:{hp:80,atk:14,def:8,spd:40,cc:.05,cd:1.5},scl:{hp:28,atk:5,def:3,spd:2},trait:'Relentless',td:'Immune to Slow.',beh:'steady'},
-  {id:'striker',name:'Striker',icon:'⚡',col:'#806010',base:{hp:48,atk:16,def:4,spd:70,cc:.22,cd:2.0},scl:{hp:12,atk:6,def:1,spd:5},trait:'Keen Edge',td:'+25% Crit Chance.',beh:'fast'},
-  {id:'tank',name:'Tank',icon:'🛡',col:'#305080',base:{hp:120,atk:10,def:22,spd:25,cc:.03,cd:1.5},scl:{hp:38,atk:3,def:5,spd:1},trait:'Iron Will',td:'First hit against it is negated.',beh:'steady'},
-  {id:'shaman',name:'Shaman',icon:'🔮',col:'#702080',base:{hp:58,atk:12,def:6,spd:45,cc:.08,cd:1.5},scl:{hp:15,atk:4,def:2,spd:2},trait:'Hex',td:'Every 3rd attack applies Weak.',beh:'caster'},
-  {id:'swarm',name:'Swarm',icon:'🐜',col:'#406020',base:{hp:20,atk:8,def:2,spd:62,cc:.05,cd:1.5},scl:{hp:6,atk:3,def:1,spd:3},trait:'Swarming',td:'Spawns in groups of 3.',beh:'fast'},
-  {id:'assassin',name:'Assassin',icon:'🗡',col:'#301840',base:{hp:38,atk:22,def:3,spd:58,cc:.28,cd:2.2},scl:{hp:10,atk:8,def:1,spd:4},trait:'Ambush',td:'First attack deals 2× damage.',beh:'burst'},
-  {id:'leech',name:'Leech',icon:'🧛',col:'#402040',base:{hp:64,atk:13,def:5,spd:42,cc:.08,cd:1.5},scl:{hp:18,atk:4,def:2,spd:2},trait:'Vampiric',td:'Heals 30% of damage dealt.',beh:'sustain',ls:.30},
-  {id:'bombardier',name:'Bombardier',icon:'💣',col:'#6a4000',base:{hp:68,atk:30,def:10,spd:20,cc:.10,cd:2.0},scl:{hp:20,atk:10,def:3,spd:1},trait:'Overcharge',td:'Every 3rd attack deals 2× damage.',beh:'slow'},
+const GEAR_TEMPLATES={
+  weapon_iron_seax:{slot:'weapon',baseName:'Iron Seax',rarity:'common',loreNote:'A short blade, practical and honest.',affixes:[{stat:'atk',value:8,label:'+8 ATK'}]},
+  weapon_ulfberht:{slot:'weapon',baseName:'Ulfberht Blade',rarity:'uncommon',loreNote:'Forged with runes in the steel.',affixes:[{stat:'atk',value:14,label:'+14 ATK'},{stat:'critChance',value:0.06,label:'+6% Crit'}]},
+  weapon_gram_shard:{slot:'weapon',baseName:"Gram's Shard",rarity:'rare',loreNote:'A fragment of the sword that slew Fáfnir.',affixes:[{stat:'atk',value:18,label:'+18 ATK'},{stat:'critChance',value:0.10,label:'+10% Crit'},{stat:'onCritBleedChance',value:0.20,label:'On Crit: 20% chance — Bleed (3s)'}]},
+  weapon_dainsleif:{slot:'weapon',baseName:'Dáinsleif',rarity:'epic',loreNote:'"Drawn blade never sheathes unsated."',flavor:'It will not rest until it has fed.',affixes:[{stat:'atk',value:24,label:'+24 ATK'},{stat:'critChance',value:0.15,label:'+15% Crit'},{stat:'executionBonus',value:0.22,label:'+22% dmg below 30%'}]},
+  weapon_tyrfing:{slot:'weapon',baseName:'Tyrfing',rarity:'legendary',loreNote:'"Cursed to cause three great evils."',flavor:'Power without mercy.',affixes:[{stat:'atk',value:30,label:'+30 ATK'},{stat:'critChance',value:0.18,label:'+18% Crit'},{stat:'permAtkOnKill',value:4,label:'Kills grant +4 permanent ATK'},{stat:'cursedDamageMult',value:0.08,label:'CURSED: +8% damage taken'}]},
+  weapon_gungnir_echo:{slot:'weapon',baseName:"Gungnir's Echo",rarity:'axiom',loreNote:"The Allfather's spear never misses.",flavor:'True weapon. True path.',affixes:[{stat:'atk',value:20,label:'+20 ATK'},{stat:'defPen',value:0.40,label:'Ignore 40% DEF'},{stat:'accuracySet',value:0.99,label:'Accuracy set to 99%'}]},
+  armor_hide_wrap:{slot:'armor',baseName:'Hide Wrap',rarity:'common',loreNote:'Rough but better than nothing.',affixes:[{stat:'def',value:6,label:'+6 DEF'}]},
+  armor_chain_rings:{slot:'armor',baseName:'Chainmail Rings',rarity:'uncommon',loreNote:'Dvergar-forged links.',affixes:[{stat:'def',value:12,label:'+12 DEF'},{stat:'maxHP',value:20,label:'+20 Max HP'}]},
+  armor_rune_plate:{slot:'armor',baseName:'Rune-Plate',rarity:'rare',loreNote:'Protection-runes burned into the steel.',affixes:[{stat:'def',value:18,label:'+18 DEF'},{stat:'maxHP',value:35,label:'+35 Max HP'},{stat:'shieldOnBattleStart',value:15,label:'Battle start: +15 Shield'}]},
+  armor_ulfr_hide:{slot:'armor',baseName:'Ulfr Hide',rarity:'epic',loreNote:'Skinned from a Jotunheim cave-wolf.',affixes:[{stat:'def',value:22,label:'+22 DEF'},{stat:'maxHP',value:50,label:'+50 Max HP'},{stat:'dotResist',value:0.30,label:'Take 30% less Bleed/Poison'}]},
+  talisman_runestone:{slot:'talisman',baseName:'Carved Runestone',rarity:'common',loreNote:'A ward carved in haste.',affixes:[{stat:'evasion',value:0.04,label:'+4% Evasion'}]},
+  talisman_valknut:{slot:'talisman',baseName:'Valknut Amulet',rarity:'uncommon',loreNote:"Three interlocked triangles. Odin's mark.",affixes:[{stat:'critDmg',value:0.25,label:'+25% Crit Damage'},{stat:'evasion',value:0.04,label:'+4% Evasion'}]},
+  talisman_yggdrasil_leaf:{slot:'talisman',baseName:'Yggdrasil Leaf',rarity:'rare',loreNote:'Fallen from a branch that no longer exists.',affixes:[{stat:'lifesteal',value:0.06,label:'+6% Lifesteal'},{stat:'regenPct',value:0.02,label:'Regen 2% HP/sec'}]},
+  talisman_norns_thread:{slot:'talisman',baseName:"Norn's Thread",rarity:'epic',loreNote:'Spun from the fate of a hero who almost survived.',affixes:[{stat:'critChance',value:0.10,label:'+10% Crit Chance'},{stat:'lifesteal',value:0.08,label:'+8% Lifesteal'},{stat:'evasion',value:0.05,label:'+5% Evasion'}]},
+};
 
-  {id:'archer',name:'Archer',icon:'🏹',col:'#305a6a',base:{hp:44,atk:15,def:3,spd:62,cc:.16,cd:1.8},scl:{hp:14,atk:5,def:1,spd:3},trait:'Piercing Shot',td:'Every 4th attack ignores most Defense.',beh:'fast'},
-  {id:'warden',name:'Warden',icon:'🧿',col:'#5a4a10',base:{hp:76,atk:11,def:12,spd:34,cc:.05,cd:1.6},scl:{hp:22,atk:3,def:3,spd:1},trait:'Banner',td:'Battle start: grants Shield to allies.',beh:'steady'},
-  {id:'frost',name:'Frostbinder',icon:'❄️',col:'#204070',base:{hp:58,atk:12,def:6,spd:44,cc:.08,cd:1.6},scl:{hp:16,atk:4,def:2,spd:2},trait:'Frostbite',td:'Every 3rd attack applies Slow.',beh:'caster'},
+function generateGearItem(templateId,template,wave){
+  return {id:templateId+'_'+ri(10000,99999),templateId,name:template.baseName,slot:template.slot,rarity:template.rarity,flavor:template.flavor||null,loreNote:template.loreNote||null,affixes:template.affixes.map(a=>({...a})),notches:0,sundered:false,sagaHistory:[],forgedBy:null,forgedByName:null,passiveBonus:null};
+}
+function getGearEffectiveAffixes(gear){
+  if(!gear)return[];
+  const mult=gear.sundered?0.70:1.0;
+  return gear.affixes.map(affix=>({...affix,effectiveValue:typeof affix.value==='number'?affix.value*mult:affix.value,label:gear.sundered?`${affix.label} ⚠SUNDERED`:affix.label}));
+}
+function gearCost(item){
+  const base={common:8,uncommon:14,rare:22,epic:35,legendary:55,axiom:80};
+  return (base[item.rarity]||15)+Math.floor((item.notches||0)*-1.5);
+}
+function rarityColor(rarity){
+  const map={common:'#6060a0',uncommon:'#50a050',rare:'#6060d8',epic:'#a040c0',legendary:'var(--gold)',axiom:'#d050ff'};
+  return map[rarity]||'#888';
+}
+function rarityBorderColor(rarity){
+  const map={common:'#3a3a5a',uncommon:'#2a5a2a',rare:'#2a2a7a',epic:'#5a2a7a',legendary:'#7a5a00',axiom:'#7a20b0'};
+  return map[rarity]||'var(--border2)';
+}
+function genForgeStallItem(wave){
+  const rw={common:40,uncommon:25,rare:15,epic:8,legendary:3,axiom:1};
+  const boost=Math.min(wave,10);
+  rw.common=Math.max(10,rw.common-boost*2);
+  rw.rare+=boost;
+  rw.epic+=Math.floor(boost/2);
+  const templates=Object.entries(GEAR_TEMPLATES);
+  const picked=rwgt(templates,([id,t])=>rw[t.rarity]||1);
+  if(!picked)return null;
+  return generateGearItem(picked[0],picked[1],wave);
+}
+function hasSunderedGear(){
+  if(!G||!G.hero||!G.hero.gear)return false;
+  return Object.values(G.hero.gear).some(item=>item&&item.sundered);
+}
+
+const NOTCH_HISTORY_TEMPLATES=[
+  wave=>`Bloodied at Trial ${wave}`,
+  wave=>`Scarred in the ${wave<=3?'Midgard':wave<=6?'Helheim':wave<=9?'Jotunheim':'Muspelheim'} crossing`,
+  wave=>`Worn thin at Trial ${wave}`,
+  wave=>`Notched by the battle at Trial ${wave}`,
+];
+function tryAddNotch(gear,wave){
+  if(!gear||gear.sundered)return;
+  if(rng()>0.15)return;
+  gear.notches=Math.min(5,(gear.notches||0)+1);
+  if(gear.sagaHistory&&gear.sagaHistory.length<3)gear.sagaHistory.push(rpick(NOTCH_HISTORY_TEMPLATES)(wave));
+  if(gear.notches>=5&&!gear.sundered){
+    gear.sundered=true;
+    addLog(`⚠ ${gear.name} is Sundered. Visit the Forge Stall to recondition it.`,'lstatus');
+  }
+}
+function addNotchesToHeroGear(wave){
+  if(!G||!G.hero||!G.hero.gear)return;
+  Object.values(G.hero.gear).forEach(item=>{if(item)tryAddNotch(item,wave);});
+}
+function reconditionGear(slot){
+  if(!G||!G.hero||!G.hero.gear)return;
+  const item=G.hero.gear[slot];
+  if(!item||!item.sundered)return;
+  const cost=10+((META.upgrades&&META.upgrades.evCap)||0);
+  if(META.salvage<cost){addLog(`ᚱ ${cost} Rune-Shards required to recondition ${item.name}.`,'lstatus');return;}
+  META.salvage-=cost;
+  item.notches=0; item.sundered=false;
+  if(rng()<0.20+((META.upgrades&&META.upgrades.evCap)||0)*0.05){
+    const numericalAffixes=item.affixes.filter(a=>typeof a.value==='number'&&a.value>0);
+    if(numericalAffixes.length){
+      const target=rpick(numericalAffixes);
+      const improvement=Math.max(1,Math.floor(target.value*0.15));
+      target.value+=improvement;
+      target.label+=` (+${improvement} reconditioned)`;
+      addLog(`⚒ ${item.name} reconditioned! One affix improved.`,'laxiom');
+    }else addLog(`⚒ ${item.name} reconditioned.`,'lstatus');
+  }else addLog(`⚒ ${item.name} reconditioned.`,'lstatus');
+  item.sagaHistory=item.sagaHistory||[];
+  item.sagaHistory.push(`Reforged at Trial ${G.wave}`);
+  if(item.sagaHistory.length>3)item.sagaHistory.shift();
+  saveMeta(); updateMetaHeader(); renderAll();
+}
+function buyGear(){
+  const item=G.forgeStallItem;
+  if(!item)return;
+  const cost=gearCost(item);
+  if(G.gold<cost)return;
+  G.gold-=cost;
+  G.hero.gear[item.slot]=item;
+  G.forgeStallItem=null;
+  addLog(`⚒ Equipped: ${item.name}`,'lheal');
+  renderAll();
+}
+const MYTH_LINES = {
+  crit_first: [
+    'The Norns smiled.',
+    'Fate leaned in.',
+    'The thread tightens.',
+  ],
+  crit_third: [
+    'The thread sharpens.',
+    'The saga quickens.',
+    'Something ancient stirs.',
+  ],
+  crit_fifth: [
+    'Fate moves through you now.',
+    'The Norns weave faster.',
+    'Earned. Utterly earned.',
+  ],
+
+  nearDeath: [
+    'Even the dying wolf bites.',
+    'The thread frays — but holds.',
+    'Not yet. The saga is unfinished.',
+    'This is what the blood was shaped for.',
+  ],
+  nearDeathKill: [
+    'The saga grows heavier.',
+    'Death passed over. Not forgotten.',
+    'The root remembers this.',
+  ],
+
+  kill_first: [
+    'The saga grows.',
+  ],
+  kill_multi: [
+    'The Allfather watches.',
+    'Another thread cut.',
+  ],
+  rootDrinks: [
+    'The root drinks.',
+    'What falls, feeds.',
+  ],
+
+  levelUp: [
+    'Your saga is etched.',
+    'The blood strengthens.',
+    'The weave holds another layer.',
+  ],
+
+  waveStart: {
+    1:  'The first trial begins. Write something worth remembering.',
+    2:  'The second trial. The root stirs.',
+    3:  'Three trials. The Norns have noted you.',
+    4:  'The dead remember everything here.',
+    5:  'Halfway. The tree grows heavier above.',
+    6:  'The sixth trial. The strongest of the dead.',
+    7:  'Jotunheim sends its own. Brace.',
+    8:  'Eight trials survived. The root shifts.',
+    9:  'Three trials remain. The tree can feel you.',
+    10: 'The strong ones no longer wait.',
+    11: 'One thread from the end.',
+    12: 'The final trial. What you were shaped for.',
+  },
+
+  waveEnd: {
+    1:  'The first deed is written.',
+    4:  'The dead fell again. As they should.',
+    6:  'The sixth trial survives the saga. The tree breathes.',
+    12: 'All twelve trials. The thread held.',
+  },
+
+  axiomPicked: [
+    'The Allfather watches.',
+    'A Rune Law learned. The tree remembers.',
+    'This is why the trial exists.',
+  ],
+
+  shieldBroke: [
+    'The ward falls. Hold the line.',
+    'Exposed. Adapt.',
+  ],
+};
+
+const NarrationEngine = {
+  cooldowns: {},
+  waveCount: 0,
+  WAVE_QUOTA: 5,
+  COOLDOWN_TICKS: {
+    crit: 80,
+    nearDeath: 99999,
+    kill: 50,
+    levelUp: 99999,
+    generic: 40,
+  },
+  critCount: 0,
+  killCount: 0,
+  _narratedNearDeath: false,
+
+  reset() {
+    this.cooldowns = {};
+    this.waveCount = 0;
+    this.critCount = 0;
+    this.killCount = 0;
+    this._narratedNearDeath = false;
+    if(G)G._narratedNearDeath=false;
+  },
+
+  canFire(category) {
+    if (category === 'waveStart' || category === 'waveEnd') return true;
+    if (this.waveCount >= this.WAVE_QUOTA) return false;
+    const cooldown = this.COOLDOWN_TICKS[category] || 40;
+    const lastFired = this.cooldowns[category];
+    if (typeof lastFired !== 'number') return true;
+    return G ? (G.tick - lastFired) >= cooldown : true;
+  },
+
+  fire(category, linesOrLine, logClass) {
+    if (!this.canFire(category)) return;
+    const line = Array.isArray(linesOrLine) ? rpick(linesOrLine) : linesOrLine;
+    if (!line) return;
+    this.cooldowns[category] = G ? G.tick : 0;
+    if (category !== 'waveStart' && category !== 'waveEnd') this.waveCount++;
+    addLog(`  ${line}`, logClass || 'lstatus');
+  },
+
+  onCrit() {
+    this.critCount++;
+    if (this.critCount >= 5) this.fire('crit', MYTH_LINES.crit_fifth, 'lstatus');
+    else if (this.critCount >= 3) this.fire('crit', MYTH_LINES.crit_third, 'lstatus');
+    else this.fire('crit', MYTH_LINES.crit_first, 'lstatus');
+  },
+
+  onKill() {
+    this.killCount++;
+    if (G && G.tierFlags && G.tierFlags.killDropsMark && this.killCount >= 3) {
+      this.fire('kill', MYTH_LINES.rootDrinks, 'lstatus');
+    } else if (this.killCount === 1) {
+      this.fire('kill', MYTH_LINES.kill_first, 'lstatus');
+    } else if (this.killCount >= 4) {
+      this.fire('kill', MYTH_LINES.kill_multi, 'lstatus');
+    }
+  },
+
+  onNearDeath() {
+    if (this._narratedNearDeath) return;
+    this._narratedNearDeath = true;
+    if(G)G._narratedNearDeath=true;
+    this.fire('nearDeath', MYTH_LINES.nearDeath, 'lstatus');
+  },
+
+  onNearDeathKill() {
+    this.fire('generic', MYTH_LINES.nearDeathKill, 'lstatus');
+  },
+};
+
+// ═══ ENEMY ARCHETYPES ═══
+const ARCHETYPES = [
+  // ── MIDGARD TIER (Trials 1–3) ─────────────────────────────────
+  {
+    id: 'bruiser',
+    displayName: 'Wolf-Warrior',
+    norseName: 'Úlfheðinn',
+    realmTier: 'midgard',
+    icon: '🐺', col: '#a03020',
+    base: { hp:80, atk:14, def:8, spd:40, cc:.05, cd:1.5 },
+    scl:  { hp:28, atk:5,  def:3, spd:2  },
+    trait: 'Wolf-Rage',
+    td: 'Immune to Slow. Enrages below 35% HP (+5 ATK).',
+    beh: 'steady',
+    tier2Behavior: 'enrageOnLowHP', tier2Threshold: 0.35, tier2BonusAtk: 5,
+  },
+  {
+    id: 'striker',
+    displayName: 'Keen Scout',
+    norseName: 'Stormfarer',
+    realmTier: 'midgard',
+    icon: '⚡', col: '#806010',
+    base: { hp:48, atk:16, def:4, spd:70, cc:.22, cd:2.0 },
+    scl:  { hp:12, atk:6,  def:1, spd:5  },
+    trait: 'Keen Edge',
+    td: '+25% Crit Chance.',
+    beh: 'fast',
+    tier2Behavior: 'dodgeAfterCrit', tier2DodgeChance: 0.10,
+  },
+  {
+    id: 'tank',
+    displayName: 'Veteran Shield',
+    norseName: 'Einherjar',
+    realmTier: 'midgard',
+    icon: '🛡', col: '#305080',
+    base: { hp:120, atk:10, def:22, spd:25, cc:.03, cd:1.5 },
+    scl:  { hp:38,  atk:3,  def:5,  spd:1  },
+    trait: 'Iron Will',
+    td: 'First hit negated. Regains 2% HP on first attack (Tier 2+).',
+    beh: 'steady',
+    tier2Behavior: 'regenOnFirstAttack', tier2RegenPct: 0.02,
+  },
+  {
+    id: 'archer',
+    displayName: 'Runic Archer',
+    norseName: "Ullr's Chosen",
+    realmTier: 'midgard',
+    icon: '🏹', col: '#305a6a',
+    base: { hp:44, atk:15, def:3, spd:62, cc:.16, cd:1.8 },
+    scl:  { hp:14, atk:5,  def:1, spd:3  },
+    trait: 'Piercing Shot',
+    td: 'Every 4th attack ignores most Defense. Crits may expose Vulnerable.',
+    beh: 'fast',
+    tier2Behavior: 'exposeCritVuln', tier2ExposeChance: 0.35,
+  },
+  // ── NIFLHEIM / HELHEIM TIER (Trials 4–6) ──────────────────────
+  {
+    id: 'swarm',
+    displayName: 'Risen Dead',
+    norseName: 'Draugr Pack',
+    realmTier: 'niflheim',
+    icon: '💀', col: '#406020',
+    base: { hp:20, atk:8, def:2, spd:62, cc:.05, cd:1.5 },
+    scl:  { hp:6,  atk:3, def:1, spd:3  },
+    trait: 'Swarming Dead',
+    td: 'Spawns in groups of 3. At Ragnarök Tier 4+, slain members may rise once.',
+    beh: 'fast',
+    tier2Behavior: null,
+  },
+  {
+    id: 'shaman',
+    displayName: 'Curse-Weaver',
+    norseName: 'Völva',
+    realmTier: 'niflheim',
+    icon: '🔮', col: '#702080',
+    base: { hp:58, atk:12, def:6, spd:45, cc:.08, cd:1.5 },
+    scl:  { hp:15, atk:4,  def:2, spd:2  },
+    trait: 'Curse-Weaving',
+    td: 'Every 3rd attack applies Weak. First attack also applies Weak (Tier 2+).',
+    beh: 'caster',
+    tier2Behavior: 'weakOnFirstAttack',
+  },
+  {
+    id: 'leech',
+    displayName: 'Blood-Mage',
+    norseName: 'Galdramaðr',
+    realmTier: 'helheim',
+    icon: '🩸', col: '#402040',
+    base: { hp:64, atk:13, def:5, spd:42, cc:.08, cd:1.5 },
+    scl:  { hp:18, atk:4,  def:2, spd:2  },
+    trait: 'Life-Drain',
+    td: 'Heals 30% of damage dealt.',
+    beh: 'sustain', ls: .30,
+    tier2Behavior: null,
+  },
+  {
+    id: 'warden',
+    displayName: 'Hel-Chieftain',
+    norseName: 'Hersir',
+    realmTier: 'helheim',
+    icon: '🧿', col: '#5a4a10',
+    base: { hp:76, atk:11, def:12, spd:34, cc:.05, cd:1.6 },
+    scl:  { hp:22, atk:3,  def:3,  spd:1  },
+    trait: 'Death-Banner',
+    td: 'Battle start: grants Shield to allies. Every 4th attack applies Weak.',
+    beh: 'steady',
+    tier2Behavior: null,
+  },
+  // ── JOTUNHEIM TIER (Trials 7–9) ───────────────────────────────
+  {
+    id: 'assassin',
+    displayName: 'Shadow-Stalker',
+    norseName: 'Níðing',
+    realmTier: 'jotunheim',
+    icon: '🗡', col: '#301840',
+    base: { hp:38, atk:22, def:3, spd:58, cc:.28, cd:2.2 },
+    scl:  { hp:10, atk:8,  def:1, spd:4  },
+    trait: 'Dishonored Strike',
+    td: 'First attack deals 2× damage.',
+    beh: 'burst',
+    tier2Behavior: 'dodgeAfterCrit', tier2DodgeChance: 0.15,
+  },
+  {
+    id: 'frost',
+    displayName: 'Ice-Binder',
+    norseName: 'Ísalfr',
+    realmTier: 'jotunheim',
+    icon: '❄️', col: '#204070',
+    base: { hp:58, atk:12, def:6, spd:44, cc:.08, cd:1.6 },
+    scl:  { hp:16, atk:4,  def:2, spd:2  },
+    trait: 'Frostbite',
+    td: 'Every 3rd attack applies Slow. Crits may Stun.',
+    beh: 'caster',
+    tier2Behavior: null,
+  },
+  // ── MUSPELHEIM TIER (Trials 10–11) ────────────────────────────
+  {
+    id: 'bombardier',
+    displayName: 'Rune-Smith',
+    norseName: 'Dvergar Engineer',
+    realmTier: 'muspelheim',
+    icon: '💣', col: '#6a4000',
+    base: { hp:68, atk:30, def:10, spd:20, cc:.10, cd:2.0 },
+    scl:  { hp:20, atk:10, def:3,  spd:1  },
+    trait: 'Runic Overcharge',
+    td: 'Every 3rd attack deals 2× damage.',
+    beh: 'slow',
+    tier2Behavior: null,
+  },
 ];
 
 // ═══ WAVE TRAITS ═══
@@ -736,6 +1141,114 @@ const WAVE_TRAITS=[
 ];
 
 
+const RAGNARÖK_TIERS = [
+  {
+    tier: 1, name: 'First Root Darkens',
+    omen: 'The cold comes earlier than it should.',
+    revealStage: 'none',
+    apply(G) { /* enemyHPMult handled in mkEnemy */ }
+  },
+  {
+    tier: 2, name: 'The Wolves Stir',
+    omen: 'They move in patterns now, not just hunger.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.archetypeBehaviors = true; }
+  },
+  {
+    tier: 3, name: 'Mist Thickens',
+    omen: 'The boundary between realms grows soft.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.minWaveTraits = 1; }
+  },
+  {
+    tier: 4, name: 'The Dead Remember',
+    omen: 'Some do not stay fallen.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.draugrEchoChance = 0.15; }
+  },
+  {
+    tier: 5, name: 'Jörmungandr Stirs',
+    omen: 'The ocean trembles. Something beneath has shifted weight.',
+    revealStage: 'indirect',
+    apply(G) { G.tierFlags.bossExtraEnemy = true; G.tierFlags.bossSignatureAbility = true; }
+  },
+  {
+    tier: 6, name: 'The Norns Bargain',
+    omen: 'Fate has a price. The question is whether you recognize it.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.cursedBargainInShop = true; }
+  },
+  {
+    tier: 7, name: 'Surtr Sends Scouts',
+    omen: 'Ash on the wind. The fire-realm reaches.',
+    revealStage: 'surtr',
+    apply(G) { G.tierFlags.muspelheimTagFromWave = 7; G.tierFlags.emberSparkChance = 0.20; }
+  },
+  {
+    tier: 8, name: 'Bifröst Cracks',
+    omen: 'The bridge between worlds fractures. Passage grows costly.',
+    revealStage: 'none',
+    apply(G) {
+      G.tierFlags.startingGoldReduction = 8;
+      G.tierFlags.rerollCostIncreaseOverride = 4;
+    }
+  },
+  {
+    tier: 9, name: 'Root Harvest',
+    omen: 'What falls feeds what grows beneath.',
+    revealStage: 'root',
+    apply(G) { G.tierFlags.killDropsMark = 1; }
+  },
+  {
+    tier: 10, name: 'Elites Without Season',
+    omen: 'The strong ones no longer wait for invitation.',
+    revealStage: 'indirect',
+    apply(G) {
+      G.tierFlags.elitesOnAnyWave    = true;
+      G.tierFlags.namedElitesActive  = true;
+      G.tierFlags.eliteSecondPhase   = true;
+    }
+  },
+  {
+    tier: 11, name: 'Fimbulwinter Arrives',
+    omen: 'Three winters without summer. The realms remember what cold means.',
+    revealStage: 'fimbulwinter',
+    apply(G) {
+      G.tierFlags.allWavesNiflheimTag   = true;
+      G.tierFlags.heroPermanentSPDPenalty = 5;
+      G.tierFlags.regenBoonBonus         = 0.40;
+    }
+  },
+  {
+    tier: 12, name: "The Gnawer's Influence Spreads",
+    omen: 'Root-corruption reaches the middle trials.',
+    revealStage: 'gnawer_indirect',
+    apply(G) { G.tierFlags.rootTouchedEnemyChance = 0.30; }
+  },
+  {
+    tier: 13, name: 'Eitr in the Air',
+    omen: 'The world-venom rises. Everything breathes it.',
+    revealStage: 'eitr',
+    apply(G) { G.tierFlags.toxicAirFromWave = 5; G.tierFlags.dotDamageBonus = 0.20; }
+  },
+  {
+    tier: 14, name: 'Twilight Accelerates',
+    omen: 'The end, when it comes, will come fast.',
+    revealStage: 'none',
+    apply(G) { G.tierFlags.enemySPDMult = 1.20; G.tierFlags.heroSPDBonus = 10; }
+  },
+  {
+    tier: 15, name: 'True Ragnarök',
+    omen: 'Níðhöggr no longer gnaws. It tears.',
+    revealStage: 'nidhoggr',
+    apply(G) {
+      G.tierFlags.enemyWaveScaleBonus = 2;
+      G.tierFlags.allFatherLastGift   = true;
+    }
+  },
+];
+
+
 // ═══ META PERSISTENT STATE ═══
 const META_KEY='axiom_meta_v3';
 let META={
@@ -747,6 +1260,13 @@ let META={
   upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
   unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),
   nextHeroId:1,
+  ragnarökTier:0,
+  ragnarökActive:0,
+  eliteRoster:{},
+  relics:0,
+  hasSeenOpening:false,
+  houseName:null,
+  codexUnlocked:['yggdrasil','allfather','valhalla','saga','rune','norns'],
 };
 
 function saveMeta(){
@@ -760,6 +1280,12 @@ function loadMeta(){
     const m=JSON.parse(raw);
     META={...META,...m};
     META.unlockedTraits=new Set(m.unlockedTraits||[]);
+    if(typeof META.ragnarökTier!=='number')META.ragnarökTier=0;
+    if(typeof META.ragnarökActive!=='number')META.ragnarökActive=0;
+    if(!META.eliteRoster||typeof META.eliteRoster!=='object')META.eliteRoster={};
+    if(typeof META.relics!=='number')META.relics=0;
+    if(typeof META.hasSeenOpening!=='boolean')META.hasSeenOpening=false;
+    if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
   }catch(e){}
 }
 function exportSave(){
@@ -817,6 +1343,14 @@ function consumeBreedUse(id){
   if(rec.breedUsesLeft<=0){
     removeFromRetiredPoolById(id);
   }
+}
+
+function isFallenHero(id){
+  return !!(META && Array.isArray(META.fallenLedger) && META.fallenLedger.includes(id));
+}
+function canHeroBreed(id){
+  const rec = META && META.family ? META.family[id] : null;
+  return !!(rec && !isFallenHero(id) && getBreedUses(rec).left>0);
 }
 
 // ═══ HERO RECORD ═══
@@ -904,6 +1438,101 @@ const TACTICS=[
 ];
 const TACTIC_BY_ID=Object.fromEntries(TACTICS.map(t=>[t.id,t]));
 
+const BOSS_SIGNATURES={
+  bruiser:{
+    name:'Serpent Surge',
+    desc:'Every 4th attack deals true damage equal to 15% of hero max HP.',
+    apply(enemy,h){
+      enemy._sigCtr=(enemy._sigCtr||0)+1;
+      if(enemy._sigCtr%4===0){
+        const trueDmg=Math.floor(h.maxHP*0.15);
+        heroDmg(trueDmg,enemy,'true');
+        addLog(`  ⭐ ${enemy.displayName||enemy.name} — Serpent Surge! ${trueDmg} true damage!`,'lcrit');
+      }
+    }
+  },
+  tank:{
+    name:'Unyielding Aegis',
+    desc:'Below 50% HP, gains 15 Shield per attack received.',
+    apply(enemy){
+      if(enemy.hp<enemy.maxHP*0.5){
+        addShieldToUnit(enemy,15);
+      }
+    }
+  },
+  bombardier:{
+    name:'Rune Surge',
+    desc:'Every 3rd attack also applies Vulnerable to the hero (3s).',
+    apply(enemy,h){
+      enemy._sigCtr=(enemy._sigCtr||0)+1;
+      if(enemy._sigCtr%3===0){
+        applyStatus(h,'vulnerable',1,3);
+        addLog(`  ⭐ ${enemy.displayName||enemy.name} — Rune Surge! Vulnerable.`,'lstatus');
+      }
+    }
+  },
+  _default:{
+    name:'Eldritch Force',
+    desc:'Gains +3 ATK per enemy slain this wave.',
+    apply(){/* handled via wave flags */}
+  },
+};
+
+const CURSED_BARGAINS=[
+  {
+    id:'cb_blood_price',name:'Blood Price',icon:'🩸',
+    desc:'+30 ATK for this saga. Hero takes +8% damage permanently.',
+    cost:25,
+    apply(G){
+      G.hero.atk+=30;
+      G.hero.cursedMult=(G.hero.cursedMult||1.0)*1.08;
+      addLog('⚠ Blood Price accepted. Power costs something.','laxiom');
+    }
+  },
+  {
+    id:'cb_glass_soul',name:'Glass Soul',icon:'💎',
+    desc:'+25% Crit Chance. Evasion set to 0 permanently.',
+    cost:30,
+    apply(G){
+      G.hero.critChance=Math.min(0.9,G.hero.critChance+0.25);
+      G.hero.evasion=0;
+      addLog('⚠ Glass Soul accepted. Fortune without flinching.','laxiom');
+    }
+  },
+  {
+    id:'cb_norn_debt',name:"Norn's Debt",icon:'🌀',
+    desc:'Gain 50 Saga-Marks now. End-of-trial gold reduced by 20%.',
+    cost:0,isFree:true,
+    apply(G){
+      G.gold+=50;
+      G.waveGoldMult=(G.waveGoldMult||1.0)*0.80;
+      G.hero._nornDebt=true;
+      addLog("⚠ Norn's Debt accepted. The weavers remember.",'laxiom');
+    }
+  },
+  {
+    id:'cb_iron_hunger',name:'Iron Hunger',icon:'⚙',
+    desc:'+20 DEF. Lifesteal reduced to 0.',
+    cost:20,
+    apply(G){
+      G.hero.def+=20;
+      G.hero.lifesteal=0;
+      addLog('⚠ Iron Hunger accepted. Defense before all else.','laxiom');
+    }
+  },
+];
+
+function takeCursedBargain(id){
+  const bargain=CURSED_BARGAINS.find(b=>b.id===id);
+  if(!bargain)return;
+  if(!bargain.isFree&&G.gold<bargain.cost)return;
+  if(!bargain.isFree)G.gold-=bargain.cost;
+  bargain.apply(G);
+  G.cursedBargainUsedThisWave=true;
+  G._waveBargainOffer=null;
+  renderAll();
+}
+
 function genTacticOffers(){
   // 3 random options each wave (keeps the loop fresh without hiding the core shop)
   const pool=[...TACTICS];
@@ -981,7 +1610,9 @@ function newHero(evs,traits,record){
     evs:{...evs},
     traits:[...traits],
     record:record||null,
+    gear:{weapon:null,armor:null,talisman:null},
   };
+  if(record&&record.inheritedGear)Object.assign(h.gear,record.inheritedGear);
   applyGeneticTraitStats(h);
   return h;
 }
@@ -1014,12 +1645,65 @@ function initGame(seedVal,evs,traits,parentRecord){
     retireWaves:[3,5,8,10,12],
     runBoons:[],
     pendingTactic:null,pendingTacticPaid:false,activeTactic:null,tacticOffers:[],waveGoldMult:1,
+    ragnarökActive:META.ragnarökActive||0,
+    tierFlags:{},
+    forgeStallItem:null,
   };
   updateMetaHeader();
   genWave();
+  applyRagnarökTiers(G);
   renderAll();
   updateDifficultyUI();
 }
+
+// Stub — fully implemented in Prompt 6
+function applyRagnarökTiers(G) {
+  G.tierFlags = {};
+  const activeTier = G.ragnarökActive || 0;
+  for (let i = 0; i < activeTier && i < RAGNARÖK_TIERS.length; i++) {
+    const tierDef = RAGNARÖK_TIERS[i];
+    if (tierDef && typeof tierDef.apply === 'function') {
+      tierDef.apply(G);
+    }
+  }
+
+  if (G.tierFlags.startingGoldReduction) {
+    G.gold = Math.max(0, G.gold - G.tierFlags.startingGoldReduction);
+  }
+
+  if (G.tierFlags.heroPermanentSPDPenalty && G.hero) {
+    G.hero.spd = Math.max(5, G.hero.spd - G.tierFlags.heroPermanentSPDPenalty);
+  }
+
+  if (G.tierFlags.heroSPDBonus && G.hero) {
+    G.hero.spd += G.tierFlags.heroSPDBonus;
+  }
+}
+
+function checkRagnarökUnlock() {
+  if (!G) return;
+  const currentActive = G.ragnarökActive || 0;
+  const currentUnlocked = META.ragnarökTier || 0;
+  if (currentActive < currentUnlocked) return;
+
+  const completedWave = G.wave;
+  const isVictory = G.phase === 'VICTORY';
+  const isRetireDeep = (completedWave >= 8);
+
+  if (!isVictory && !isRetireDeep) return;
+
+  const newTier = Math.min(15, currentUnlocked + 1);
+  if (newTier <= currentUnlocked) return;
+
+  META.ragnarökTier = newTier;
+  if (G.hero && G.hero.record) {
+    G.hero.record.ragnarökStamp = newTier;
+  }
+  saveMeta();
+  addLog(`ᚢ The root darkens further. Ragnarök Tier ${newTier} — ${rootDepthLabel(newTier)} — unlocked.`, 'laxiom');
+}
+
+
 function startFirstHero(seedVal){
   const rec=mkHeroRecord(genName(0,null,null),0,[],emptyEVs(),[]);
   META.family[rec.id]=rec;
@@ -1034,6 +1718,8 @@ function genWave(){
   G.waveFlags={};G.waveGold=0;
   G.waveGoldMult=1;
   G.activeTactic=null;
+  G.cursedBargainUsedThisWave=false;
+  G._waveBargainOffer=null;
   G.pendingTactic=null;
   G.pendingTacticPaid=false;
   genTacticOffers();
@@ -1042,52 +1728,118 @@ function genWave(){
 }
 function buildEnemies(wave){
   const isBoss=G.bossWaves.includes(wave);
+  const forceEliteAnyWave=G.tierFlags&&G.tierFlags.elitesOnAnyWave&&!isBoss&&rng()<0.25;
   let count=Math.min(1+Math.floor(wave/3),isBoss?5:4);
+  if(isBoss&&G.tierFlags&&G.tierFlags.bossExtraEnemy)count=Math.min(count+1,6);
   const out=[];
-  if(isBoss){out.push(mkEnemy(rpick(ARCHETYPES.filter(a=>['bruiser','tank','bombardier'].includes(a.id))),wave,true));}
-  while(out.length<count)out.push(mkEnemy(rpick(ARCHETYPES),wave,false));
+  if(isBoss){
+    const bossArch=rpick(ARCHETYPES.filter(a=>['bruiser','tank','bombardier'].includes(a.id)));
+    const boss=mkEnemy(bossArch,wave,true);
+    if(G.tierFlags&&G.tierFlags.bossSignatureAbility){
+      boss.signature=BOSS_SIGNATURES[bossArch.id]||BOSS_SIGNATURES._default;
+    }
+    out.push(boss);
+  }
+  while(out.length<count)out.push(mkEnemy(rpick(ARCHETYPES),wave,forceEliteAnyWave&&out.length===0));
   const exp=[];
   for(const e of out){
     exp.push(e);
     if(e.archId==='swarm'){
       for(let i=1;i<3;i++){
-        const c={...JSON.parse(JSON.stringify(e)),id:e.id+'_'+i,actionMeter:rng()*.5};
+        const c={...JSON.parse(JSON.stringify(e)),id:e.id+'_'+i,actionMeter:rng()*.5,_isEcho:false};
         exp.push(c);
       }
     }
   }
+  exp.forEach(e=>{
+    if(e.elite&&!e.namedElite){
+      const namedEntry=checkForNamedEliteReturn(e.archId);
+      if(namedEntry){
+        e.namedElite=true;
+        e.displayName=namedEntry.name;
+        e.name=namedEntry.name;
+      }
+    }
+  });
   return exp.slice(0,8);
 }
 function mkEnemy(arch,wave,boss){
-  const w=wave-1,b=arch.base,s=arch.scl;
-  const mult=(G && typeof G.difficulty==='number')?G.difficulty:1;
+  const waveScaleBonus = (G && G.tierFlags && G.tierFlags.enemyWaveScaleBonus) || 0;
+  const effectiveWave = Math.min(wave + waveScaleBonus, 20);
+  const w = effectiveWave - 1;
+  const b = arch.base, s = arch.scl;
 
-  const baseHP=b.hp+s.hp*w;
-  const hp=Math.max(1,Math.floor(baseHP*mult));
-  const atk=Math.max(1,Math.floor((b.atk+s.atk*w)*mult));
-  const def=Math.max(0,Math.floor((b.def+s.def*w)*mult));
-  const spdMult=0.6+0.4*mult;const spd=Math.max(5,Math.floor((b.spd+s.spd*w)*spdMult));
+  const mult = (G && typeof G.difficulty === 'number') ? G.difficulty : 1;
 
-  return{id:arch.id+'_'+ri(1000,9999),archId:arch.id,name:arch.name,icon:arch.icon,col:arch.col,
+  const activeTier = (G && G.ragnarökActive) || 0;
+  const ragnarökHPMult = activeTier >= 1 ? 1.10 : 1.0;
+
+  const spdMult = (G && G.tierFlags && G.tierFlags.enemySPDMult) || 1.0;
+
+  const baseHP = b.hp + s.hp * w;
+  const hp = Math.max(1, Math.floor(baseHP * mult * ragnarökHPMult));
+  const atk = Math.max(1, Math.floor((b.atk + s.atk * w) * mult));
+  const def = Math.max(0, Math.floor((b.def + s.def * w) * mult));
+  const baseSpdMult = 0.6 + 0.4 * mult;
+  const spd = Math.max(5, Math.floor((b.spd + s.spd * w) * baseSpdMult * spdMult));
+
+  const rootTouchedChance=(G&&G.tierFlags&&G.tierFlags.rootTouchedEnemyChance)||0;
+  const isRootTouchedWave=wave>=4&&wave<=8;
+  const rootTouched=!!(isRootTouchedWave&&!boss&&rng()<rootTouchedChance);
+
+  const enemy={id:arch.id+'_'+ri(1000,9999),archId:arch.id,
+    // Layer 1: plain English name used in all combat references
+    displayName:arch.displayName||arch.name||arch.id,
+    // Layer 2: Norse name shown in trait line only
+    norseName:arch.norseName||null,
+    // Keep name for backward-compat with log references
+    name:arch.displayName||arch.name||arch.id,
+    realmTier:arch.realmTier||'midgard',
+    icon:arch.icon,col:arch.col,
     hp,maxHP:hp,atk,def,spd,
     cc:arch.id==='striker'?Math.min(.7,b.cc+.25+.003*w):b.cc,cd:b.cd,
     lifesteal:arch.ls||0,trait:arch.trait,td:arch.td,beh:arch.beh,
     statuses:{},actionMeter:rng()*.5,
     _firstAtkDone:false,_hexCtr:0,_chargeCtr:0,_tankGuard:true,
-    elite:boss||false,dead:false};
+    _tier2Done:false,
+    elite:boss||false,dead:false,
+    rootTouched,
+    namedElite:false,
+    signature:null};
+
+  if(rootTouched){
+    enemy.displayName='Root-Touched '+(arch.displayName||arch.name||arch.id);
+    enemy.name=enemy.displayName;
+    enemy.col='#2a1a3a';
+    enemy.hp=enemy.maxHP=Math.floor(enemy.hp*1.10);
+    enemy.atk=Math.floor(enemy.atk*1.10);
+  }
+
+  return enemy;
 }
+
 function addShieldToUnit(unit,amt){
   if(!unit.statuses.shield)unit.statuses.shield={stacks:1,value:0,dur:9999};
   unit.statuses.shield.value+=amt;
 }
-function pickWaveTraits(wave){
-  if(wave<=2)return[];
-  const n=wave<=4?1:(rng()<.45?2:1);
-  return rshuffle([...WAVE_TRAITS]).slice(0,n);
+function pickWaveTraits(wave) {
+  const minTraits = (G && G.tierFlags && G.tierFlags.minWaveTraits) || 0;
+  if (wave <= 2 && minTraits === 0) return [];
+  const n = (wave <= 4) ? Math.max(minTraits, 1) : (rng() < .45 ? 2 : 1);
+  return rshuffle([...WAVE_TRAITS]).slice(0, n);
 }
+
 function applyWaveTraitsToEnemies(){
   G.waveFlags={};
   G.waveTraits.forEach(t=>t.apply(G.enemies,G.hero,G));
+
+  if(G.tierFlags&&G.tierFlags.allWavesNiflheimTag){
+    if(!G.waveFlags._fimbulwinterApplied){
+      G.waveFlags._fimbulwinterApplied=true;
+      applyStatus(G.hero,'slow',1,3);
+      addLog('  ❄️ Fimbulwinter: a biting cold slows you.','lstatus');
+    }
+  }
 }
 
 // ═══ PASSIVE HELPERS ═══
@@ -1100,6 +1852,39 @@ function effectiveStats(){
   const s={atk:h.atk+(h.permStats.atk||0),def:h.def,spd:h.spd,critChance:h.critChance,critDmg:h.critDmg,lifesteal:h.lifesteal,evasion:h.evasion,accuracy:h.accuracy};
   const il=passive('axiomIronLaw');if(il)s.atk+=Math.floor(s.def*il);
   if(hasP('axiomKinetic'))s.critChance+=h.spd*.002;
+
+  h.cursedMult=1;
+  if(h.gear){
+    Object.values(h.gear).forEach(item=>{
+      if(!item)return;
+      const affixes=getGearEffectiveAffixes(item);
+      affixes.forEach(affix=>{
+        const v=affix.effectiveValue;
+        if(typeof v!=='number')return;
+        if(affix.stat==='atk')s.atk+=v;
+        if(affix.stat==='def')s.def+=v;
+        if(affix.stat==='spd')s.spd+=v;
+        if(affix.stat==='critChance')s.critChance=Math.min(0.9,s.critChance+v);
+        if(affix.stat==='critDmg')s.critDmg+=v;
+        if(affix.stat==='evasion')s.evasion=Math.min(0.6,s.evasion+v);
+        if(affix.stat==='lifesteal')s.lifesteal=Math.min(0.4,s.lifesteal+v);
+        if(affix.stat==='accuracySet')s.accuracy=v;
+        if(affix.stat==='defPen')s._gearDefPen=(s._gearDefPen||0)+v;
+        if(affix.stat==='executionBonus')s._gearExecutionBonus=(s._gearExecutionBonus||0)+v;
+        if(affix.stat==='regenPct')s._gearRegenPct=(s._gearRegenPct||0)+v;
+        if(affix.stat==='dotResist')s._gearDotResist=(s._gearDotResist||0)+v;
+        if(affix.stat==='cursedDamageMult')h.cursedMult=Math.max(h.cursedMult||1,1+v);
+      });
+      if(item.passiveBonus){
+        const pb=item.passiveBonus;
+        if(pb.stat==='atk'&&typeof pb.value==='number')s.atk+=pb.value;
+        if(pb.stat==='def'&&typeof pb.value==='number')s.def+=pb.value;
+      }
+    });
+    s.critChance=Math.min(0.9,Math.max(0,s.critChance));
+    s.evasion=Math.min(0.6,Math.max(0,s.evasion));
+    s.lifesteal=Math.min(0.4,Math.max(0,s.lifesteal));
+  }
   return s;
 }
 
@@ -1167,7 +1952,7 @@ function applyStatus(unit,key,stacks,dur,maxStacks){
 // ═══ DAMAGE / HEAL ═══
 function dealToEnemy(enemy,dmg){
   if(enemy.dead||dmg<=0)return 0;
-  if(enemy.archId==='tank'&&enemy._tankGuard){enemy._tankGuard=false;addLog(`  🛡 ${enemy.name} Iron Will negates!`,'lstatus');return 0;}
+  if(enemy.archId==='tank'&&enemy._tankGuard){enemy._tankGuard=false;addLog(`  🛡 ${enemy.displayName||enemy.name} Iron Will negates!`,'lstatus');return 0;}
 
   const sh=enemy.statuses.shield;
   if(sh&&sh.value>0){
@@ -1185,6 +1970,10 @@ function dealToEnemy(enemy,dmg){
 function heroDmg(rawDmg,attacker,src){
   const hero=G.hero;
   if(rawDmg<=0)return 0;
+
+  if(hero.cursedMult&&hero.cursedMult>1.0){
+    rawDmg=Math.floor(rawDmg*hero.cursedMult);
+  }
 
   if(hasTrait('tenacious')&&hero.hp<hero.maxHP*.25)rawDmg=Math.floor(rawDmg*.60);
 
@@ -1210,6 +1999,11 @@ function heroDmg(rawDmg,attacker,src){
 
   const prev=hero.hp;
   hero.hp=Math.max(0,hero.hp-rawDmg);
+
+  // Near-death narration (must check AFTER hp update, BEFORE undying)
+  if(hero.hp>0&&hero.hp<hero.maxHP*0.25){
+    NarrationEngine.onNearDeath();
+  }
   if(hero.hp<=0&&!hero.usedUndying&&hasP('undying')){
     hero.usedUndying=true;hero.hp=Math.floor(hero.maxHP*.35);
     addLog(`  🔄 UNDYING! Hero rises with ${hero.hp} HP!`,'laxiom');
@@ -1228,7 +2022,7 @@ function heroDmg(rawDmg,attacker,src){
 function shieldBreak(attacker){
   addLog(`  💔 Shield broken!`,'lshield');
   const bash=passive('shieldBash');
-  if(bash&&attacker&&!attacker.dead){dealToEnemy(attacker,bash);addLog(`  💥 Shield Bash! ${attacker.name} takes ${bash}!`,'lhit');}
+  if(bash&&attacker&&!attacker.dead){dealToEnemy(attacker,bash);addLog(`  💥 Shield Bash! ${attacker.displayName||attacker.name} takes ${bash}!`,'lhit');}
 }
 
 function healHero(amt,src){
@@ -1275,6 +2069,14 @@ function applyBattleStartBoons(){
     if(ef.t==='onBattleStart'&&ef.ef==='shield')addShieldToUnit(G.hero,ef.amt);
   }
   if(hasTrait('aegis'))addShieldToUnit(G.hero,8);
+  if(G.hero.gear){
+    Object.values(G.hero.gear).forEach(item=>{
+      if(!item)return;
+      getGearEffectiveAffixes(item).forEach(affix=>{
+        if(affix.stat==='shieldOnBattleStart'&&typeof affix.effectiveValue==='number')addShieldToUnit(G.hero,Math.floor(affix.effectiveValue));
+      });
+    });
+  }
 }
 
 
@@ -1310,12 +2112,28 @@ function startBattle(){
   h.flags.secondWindUsed=false;
   applyWaveTraitsToEnemies();
   applyBattleStartBoons();
+
+  if(G.tierFlags&&G.tierFlags.allFatherLastGift&&G.wave===1&&!G._allFatherGiftOffered){
+    G._allFatherGiftOffered=true;
+    if(G.interval)clearInterval(G.interval);
+    G.phase='ALLFATHER_GIFT';
+    renderAll();
+    showAllFatherGift();
+    return;
+  }
+
   applyEnemyStartTraits();
   applyBattleStartTactics();
   if(G.waveFlags.heroStartVuln){applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');}
-  G.phase='BATTLE';G.tick=0;G.statusTick=0;
-  addLog(`⚔ Wave ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
-  G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
+  G.phase='BATTLE';G.tick=0;G.statusTick=0;G._critLandedThisWave=false;G._narratedNearDeath=false;
+  addLog(`⚔ Trial ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
+
+  // Narration: wave start line
+  NarrationEngine.reset();
+  const waveStartLine=MYTH_LINES.waveStart[G.wave];
+  if(waveStartLine) NarrationEngine.fire('waveStart',waveStartLine,'lstatus');
+
+  G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.displayName||e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
   renderAll();
   if(G.interval)clearInterval(G.interval);
   G.interval=setInterval(combatTick,100/G.speed);
@@ -1328,14 +2146,31 @@ function combatTick(){
     G.statusTick=0;
     tickStatuses(G.hero,true);
     G.enemies.filter(e=>!e.dead).forEach(e=>tickStatuses(e,false));
-    if(G.waveFlags.toxicAir){
+    const toxicAirActive=G.waveFlags.toxicAir||(G.tierFlags&&G.tierFlags.toxicAirFromWave&&G.wave>=G.tierFlags.toxicAirFromWave);
+    if(toxicAirActive){
       G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.max(0,e.hp-1);if(e.hp<=0&&!e.dead){e.dead=true;onKill(e);}});
       heroDmg(1,null,'dot');
     }
     if(G.waveFlags.eRegen){
       G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.min(e.maxHP,e.hp+Math.floor(e.maxHP*G.waveFlags.eRegen));});
     }
-    const ren=passive('regen');if(ren)healHero(Math.floor(G.hero.maxHP*ren),'regen');
+    const ren=passive('regen');
+    if(ren){
+      const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
+      healHero(Math.floor(G.hero.maxHP*ren*(1+regenBonus)),'regen');
+    }
+    if(G.hero.gear){
+      Object.values(G.hero.gear).forEach(item=>{
+        if(!item)return;
+        getGearEffectiveAffixes(item).forEach(affix=>{
+          if(affix.stat==='regenPct'&&typeof affix.value==='number'){
+            const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
+            const healAmt=Math.floor(G.hero.maxHP*affix.effectiveValue*(1+regenBonus));
+            if(healAmt>0)healHero(healAmt,'gear-regen');
+          }
+        });
+      });
+    }
   }
   if(checkEnd())return;
 
@@ -1377,23 +2212,41 @@ function doHeroAtk(){
   let effDef=target.def;
   if(hasP('necroticPoison')&&target.statuses.poison)effDef=Math.max(0,effDef-target.statuses.poison.stacks*passive('necroticPoison'));
   const dp=passive('defpen');if(dp)effDef=Math.floor(effDef*(1-dp));
+  const gearDp=es._gearDefPen||0;if(gearDp>0)effDef=Math.floor(effDef*(1-gearDp));
   if(crit){const cdp=passive('critDefpen');if(cdp)effDef=Math.floor(effDef*(1-cdp));}
 
   const exec=passive('executioner');if(exec&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*(1+exec));
+  const gearExec=es._gearExecutionBonus||0;if(gearExec&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*(1+gearExec));
   if(hasTrait('executioner_b')&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*1.15);
   if(target.statuses.vulnerable)dmg=Math.floor(dmg*1.30);
 
   dmg=Math.max(1,dmg-effDef);
   const actual=dealToEnemy(target,dmg);
 
-  if(crit)addLog(`  ⚔ CRIT! ${target.name} ← ${actual}`,'lcrit');
-  else addLog(`  ⚔ ${target.name} ← ${actual}`,'lhit');
+  if(G.hero.gear){
+    Object.values(G.hero.gear).forEach(item=>{
+      if(!item)return;
+      getGearEffectiveAffixes(item).forEach(affix=>{
+        if(affix.stat==='onCritBleedChance'&&crit&&!target.dead){if(rng()<affix.effectiveValue)applyStatus(target,'bleed',1,3);}
+        if(affix.stat==='permAtkOnKill'&&target.dead){
+          G.hero.permStats.atk=(G.hero.permStats.atk||0)+Math.floor(affix.effectiveValue);
+          addLog(`  ⚔ Tyrfing feeds. +${Math.floor(affix.effectiveValue)} permanent ATK.`,'laxiom');
+        }
+      });
+    });
+  }
+
+  if(crit){
+    G._critLandedThisWave=true;
+    addLog(`  ⚔ CRIT! ${target.displayName||target.name} ← ${actual}`,'lcrit');
+    NarrationEngine.onCrit();
+  } else addLog(`  ⚔ ${target.displayName||target.name} ← ${actual}`,'lhit');
 
   const ls=Math.floor(actual*(es.lifesteal||0));if(ls>0)healHero(ls,'ls');
   if(hasTrait('serrated')&&rng()<.22&&!target.dead)applyStatus(target,'bleed',1,2);
 
   trigBoon('onHit',h,target);
-  const sh=passive('shred');if(sh && !target.dead){const before=target.def;target.def=Math.max(0,target.def-sh);if(target.def!==before)addLog(`  🪨 Sunder! ${target.name} DEF -${before-target.def}`,'lstatus');}
+  const sh=passive('shred');if(sh && !target.dead){const before=target.def;target.def=Math.max(0,target.def-sh);if(target.def!==before)addLog(`  🪨 Sunder! ${target.displayName||target.name} DEF -${before-target.def}`,'lstatus');}
 
   if(crit)trigBoon('onCrit',h,target);
   const sc=passive('stunCrit');if(crit&&sc&&rng()<sc&&!target.dead){applyStatus(target,'stun',1,1);addLog(`  💫 Stun!`,'lstatus');}
@@ -1405,19 +2258,42 @@ function doHeroAtk(){
     if(t2){
       const td2=Math.max(1,Math.floor(heroAtk())-t2.def);
       dealToEnemy(t2,td2);
-      addLog(`  ⚔⚔ Twin! ${t2.name} ← ${td2}`,'lhit');
+      addLog(`  ⚔⚔ Twin! ${t2.displayName||t2.name} ← ${td2}`,'lhit');
     }
   }
   if(doEcho&&!target.dead){
     const ed=Math.max(1,Math.floor(heroAtk()*.5)-effDef);
     dealToEnemy(target,ed);
-    addLog(`  🔁 Echo! ${target.name} ← ${ed}`,'laxiom');
+    addLog(`  🔁 Echo! ${target.displayName||target.name} ← ${ed}`,'laxiom');
   }
 }
 
 function doEnemyAtk(enemy){
   const h=G.hero,ev=effectiveStats().evasion;
-  if(rng()<ev){addLog(`  💃 Dodged ${enemy.name}!`,'lmiss');trigBoon('onDodge',h,enemy);return;}
+  const pendingDodge=enemy._tier2DodgePending||0;
+  enemy._tier2DodgePending=0; // consume immediately
+  if(rng()<ev+pendingDodge){
+    addLog(`  💃 Dodged ${enemy.displayName||enemy.name}!`,'lmiss');
+    trigBoon('onDodge',h,enemy);
+    return;
+  }
+
+  // ── TIER 2 BEHAVIORS (active when G.tierFlags.archetypeBehaviors is true) ──
+  const tier2Active=!!(G.tierFlags&&G.tierFlags.archetypeBehaviors);
+  const arch=ARCHETYPES.find(a=>a.id===enemy.archId);
+  if(tier2Active&&arch&&arch.tier2Behavior){
+    if(arch.tier2Behavior==='regenOnFirstAttack'&&!enemy._tier2Done){
+      enemy._tier2Done=true;
+      const heal=Math.floor(enemy.maxHP*(arch.tier2RegenPct||0));
+      enemy.hp=Math.min(enemy.maxHP,enemy.hp+heal);
+      addLog(`  ⚙ ${enemy.displayName||enemy.name} Iron Regen: +${heal} HP`,'lstatus');
+    }
+    if(arch.tier2Behavior==='weakOnFirstAttack'&&!enemy._tier2Done){
+      enemy._tier2Done=true;
+      applyStatus(h,'weak',1,3);
+      addLog(`  🔮 ${enemy.displayName||enemy.name} Hex — first strike! Weak applied.`,'lstatus');
+    }
+  }
 
   let dmg=enemy.atk;
   let crit=rng()<(enemy.cc||.05);
@@ -1425,51 +2301,134 @@ function doEnemyAtk(enemy){
   // New archetype abilities
   if(enemy.archId==='archer'){
     enemy._pierceCtr=(enemy._pierceCtr||0)+1;
-    enemy._pierce = (enemy._pierceCtr%4===0);
+    enemy._pierce=(enemy._pierceCtr%4===0);
     if(enemy._pierce) addLog(`  🏹 Piercing Shot!`,'lstatus');
-    if(crit && rng()<0.35){applyStatus(h,'vulnerable',1,3);addLog(`  🎯 Exposed! Vulnerable`,'lstatus');}
   }
   if(enemy.archId==='frost'){
     enemy._frostCtr=(enemy._frostCtr||0)+1;
     if(enemy._frostCtr%3===0){applyStatus(h,'slow',1,3);addLog(`  ❄️ Frostbite! Slow`,'lstatus');}
-    if(crit && rng()<0.15){applyStatus(h,'stun',1,1);addLog(`  💫 Frozen! Stun`,'lstatus');}
+    if(crit&&rng()<0.15){applyStatus(h,'stun',1,1);addLog(`  💫 Frozen! Stun`,'lstatus');}
   }
   if(enemy.archId==='warden'){
     enemy._bannerCtr=(enemy._bannerCtr||0)+1;
     if(enemy._bannerCtr%4===0){applyStatus(h,'weak',1,3);addLog(`  🧿 Suppressed! Weak`,'lstatus');}
   }
 
-
-  if(enemy.beh==='burst'&&!enemy._firstAtkDone){enemy._firstAtkDone=true;dmg*=2;addLog(`  🗡 AMBUSH! ${enemy.name}!`,'lcrit');}
-  if(enemy.archId==='bombardier'){enemy._chargeCtr++;if(enemy._chargeCtr%3===0){dmg*=2;addLog(`  💣 OVERCHARGE! ${enemy.name}!`,'lcrit');}}
+  if(enemy.beh==='burst'&&!enemy._firstAtkDone){enemy._firstAtkDone=true;dmg*=2;addLog(`  🗡 AMBUSH! ${enemy.displayName||enemy.name}!`,'lcrit');}
+  if(enemy.archId==='bombardier'){enemy._chargeCtr++;if(enemy._chargeCtr%3===0){dmg*=2;addLog(`  💣 OVERCHARGE! ${enemy.displayName||enemy.name}!`,'lcrit');}}
   if(enemy.archId==='shaman'){enemy._hexCtr++;if(enemy._hexCtr%3===0){applyStatus(h,'weak',1,4);addLog(`  🔮 Hex! Weak on hero`,'lstatus');}}
+
+  if(tier2Active&&arch&&arch.tier2Behavior==='enrageOnLowHP'){
+    if(enemy.hp<enemy.maxHP*(arch.tier2Threshold||0.35)&&!enemy._tier2Enraged){
+      enemy._tier2Enraged=true;
+      enemy.atk+=arch.tier2BonusAtk||5;
+      addLog(`  🐺 ${enemy.displayName||enemy.name} Wolf-Rage! +${arch.tier2BonusAtk||5} ATK`,'lcrit');
+    }
+  }
 
   if(crit)dmg=Math.floor(dmg*(enemy.cd||1.5));
 
-  const heroDef = (enemy.archId==='archer' && enemy._pierce) ? Math.floor(h.def*0.2) : h.def;
+  const heroDef=(enemy.archId==='archer'&&enemy._pierce)?Math.floor(h.def*0.2):h.def;
   const reduced=Math.max(1,Math.floor(dmg)-heroDef);
   const actual=heroDmg(reduced,enemy,'attack');
 
-  if(crit)addLog(`  💥 ${enemy.name} CRITS! ${actual}`,'lcrit');
-  else addLog(`  👊 ${enemy.name} hits ${actual}`,'lhit');
+  if(crit)addLog(`  💥 ${enemy.displayName||enemy.name} CRITS! ${actual}`,'lcrit');
+  else addLog(`  👊 ${enemy.displayName||enemy.name} hits ${actual}`,'lhit');
 
   if(enemy.lifesteal>0)enemy.hp=Math.min(enemy.maxHP,enemy.hp+Math.floor(actual*enemy.lifesteal));
+
+  if(enemy.rootTouched&&!enemy.dead){
+    if(enemy.archId==='bruiser'&&rng()<0.40){
+      applyStatus(G.hero,'vulnerable',1,2);
+      addLog(`  🌑 Root-Touched corruption: Vulnerable (2s)`,'lstatus');
+    }else if(enemy.archId==='striker'&&rng()<0.30){
+      applyStatus(G.hero,'poison',1,3);
+      addLog(`  🌑 Root-Touched eitr: Poison (3s)`,'lstatus');
+    }
+  }
+
+  if(crit&&tier2Active&&arch&&arch.tier2Behavior==='dodgeAfterCrit'&&arch.tier2DodgeChance){
+    enemy._tier2DodgePending=arch.tier2DodgeChance;
+  }
+  if(crit&&tier2Active&&arch&&arch.tier2Behavior==='exposeCritVuln'&&arch.tier2ExposeChance&&rng()<arch.tier2ExposeChance){
+    applyStatus(h,'vulnerable',1,3);
+    addLog(`  🎯 ${enemy.displayName||enemy.name} exposes weakness! Vulnerable`,'lstatus');
+  }
 
   if(G.waveFlags.eEcho&&rng()<.25){
     const e2=Math.max(1,Math.floor(enemy.atk*.55)-h.def);
     heroDmg(e2,enemy,'echo');
     addLog(`  🔊 Echo! ${e2}`,'lhit');
   }
+
+  if(G.tierFlags&&G.tierFlags.emberSparkChance&&G.wave>=(G.tierFlags.muspelheimTagFromWave||7)){
+    if(rng()<G.tierFlags.emberSparkChance){
+      const sparkDmg=Math.max(1,Math.floor(enemy.atk*0.15)-G.hero.def);
+      heroDmg(sparkDmg,enemy,'ember');
+      addLog(`  🔥 Ember spark! ${sparkDmg} fire damage.`,'lstatus');
+      applyStatus(G.hero,'bleed',1,2);
+    }
+  }
+
+  if(enemy.signature&&typeof enemy.signature.apply==='function'){
+    enemy.signature.apply(enemy,G.hero);
+  }
+  if(G.tierFlags&&G.tierFlags.eliteSecondPhase&&enemy.elite&&!enemy._secondPhaseActivated){
+    if(enemy.hp<enemy.maxHP*0.40){
+      enemy._secondPhaseActivated=true;
+      enemy.atk=Math.floor(enemy.atk*1.20);
+      enemy.spd=Math.floor(enemy.spd*1.15);
+      addLog(`  ⭐ ${enemy.displayName||enemy.name} — SECOND WIND! +20% ATK, +15% SPD!`,'lcrit');
+    }
+  }
 }
 
 function onKill(enemy){
-  addLog(`  💀 ${enemy.name} slain!`,'ldeath');
+  addLog(`  💀 ${enemy.displayName||enemy.name} slain!`,'ldeath');
+  // Near-death kill narration
+  if(G.hero.hp<G.hero.maxHP*0.25){
+    NarrationEngine.onNearDeathKill();
+  }
+  NarrationEngine.onKill();
   if(G.waveFlags.enraged){
     G.enemies.filter(e=>!e.dead).forEach(e=>e.atk+=15);
     addLog(`  😡 Enraged! +15 ATK!`,'lstatus');
   }
   G.waveGold+=ri(3,7);
+
+  if(G.tierFlags&&G.tierFlags.killDropsMark){
+    G.gold+=G.tierFlags.killDropsMark;
+  }
+
+  if(G.tierFlags&&G.tierFlags.draugrEchoChance&&!enemy._isEcho){
+    if(rng()<G.tierFlags.draugrEchoChance){
+      setTimeout(()=>draugrEchoRevive(enemy),0);
+    }
+  }
+
   trigBoon('onKill',G.hero,enemy);
+}
+
+function draugrEchoRevive(originalEnemy){
+  if(!G||G.phase!=='BATTLE')return;
+  const echoHP=Math.floor(originalEnemy.maxHP*0.25);
+  const echo={
+    ...JSON.parse(JSON.stringify(originalEnemy)),
+    id:originalEnemy.id+'_echo',
+    hp:echoHP,maxHP:echoHP,
+    displayName:'Echo: '+(originalEnemy.displayName||originalEnemy.name),
+    name:'Echo: '+(originalEnemy.displayName||originalEnemy.name),
+    dead:false,
+    _isEcho:true,
+    actionMeter:0.3,
+    statuses:{},
+    elite:false,
+  };
+  if(originalEnemy.archId==='frost'||originalEnemy.realmTier==='niflheim'){
+    echo.statuses.slow={stacks:1,value:0,dur:4};
+  }
+  G.enemies.push(echo);
+  addLog(`  💀 The dead remember — ${originalEnemy.displayName||originalEnemy.name} rises!`,'lstatus');
 }
 
 function tickStatuses(unit,isHero){
@@ -1486,17 +2445,28 @@ function tickStatuses(unit,isHero){
     }
     if(k==='bleed'){
       let d=Math.floor((3+s.stacks)*bm);
-      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);}
+      if(!isHero&&G.tierFlags&&G.tierFlags.dotDamageBonus){
+        d=Math.floor(d*(1+G.tierFlags.dotDamageBonus));
+      }
+      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));}
       if(isHero)heroDmg(d,null,'dot');
       else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
     }
     if(k==='poison'){
       let d=Math.floor((2+s.stacks+vk)*pm);
-      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);}
+      if(!isHero&&G.tierFlags&&G.tierFlags.dotDamageBonus){
+        d=Math.floor(d*(1+G.tierFlags.dotDamageBonus));
+      }
+      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));}
       if(isHero)heroDmg(d,null,'dot');
       else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
     }
-    if(k==='regen'&&isHero)healHero(s.value||3,'regen');
+    if(k==='regen'&&isHero){
+      const baseHeal=s.value||3;
+      const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
+      const totalHeal=Math.floor(baseHeal*(1+regenBonus));
+      healHero(totalHeal,'regen');
+    }
   }
 }
 
@@ -1520,7 +2490,16 @@ function checkEnd(){
     G.activeTactic=null;G.waveGoldMult=1;
     checkLevelUp();
     G.rerollCost=10;
+    G.enemies.filter(e=>e.elite).forEach(e=>{
+      const heroSurvived=G.hero.hp>0;
+      recordEliteEncounter(e.archId,heroSurvived,G._narratedNearDeath||false,G._critLandedThisWave||false);
+    });
+    G._critLandedThisWave=false;
     genDraft();
+    const waveEndLine=MYTH_LINES.waveEnd[G.wave];
+    if(waveEndLine) NarrationEngine.fire('waveEnd',waveEndLine,'lstatus');
+    addNotchesToHeroGear(G.wave);
+    G.forgeStallItem=genForgeStallItem(G.wave);
     G.phase='REWARDS';
     renderAll();
     return true;
@@ -1533,6 +2512,7 @@ function checkLevelUp(){
     G.xp-=G.xpNeeded;G.level++;G.xpNeeded=Math.floor(G.xpNeeded*1.35);
     G.hero.maxHP+=18;G.hero.hp=Math.min(G.hero.maxHP,G.hero.hp+18);G.hero.atk+=3;G.hero.def+=1;
     addLog(`🌟 Level Up → Lv.${G.level}! (+18 HP +3 ATK +1 DEF)`,'laxiom');
+    NarrationEngine.fire('levelUp',MYTH_LINES.levelUp,'lstatus');
   }
 }
 
@@ -1553,25 +2533,25 @@ function computeEarnedEVs(){
 function retireHero(){
   const rec=G.hero.record;
   const earnedEVs=computeEarnedEVs();
-  rec.runResult={outcome:'retired',wave:G.wave,boons:G.boons.map(b=>b.id),axioms:G.boons.filter(b=>b.rarity==='axiom').map(b=>b.id),level:G.level,earnedEVs,ts:Date.now()};
+  rec.runResult={
+    outcome:'retired',wave:G.wave,
+    boons:G.boons.map(b=>b.id),
+    axioms:G.boons.filter(b=>b.rarity==='axiom').map(b=>b.id),
+    level:G.level,earnedEVs,ts:Date.now()
+  };
   assignBreedUses(rec, calcBreedUsesForRetire());
   const cap=evCap();
   EV_KEYS.forEach(k=>rec.evs[k]=Math.min(cap,(rec.evs[k]||0)+(earnedEVs[k]||0)));
-
   META.family[rec.id]=rec;
   if(META.retiredPool.length>=poolMax())META.retiredPool.shift();
   META.retiredPool.push(rec.id);
-
   const essence=Math.floor(G.gold*.35)+G.wave*4;
   META.legacyEssence+=essence;
-
   if(G.interval)clearInterval(G.interval);
-  addLog(`🏛 ${rec.name} retired at Wave ${G.wave}! +${essence} Essence.`,'laxiom');
+  addLog(`🏛 ${rec.name} sealed their saga at Trial ${G.wave}! +${essence} Allfather's Blessing.`,'laxiom');
+  checkRagnarökUnlock();
   saveMeta();
-
-  const axiomBoons=G.boons.filter(b=>b.rarity==='axiom');
-  if(axiomBoons.length>0)showImprintOffer(rec,axiomBoons,essence);
-  else showRetireSummary(rec,essence,earnedEVs);
+  showRetireRelicChoice(rec, essence);
 }
 
 function showImprintOffer(rec,axiomBoons,essence){
@@ -1615,8 +2595,14 @@ function tryImprint(heroId,traitKey,chance,boonId){
 function showRetireSummary(rec,essence,earnedEVs){
   const ev=rec.evs;
   let html=`
-    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 HERO RETIRED</div>
-    <div style="color:var(--txt2);font-size:13px;margin-bottom:14px">${rec.name} has been added to the Chosen of the Hall and will be available for breeding.</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
+              color:var(--gold);margin-bottom:8px">🏛 SAGA SEALED</div>
+    <div style="color:var(--txt2);font-size:13px;margin-bottom:6px">
+      ${rec.name} has been added to the Chosen of the Hall.
+    </div>
+    <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:14px">
+      "Let the blood carry the rest."
+    </div>
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px;margin-bottom:14px;text-align:left">
       <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC PROFILE</div>
       ${EV_KEYS.map(k=>`<div class="srow"><span class="sl">${k.toUpperCase()}_EV</span><span class="sv">${ev[k]||0} / ${evCap()}</span></div>`).join('')}
@@ -1650,7 +2636,7 @@ function heroFell(){
   META.fallenLedger.push(rec.id);
   META.salvage+=salvageEarned;
   saveMeta();
-  addLog(`ᚱ ${salvageEarned} Relics recovered from ${rec.name}'s legacy.`,'ldeath');
+  addLog(`  The saga closed. ᚱ${salvageEarned} Rune-Shards recovered from ${rec.name}'s last stand.`,'ldeath');
   updateMetaHeader();
 }
 
@@ -1731,6 +2717,9 @@ function pickBoon(id){
   G.boons.push(boon);
   applyBoonEffectsOnPick(boon);
   addLog(`📦 Drafted: ${boon.name} [${boon.rarity}]`,'laxiom');
+  if(boon.rarity==='axiom'){
+    NarrationEngine.fire('generic',MYTH_LINES.axiomPicked,'laxiom');
+  }
   G.draft=[];
 
   if(G.wave>=G.maxWaves){
@@ -1745,6 +2734,7 @@ function pickBoon(id){
     META.legacyEssence+=80;
     saveMeta();
     G.phase='VICTORY';
+    checkRagnarökUnlock();
     renderAll();
     return;
   }
@@ -1757,7 +2747,8 @@ function pickBoon(id){
 function doReroll(){
   if(G.gold<G.rerollCost)return;
   G.gold-=G.rerollCost;
-  G.rerollCost+=6;
+  const increase=(G.tierFlags&&G.tierFlags.rerollCostIncreaseOverride)||6;
+  G.rerollCost+=increase;
   genDraft();
   renderAll();
 }
@@ -1790,7 +2781,10 @@ function updateHeader(){
 function updateMetaHeader(){
   const el1=document.getElementById('leg-essence');if(el1)el1.textContent=META.legacyEssence;
   const el2=document.getElementById('leg-salvage');if(el2)el2.textContent=META.salvage;
+  const el3=document.getElementById('leg-relics');if(el3)el3.textContent=META.relics||0;
   const hs=document.getElementById('hdr-salvage');if(hs)hs.textContent=META.salvage;
+  checkCodexUnlocks();
+  updateRootDepthHeader();
 }
 
 function renderHero(){
@@ -1851,6 +2845,17 @@ function renderHero(){
   if(G.boons.length){
     html+=`<div class="sec-title" style="margin-top:7px">Boons (${G.boons.length})</div><div style="display:flex;flex-wrap:wrap;gap:3px">`;
     G.boons.forEach(b=>html+=`<div class="inv-item ii-${b.rarity}" title="${b.name}: ${b.desc}">${b.icon}</div>`);
+    html+=`</div>`;
+  }
+  const gearSlots=G.hero.gear?Object.entries(G.hero.gear).filter(([slot,item])=>item):[];
+  if(gearSlots.length){
+    html+=`<div class="sec-title" style="margin-top:7px">Gear</div><div style="display:flex;flex-direction:column;gap:3px">`;
+    gearSlots.forEach(([slot,item])=>{
+      const sunTag=item.sundered?' <span style="color:var(--amber);font-size:9px">⚠SUNDERED</span>':'';
+      const notchPips=item.notches>0?('<span style="font-size:9px;color:var(--txt3)"> '+'◆'.repeat(item.notches)+'</span>'):'';
+      const tt=`${item.affixes.map(a=>a.label).join(', ')}${item.loreNote?'\n'+item.loreNote:''}`;
+      html+=`<div title="${tt}" style="font-size:10px;color:${rarityColor(item.rarity)}">${slot.toUpperCase()}: ${item.name}${sunTag}${notchPips}</div>`;
+    });
     html+=`</div>`;
   }
   document.getElementById('hero-content').innerHTML=html;
@@ -1925,6 +2930,31 @@ function renderWavePreview(){
     h+=`<div style="height:8px"></div>`;
   }
 
+  const activeTier=G.ragnarökActive||0;
+  if(activeTier>0){
+    const activeTiers=RAGNARÖK_TIERS.slice(0,activeTier);
+    h+=`
+      <div class="sec-title" style="margin-top:10px">
+        ${rootDepthIcon(activeTier)} Root Depth ${activeTier} — Active Omens
+        <button onclick="
+          var tl=document.getElementById('tier-list-wave');
+          tl.style.display=(tl.style.display==='none'?'block':'none');
+        " style="float:right;background:none;border:none;color:var(--txt3);cursor:pointer;font-size:10px;margin-top:2px">
+          Show/Hide
+        </button>
+      </div>
+      <div id="tier-list-wave" style="display:none;margin-bottom:8px">
+        ${activeTiers.map(t=>`
+          <div style="font-size:10px;color:var(--txt3);margin:2px 0;padding:3px 6px;
+                      background:var(--bg2);border-radius:3px;border-left:2px solid var(--border2)">
+            <span style="color:var(--amber);font-weight:700">${t.tier}.</span>
+            ${t.name} — <em>${t.omen}</em>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
 
   // Tactics (cost paid when you start the wave)
   if(G.tacticOffers && G.tacticOffers.length){
@@ -1957,12 +2987,17 @@ function renderWavePreview(){
 
   h+=`<div class="sec-title">Enemy Lineup (${G.enemies.length} units)</div>`;
   G.enemies.forEach(e=>{
-    h+=`<div class="enemy-card${e.elite?' ec-elite':''}">
+    const rootBorder=e.rootTouched?'border-color:#4a1a6a;background:#0e0818;box-shadow:0 0 8px rgba(100,20,140,.3)':'';
+    h+=`<div class="enemy-card${e.elite?' ec-elite':''}" style="${rootBorder}">
       <div class="eicon" style="background:${e.col}22;border:1px solid ${e.col}55">${e.icon}</div>
       <div class="einfo">
-        <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.name}</div>
-        <div class="etrait">◈ ${e.trait}: ${e.td}</div>
+        <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">
+          ${e.displayName||e.name}
+          ${e.namedElite?'<span style="font-size:9px;color:var(--amber);margin-left:6px;font-style:italic">— A familiar name returns.</span>':''}
+        </div>
+        <div class="etrait">◈ ${e.norseName?`<em style="color:var(--txt3)">${e.norseName}</em> — `:''}${e.trait}: ${e.td}</div>
         <div class="estats">HP:${e.hp} ATK:${e.atk} DEF:${e.def} SPD:${e.spd}</div>
+        ${e.signature?`<div style="font-size:10px;color:var(--amber);margin-top:3px;border-top:1px solid rgba(240,168,40,.2);padding-top:3px">⭐ ${e.signature.name}: ${e.signature.desc}</div>`:''}
       </div>
     </div>`;
   });
@@ -1980,11 +3015,11 @@ function renderBattle(){
   alive.forEach(e=>{
     const hp=Math.max(0,e.hp/e.maxHP*100),shv=e.statuses.shield,shpct=shv?Math.min(100-hp,shv.value/e.maxHP*100):0;
     const sbs=Object.entries(e.statuses).filter(([k])=>e.statuses[k]&&k!=='shield'&&e.statuses[k].stacks>0);
-    h+=`<div class="enemy-card${e.elite?' ec-elite':''}">
+    h+=`<div class="enemy-card${e.elite?' ec-elite':''}${e.rootTouched?' ec-root-touched':''}">
       <div class="eicon" style="background:${e.col}22;border:1px solid ${e.col}55">${e.icon}</div>
       <div class="einfo">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.name}</div>
+          <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.displayName||e.name}</div>
           <div style="font-size:10px;color:var(--txt3);font-family:'Share Tech Mono',monospace">${e.hp}/${e.maxHP}${shv?' 🛡'+shv.value:''}</div>
         </div>
         <div class="ehpbar" style="position:relative">
@@ -2014,33 +3049,75 @@ function renderRewards(){
     {id:'crit',icon:'🎯',name:'+CRIT',cost:20,desc:'+6% Crit'},
   ];
   const hpPct=Math.max(0,G.hero.hp/G.hero.maxHP*100);
+  const showForge=!!(G.forgeStallItem||hasSunderedGear());
   let h=`<div class="slide-in" style="padding:16px">
     <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:12px">🏆 Wave ${G.wave} Complete!</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div>
-        <div class="sec-title">ᛋ Shop (${G.gold} gold)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-          ${shop.map(s=>`<div class="shop-btn${G.gold<s.cost?' sb-disabled':''}" onclick="shopBuy('${s.id}')" title="${s.desc}">
-            <div class="sb-name">${s.icon} ${s.name}</div><div class="sb-cost">ᛋ${s.cost}</div><div class="sb-desc">${s.desc}</div>
-          </div>`).join('')}
-        </div>
-        <div style="margin-top:8px;font-size:10px;color:var(--txt3)">
-          HP: <span style="color:${hpPct>60?'var(--green)':hpPct>30?'var(--amber)':'var(--red)'}">${G.hero.hp}/${G.hero.maxHP} (${Math.round(hpPct)}%)</span>
-        </div>
-      </div>
-      <div>
-        <div class="sec-title">📦 Draft (pick 1)</div>
-        ${G.draft.length?G.draft.map(b=>`
-          <div class="boon-card rc-${b.rarity}" onclick="pickBoon('${b.id}')" style="margin-bottom:6px">
-            <div class="boon-rar rar-${b.rarity}">${b.rarity.toUpperCase()}</div>
-            <div><span style="font-size:14px">${b.icon}</span> <span class="boon-name">${b.name}</span></div>
-            <div class="boon-desc" style="margin-top:3px">${b.desc}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">${b.tags.map(t=>`<span class="tag t-${t}">${t}</span>`).join('')}</div>
-          </div>`).join(''):`<div style="color:var(--txt3);font-size:12px">No more boons!</div>`}
-        ${G.draft.length?`<button class="btn btn-sm btn-ghost" style="width:100%;margin-top:4px" onclick="doReroll()">🔄 Reroll (ᛋ${G.rerollCost})${G.gold<G.rerollCost?' — need gold':''}</button>`:''}
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr${showForge?' 1fr':''};gap:14px">`;
+
+  h+=`<div>
+    <div class="sec-title">ᛋ Shop (${G.gold} gold)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+      ${shop.map(s=>`<div class="shop-btn${G.gold<s.cost?' sb-disabled':''}" onclick="shopBuy('${s.id}')" title="${s.desc}">
+        <div class="sb-name">${s.icon} ${s.name}</div><div class="sb-cost">ᛋ${s.cost}</div><div class="sb-desc">${s.desc}</div>
+      </div>`).join('')}
     </div>
+    ${(()=>{
+      if(!(G.tierFlags&&G.tierFlags.cursedBargainInShop&&!G.cursedBargainUsedThisWave))return '';
+      const bargain=G._waveBargainOffer||(G._waveBargainOffer=rpick(CURSED_BARGAINS));
+      return `
+        <div style="margin-top:10px;border-top:1px solid rgba(220,60,20,.3);padding-top:10px">
+          <div class="sec-title" style="color:var(--amber)">⚠ The Norns Offer a Bargain</div>
+          <div style="background:#120a06;border:1px solid rgba(220,60,20,.4);border-radius:5px;padding:10px;margin:4px 0">
+            <div style="font-weight:700;color:var(--amber);margin-bottom:3px">${bargain.icon} ${bargain.name}</div>
+            <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">${bargain.desc}</div>
+            <button class="btn btn-sm btn-danger${(!bargain.isFree&&G.gold<bargain.cost)?' sb-disabled':''}" onclick="takeCursedBargain('${bargain.id}')">Accept${bargain.isFree?'':` (ᛋ${bargain.cost})`}</button>
+          </div>
+        </div>
+      `;
+    })()}
+    <div style="margin-top:8px;font-size:10px;color:var(--txt3)">HP: <span style="color:${hpPct>60?'var(--green)':hpPct>30?'var(--amber)':'var(--red)'}">${G.hero.hp}/${G.hero.maxHP} (${Math.round(hpPct)}%)</span></div>
   </div>`;
+
+  h+=`<div>
+    <div class="sec-title">📦 Draft (pick 1)</div>
+    ${G.draft.length?G.draft.map(b=>`
+      <div class="boon-card rc-${b.rarity}" onclick="pickBoon('${b.id}')" style="margin-bottom:6px">
+        <div class="boon-rar rar-${b.rarity}">${b.rarity.toUpperCase()}</div>
+        <div><span style="font-size:14px">${b.icon}</span> <span class="boon-name">${b.name}</span></div>
+        <div class="boon-desc" style="margin-top:3px">${b.desc}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">${b.tags.map(t=>`<span class="tag t-${t}">${t}</span>`).join('')}</div>
+      </div>`).join(''):`<div style="color:var(--txt3);font-size:12px">No more boons!</div>`}
+    ${G.draft.length?`<button class="btn btn-sm btn-ghost" style="width:100%;margin-top:4px" onclick="doReroll()">🔄 Reroll (ᛋ${G.rerollCost})${G.gold<G.rerollCost?' — need gold':''}</button>`:''}
+  </div>`;
+
+  if(showForge){
+    h+=`<div>
+      <div class="sec-title">⚒ Forge Stall</div>
+      ${G.forgeStallItem?`
+        <div style="background:var(--bg2);border:1px solid ${rarityBorderColor(G.forgeStallItem.rarity)};border-radius:5px;padding:10px;margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;color:${rarityColor(G.forgeStallItem.rarity)};margin-bottom:3px">${G.forgeStallItem.rarity.toUpperCase()}</div>
+          <div style="font-weight:700;font-size:12px">${G.forgeStallItem.name}</div>
+          ${G.forgeStallItem.loreNote?`<div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:2px">${G.forgeStallItem.loreNote}</div>`:''}
+          <div style="font-size:10px;color:var(--txt2);margin-top:4px">${G.forgeStallItem.affixes.map(a=>a.label).join(' · ')}</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:3px">Slot: ${G.forgeStallItem.slot.toUpperCase()}${G.hero.gear&&G.hero.gear[G.forgeStallItem.slot]?` · Replaces: ${G.hero.gear[G.forgeStallItem.slot].name}`:' · Slot empty'}</div>
+          <button class="btn btn-sm btn-amber${G.gold<gearCost(G.forgeStallItem)?' sb-disabled':''}" style="margin-top:8px;width:100%" onclick="buyGear()">Equip (ᛋ${gearCost(G.forgeStallItem)})</button>
+        </div>
+      `:'<div style="font-size:11px;color:var(--txt3)">Nothing forged this trial.</div>'}
+      ${hasSunderedGear()?`
+        <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+          <div style="font-size:10px;color:var(--amber);font-weight:700;margin-bottom:4px">⚒ Recondition</div>
+          ${Object.entries(G.hero.gear||{}).filter(([s,item])=>item?.sundered).map(([slot,item])=>`
+            <div style="margin:4px 0;font-size:11px;display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--amber)">${item.name}</span>
+              <button class="btn btn-sm btn-salvage${META.salvage<10?' sb-disabled':''}" onclick="reconditionGear('${slot}')">ᚱ10</button>
+            </div>
+          `).join('')}
+        </div>
+      `:''}
+    </div>`;
+  }
+
+  h+=`</div></div>`;
   return h;
 }
 
@@ -2050,10 +3127,23 @@ function renderEndScreen(){
   const tagCounts={};G.boons.forEach(b=>b.tags.forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
   const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const score=G.level*50+G.boons.length*30+(won?300:0)+G.wave*20;
-  const retiredMsg=won?'(Auto-retired to pool)':'';
+
+  const heroName=rec?.name||'the Champion';
+  const outcomeHeader=won?'⭐ SAGA COMPLETE':'☠ SAGA CLOSED';
+  const outcomeColor=won?'var(--gold)':'var(--red)';
+  const outcomeShadow=won?'rgba(212,160,23,.6)':'rgba(224,64,64,.5)';
+  const outcomeSubtext=won
+    ? `All twelve trials survived. The Allfather's wager holds. ${heroName} may now rest.`
+    : `Trial ${G.wave} — ${heroName}'s saga ends here. The thread passes to the next.`;
+
   return `<div class="slide-in" style="padding:24px;text-align:center">
-    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:${won?'var(--gold)':'var(--red)'};text-shadow:0 0 20px ${won?'rgba(212,160,23,.6)':'rgba(224,64,64,.5)'};margin-bottom:8px">${won?'⭐ SAGA COMPLETE':'💀 FALLEN WARRIOR'}</div>
-    <div style="color:var(--txt2);margin-bottom:16px;font-size:12px">${won?'All 12 trials survived. '+retiredMsg:'Wave '+G.wave+' — '+(rec?.name||'Hero')+' has fallen.'}</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;
+                color:${outcomeColor};text-shadow:0 0 20px ${outcomeShadow};margin-bottom:8px">
+      ${outcomeHeader}
+    </div>
+    <div style="color:var(--txt2);margin-bottom:16px;font-size:12px;font-style:italic">
+      ${outcomeSubtext}
+    </div>
     <div style="display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:14px 20px;margin-bottom:16px;text-align:left;min-width:260px">
       <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Run Summary</div>
       <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Waves Survived</span><span style="font-weight:700">${G.wave}/${G.maxWaves}</span></div>
@@ -2065,7 +3155,7 @@ function renderEndScreen(){
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-gold" onclick="showLegacy()">🏛 View Legacy</button>
-      <button class="btn btn-primary" onclick="showStartScreen()">▶ New Run</button>
+      <button class="btn btn-primary" onclick="showStartScreen()">▶ Begin New Saga</button>
     </div>
   </div>`;
 }
@@ -2103,7 +3193,7 @@ function hideLegacy(){
 }
 function setLegacyTab(tab){
   currentLegacyTab=tab;
-  ['pool','breed','fallen','tree','upgrades'].forEach(t=>{
+  ['pool','breed','fallen','tree','upgrades','codex'].forEach(t=>{
     document.getElementById('ltab-'+t).className='ltab'+(t===tab?' active':'');
   });
   const lc=document.getElementById('legacy-content');
@@ -2112,6 +3202,7 @@ function setLegacyTab(tab){
   else if(tab==='fallen')lc.innerHTML=renderFallenLedger();
   else if(tab==='tree')renderFamilyTree();
   else if(tab==='upgrades')lc.innerHTML=renderRunesmith();
+  else if(tab==='codex')lc.innerHTML=codexHTML();
 }
 
 // ─── RETIRED POOL ─────────────────────────────────────────────────────────────
@@ -2125,7 +3216,7 @@ function toggleBreedSelect(id){
 }
 
 function renderRetiredPool(){
-  const heroes=META.retiredPool.map(id=>META.family[id]).map(r=>{if(r){const u=getBreedUses(r);if(typeof r.breedUsesMax!=='number' || r.breedUsesMax<=0){r.breedUsesMax=u.max; r.breedUsesLeft=u.left;} } return r;}).filter(r=>r && getBreedUses(r).left>0);
+  const heroes=META.retiredPool.map(id=>META.family[id]).map(r=>{if(r){const u=getBreedUses(r);if(typeof r.breedUsesMax!=='number' || r.breedUsesMax<=0){r.breedUsesMax=u.max; r.breedUsesLeft=u.left;} } return r;}).filter(r=>r && canHeroBreed(r.id));
   if(!heroes.length){
     return `<div style="text-align:center;padding:40px;color:var(--txt3)">
       <div style="font-size:32px;margin-bottom:12px">🏛</div>
@@ -2160,6 +3251,7 @@ function renderRetiredPool(){
       <div class="hc-stats">HP:${derived.maxHP} ATK:${Math.round(derived.atk)} DEF:${Math.round(derived.def)} SPD:${derived.spd}</div>
       <div class="hc-stats">CRIT:${Math.round(derived.critChance*100)}% EVA:${Math.round(derived.evasion*100)}%</div>
       <div class="hc-stats" style="margin-top:3px">Breeds left: <span style="color:var(--gold);font-weight:800">${uses.left}/${uses.max}</span></div>
+      ${rec.equippedGear&&Object.values(rec.equippedGear).some(Boolean)?`<div style="font-size:9px;color:var(--txt3);margin-top:4px">⚒ ${Object.values(rec.equippedGear).filter(Boolean).map(i=>`<span style="color:${rarityColor(i.rarity)}">${i.name}</span>`).join(', ')} bequeathed</div>`:''}
       ${rec.traits.length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:5px">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait" title="${gt.desc}">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
       <div style="margin-top:8px">
         ${EV_KEYS.map(k=>`<div style="display:flex;align-items:center;gap:5px;margin:2px 0">
@@ -2185,8 +3277,8 @@ function renderBreeding(){
     </div>`;
   }
   const recA=META.family[BREED_SELECTED[0]],recB=META.family[BREED_SELECTED[1]];
+  if(!recA||!recB||isFallenHero(recA.id)||isFallenHero(recB.id))return `<div style="color:var(--red);padding:20px">A fallen hero cannot enter the Breeding Chamber. Their saga is closed.</div>`;
   const usesA=getBreedUses(recA), usesB=getBreedUses(recB);
-  if(!recA||!recB)return `<div style="color:var(--red);padding:20px">Invalid selection.</div>`;
 
   const cap=evCap();
   const previewEVs={};EV_KEYS.forEach(k=>previewEVs[k]=Math.min(cap,Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2)));
@@ -2195,6 +3287,9 @@ function renderBreeding(){
   const allTraits=[...new Set([...recA.traits,...recB.traits])];
 
   let h=`<div>
+    <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:12px">
+      You choose the next thread.
+    </div>
     <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px">⚗ Breeding Chamber</div>
     <div style="display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:center;margin-bottom:20px">
       <div class="child-preview" style="background:rgba(72,120,240,.08);border-color:rgba(72,120,240,.4)">
@@ -2285,8 +3380,36 @@ function doBreed(){
   </div>`;
 }
 
+function inheritGearFromParent(childId,parentId){
+  const parentRec=META.family[parentId];
+  const childRec=META.family[childId];
+  if(!parentRec||!childRec||isFallenHero(parentId))return;
+  if(!parentRec.equippedGear)return;
+  childRec.inheritedGear={};
+  Object.entries(parentRec.equippedGear).forEach(([slot,item])=>{
+    if(!item)return;
+    const copy=JSON.parse(JSON.stringify(item));
+    copy.sagaHistory=copy.sagaHistory||[];
+    if(copy.sagaHistory.length>=3)copy.sagaHistory.shift();
+    copy.sagaHistory.push(`Inherited by ${childRec.name}`);
+    childRec.inheritedGear[slot]=copy;
+  });
+  META.family[childId]=childRec;
+}
+
 function startWithChild(heroId){
   const rec=META.family[heroId];if(!rec)return;
+  if(rec.parentIds&&rec.parentIds.length){
+    const bestParentId=rec.parentIds.reduce((best,pid)=>{
+      const p=META.family[pid], b=META.family[best];
+      const pWave=(p?.runResult?.wave||0), bWave=(b?.runResult?.wave||0);
+      const pFallen=isFallenHero(pid), bFallen=isFallenHero(best);
+      if(bFallen&&!pFallen)return pid;
+      if(!bFallen&&pFallen)return best;
+      return pWave>=bWave?pid:best;
+    },rec.parentIds[0]);
+    inheritGearFromParent(heroId,bestParentId);
+  }
   initGame(null,rec.evs,rec.traits,rec);
 }
 
@@ -2309,8 +3432,11 @@ function renderFallenLedger(){
     const rr=rec.runResult||{};
     const sal=rr.salvageEarned||0;
     h+=`<div class="hero-card hc-dead">
-      <div class="hc-gen">GEN ${rec.gen} · FALLEN</div>
+      <div class="hc-gen">GEN ${rec.gen} · SAGA CLOSED</div>
       <div class="hc-name">☠ ${rec.name}</div>
+      <div style="font-size:10px;color:var(--txt3);font-style:italic;margin:3px 0">
+        "What remained was taken by the root."
+      </div>
       ${rec.traits.length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin:4px 0">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait" style="font-size:9px">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
       <div class="hc-stats">Wave ${rr.wave||'?'} · ${(rr.boons?.length||0)} boons · Lv.${rr.level||1}</div>
       ${rr.axioms?.length?`<div style="font-size:10px;color:#d050ff;margin-top:3px">Runes: ${rr.axioms.length}</div>`:''}
@@ -2319,6 +3445,56 @@ function renderFallenLedger(){
   });
   h+=`</div></div>`;
   return h;
+}
+
+const ELITE_NAME_PREFIXES={
+  midgard:['Ulf','Bjorn','Sigr','Hrafn','Dag','Leif','Tor'],
+  niflheim:['Grym','Skoll','Hati','Mist','Yng','Hvel'],
+  jotunheim:['Thrym','Ymir','Berg','Sten','Fjord','Hymir'],
+  muspelheim:['Brand','Eldr','Askr','Surla','Logi'],
+  helheim:['Nál','Garm','Hod','Vánr'],
+};
+const ELITE_EPITHETS_BY_OUTCOME={
+  barely:['the Unbroken','the Relentless','the Patient','the Stubborn'],
+  crit:['the Exposed','the Unlucky','the Keen'],
+  easy:['the Persistent','the Wary','the Watchful'],
+  default:['the Remembered','the Scarred','the Returned','the Enduring'],
+};
+function generateEliteName(archId,lastOutcome){
+  const arch=ARCHETYPES.find(a=>a.id===archId);
+  const realm=arch?.realmTier||'midgard';
+  const prefixPool=ELITE_NAME_PREFIXES[realm]||ELITE_NAME_PREFIXES.midgard;
+  const prefix=rpick(prefixPool);
+  const epithets=ELITE_EPITHETS_BY_OUTCOME[lastOutcome]||ELITE_EPITHETS_BY_OUTCOME.default;
+  const epithet=rpick(epithets);
+  return `${prefix} ${epithet}`;
+}
+function recordEliteEncounter(archId,playerSurvived,wasNearDeath,critLanded){
+  normalizeMeta();
+  if(!META.eliteRoster[archId]){
+    META.eliteRoster[archId]={name:generateEliteName(archId,'default'),survivedByPlayer:false,encounterCount:0,lastOutcome:'default'};
+  }
+  const entry=META.eliteRoster[archId];
+  entry.encounterCount++;
+  if(playerSurvived){
+    entry.survivedByPlayer=true;
+    let outcome='easy';
+    if(wasNearDeath)outcome='barely';
+    else if(critLanded)outcome='crit';
+    entry.lastOutcome=outcome;
+    entry.name=generateEliteName(archId,outcome);
+  }
+  saveMeta();
+}
+function checkForNamedEliteReturn(archId){
+  const ragnarökTier=META.ragnarökActive||0;
+  if(ragnarökTier<10)return null;
+  if(!G.tierFlags||!G.tierFlags.namedElitesActive)return null;
+  const entry=META.eliteRoster[archId];
+  if(!entry||!entry.survivedByPlayer)return null;
+  const chance=0.12+(ragnarökTier>=10?0.08:0);
+  if(rng()>chance)return null;
+  return entry;
 }
 
 // ─── FAMILY TREE ──────────────────────────────────────────────────────────────
@@ -2365,7 +3541,9 @@ function renderFamilyTree(){
     const statusColor=isRetired?'var(--gold)':(isSpentRetired?'var(--txt2)':(isFallen?'var(--red)':'var(--txt3)'));
     const derived=evDerived(h.evs);
     nodes+=`<div class="tree-node ${cls}" style="left:${p.x}px;top:${p.y}px;width:${NODE_W}px" onclick="showHeroDetail('${h.id}')">
-      <div style="font-size:9px;color:${statusColor};letter-spacing:1px">G${h.gen} ${isRetired?'★':(isSpentRetired?'☆':(isFallen?'☠':''))}</div>
+      <div style="font-size:9px;color:${statusColor};letter-spacing:1px">
+        G${h.gen} ${isRetired ? '★ Sealed' : (isSpentRetired ? '☆ Spent' : (isFallen ? '☠ Closed' : ''))}
+      </div>
       <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.name}</div>
       <div style="font-size:9px;color:var(--txt3);margin-top:2px">ATK:${Math.round(derived.atk)} DEF:${Math.round(derived.def)}</div>
       ${h.traits.length?`<div style="margin-top:3px">${h.traits.slice(0,2).map(tk=>{const gt=GTRAITS[tk];return gt?`<span style="font-size:10px">${gt.icon}</span>`:''}).join('')}</div>`:''}
@@ -2377,7 +3555,7 @@ function renderFamilyTree(){
         <div style="font-size:16px;font-weight:700;color:var(--gold)">🌳 Family Tree</div>
         <div style="font-size:11px;color:var(--txt3);margin-top:2px">${allHeroes.length} heroes across ${maxGen+1} generations</div>
       </div>
-      <div style="font-size:10px;color:var(--txt3)"><span style="color:var(--gold)">★</span> In Pool &nbsp; <span style="color:var(--txt2)">☆</span> Retired (spent) &nbsp; <span style="color:var(--red)">☠</span> Fallen &nbsp; Click node for details</div>
+      <div style="font-size:10px;color:var(--txt3)"><span style="color:var(--gold)">★</span> Sealed &nbsp; <span style="color:var(--txt2)">☆</span> Spent &nbsp; <span style="color:var(--red)">☠</span> Closed &nbsp; Click node for details</div>
     </div>
     <div style="position:relative;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-height:200px">
       <svg style="position:absolute;top:0;left:0;width:${canvasW}px;height:${canvasH}px;pointer-events:none">${svgLines}</svg>
@@ -2387,14 +3565,73 @@ function renderFamilyTree(){
   </div>`;
 }
 
+function generateSagaPage(rec) {
+  if (!rec || !rec.runResult) {
+    return `${rec?.name || 'Unknown'} — Saga unwritten.`;
+  }
+  const rr      = rec.runResult;
+  const outcome = rr.outcome;
+  const wave    = rr.wave    || '?';
+  const level   = rr.level   || 1;
+  const boonCount  = rr.boons?.length  || 0;
+  const axiomCount = rr.axioms?.length || 0;
+
+  const tagCounts = {};
+  (rr.boons || []).forEach(boonId => {
+    const boon = BOONS.find(b => b.id === boonId);
+    if (boon) boon.tags.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
+  });
+  const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+  const topTrait = rec.traits?.[0] ? GTRAITS[rec.traits[0]]?.name : null;
+
+  const gearItems = rec.equippedGear ? Object.values(rec.equippedGear).filter(Boolean) : [];
+  const gearNote  = gearItems.length
+    ? `Left behind ${gearItems.map(i => i.name).join(' and ')}.`
+    : '';
+
+  let harvestNote = '';
+  if (rr.harvest) {
+    if (rr.harvest.startsWith('scar:')) {
+      const sk = rr.harvest.split(':')[1];
+      harvestNote = `Scar of ${GTRAITS[sk]?.name || 'the fallen'} endures.`;
+    } else if (rr.harvest.startsWith('relic:')) {
+      harvestNote = 'Mastery preserved as Relic.';
+    }
+  }
+
+  const tierNote = rec.ragnarökStamp ? `Root Depth ${rec.ragnarökStamp} witnessed.` : '';
+  const relicNote = rec.relicType ? `Mastery sealed as ${rec.relicType.replace('relic_','').replace(/_/g,' ')}.` : '';
+
+  const outcomePhrase = {
+    'retired': `Chose to seal the saga at Trial ${wave}.`,
+    'victory': `Survived all twelve trials.`,
+    'fallen':  `Fell at Trial ${wave}.`,
+  }[outcome] || `Saga ended at Trial ${wave}.`;
+
+  const parts = [
+    outcomePhrase,
+    topTag    ? `Carried the ${topTag} path.`           : null,
+    axiomCount > 0 ? `${axiomCount} Rune Law${axiomCount > 1 ? 's' : ''} learned.` : null,
+    topTrait  ? `Blood of ${topTrait}.`                 : null,
+    gearNote  || null,
+    relicNote || harvestNote || null,
+    tierNote  || null,
+  ].filter(Boolean);
+
+  return parts.join(' ');
+}
+
 function showHeroDetail(id){
   const rec=META.family[id];if(!rec)return;
   const derived=evDerived(rec.evs);
   const rr=rec.runResult||{};
+  const sagaPage=generateSagaPage(rec);
   const isRetired=META.retiredPool.includes(id);
   const isFallen=META.fallenLedger.includes(id);
   const status=isRetired?'Retired ★':isFallen?'Fallen ☠':'Active';
   const statusColor=isRetired?'var(--gold)':isFallen?'var(--red)':'var(--cyan)';
+  const gearItems=rec.equippedGear?Object.entries(rec.equippedGear).filter(([s,item])=>item):[];
   document.getElementById('hero-detail-panel').innerHTML=`<div class="slide-in" style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:16px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
@@ -2427,7 +3664,70 @@ function showHeroDetail(id){
       </div>
     </div>
     <div style="margin-top:10px;font-size:10px;color:var(--txt3)">Parents: ${rec.parentIds?.length?rec.parentIds.map(pid=>META.family[pid]?.name||'Unknown').join(' × '):'Founder hero'}</div>
+    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+      <div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px">SAGA PAGE</div>
+      <div style="font-size:11px;color:var(--txt2);font-style:italic;line-height:1.6">
+        "${sagaPage}"
+      </div>
+    </div>
+    ${gearItems.length?`
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:5px">BEQUEATHED GEAR</div>
+        ${gearItems.map(([slot,item])=>`
+          <div style="font-size:10px;color:${rarityColor(item.rarity)};margin:3px 0">
+            ⚒ ${item.name}
+            ${item.sagaHistory?.length?`<span style="color:var(--txt3);font-style:italic"> — "${item.sagaHistory[item.sagaHistory.length-1]}"</span>`:''}
+            ${item.passiveBonus?`<span style="color:var(--green)"> · ${item.passiveBonus.label}</span>`:''}
+          </div>
+        `).join('')}
+      </div>
+    `:''}
   </div>`;
+}
+
+const CODEX_ENTRIES=[
+  {id:'yggdrasil',term:'Yggdrasil',subtitle:'The World Tree',body:'The great ash tree at the center of Norse cosmology, connecting the Nine Realms. Its roots reach into Niflheim, Jotunheim, and the realm of the dead. Its branches hold Ásgarðr above and touch the outer void. The tree is alive — and currently dying.',unlockedBy:'always'},
+  {id:'allfather',term:'Allfather',subtitle:'Odin — God of Wisdom, War, and Sacrifice',body:'The Allfather sacrificed one eye for wisdom, hung nine days on Yggdrasil to learn the runes, and sends the Valkyries to choose the worthy dead. He does not offer trials without reason. Whether his reason serves the tree or only himself is a question the sagas never answer cleanly.',unlockedBy:'always'},
+  {id:'valhalla',term:'Valhalla',subtitle:"The Allfather's Hall of the Chosen Slain",body:"Warriors chosen by the Valkyries feast and fight in Valhalla, dying each day and rising whole each morning. They train for Ragnarök. Whether your bloodline's fallen reach Valhalla or are taken by the root is not yet known.",unlockedBy:'always'},
+  {id:'saga',term:'Saga',subtitle:'A life worth recording',body:'In the Norse tradition, a saga is a prose narrative of heroic deeds — something worthy of being written down and remembered. Your runs are sagas. Not all are long. All are recorded.',unlockedBy:'always'},
+  {id:'rune',term:'Rune',subtitle:'A letter, a mystery, a power',body:'The Elder Futhark runes are simultaneously an alphabet, a set of cosmological forces, and a magical system. Odin learned them through sacrifice. The runes that appear throughout the trials are not decorative — they are the alphabet of fate itself.',unlockedBy:'always'},
+  {id:'norns',term:'The Norns',subtitle:'Urðr, Verðandi, Skuld — Past, Present, Future',body:'The three Norns sit at the base of Yggdrasil and weave the fate of gods and mortals alike. Urðr (What Was) spins the thread. Verðandi (What Is) measures it. Skuld (What Shall Be) cuts it. Even Odin cannot undo what the Norns have woven — he can only try to weave alongside them. The breeding system is your attempt to do the same.',unlockedBy:'always'},
+  {id:'einherjar',term:'Einherjar',subtitle:'The Chosen Dead',body:'The warriors selected by Valkyries to dwell in Valhalla, training endlessly for the final battle of Ragnarök. They appear in the trials as the Veteran Shield archetype — the iron-willed dead who have already died once and lost nothing they were not prepared to lose.',unlockedBy:'firstRetire'},
+  {id:'völva',term:'Völva',subtitle:'A Norse Seeress',body:"A völva was a wandering prophetess in Norse society, practicing seiðr — a form of shamanic magic used to divine the future or alter fate. In the trials, the Curse-Weaver is a völva whose threads have been corrupted by what gnaws at the root. Odin himself consulted a völva's ghost to learn Ragnarök's shape.",unlockedBy:'firstRetire'},
+  {id:'wyrd',term:'Wyrd',subtitle:'Fate as a woven thread',body:"Old Norse: urðr. The concept that fate is not a fixed destination but a living, woven thing — shaped by past deeds as much as by the will of the Norns. Your breeding system is wyrd made mechanical: each hero's thread is woven from those who came before. The deeds of the dead literally shape the living.",unlockedBy:'firstBreed'},
+  {id:'dvergar',term:'Dvergar',subtitle:'The Norse Dwarves — Master Smiths',body:"In Norse myth, the dvergar forged the greatest artifacts in the Nine Realms: Mjölnir (Thor's hammer), Gungnir (Odin's spear), Gleipnir (the chain that bound Fenrir), Draupnir (the self-replicating ring). In the trials, the Rune-Smith archetype represents a dvergar whose overcharged runic devices have been turned against the living.",unlockedBy:'firstRetire'},
+  {id:'fimbulwinter',term:'Fimbulwinter',subtitle:'The Great Winter Before Ragnarök',body:'Three successive winters with no summer between them, described in the Prose Edda as the precursor to Ragnarök. Ice, starvation, and the breakdown of social order. When Ragnarök Tier 11 is active, Fimbulwinter has arrived — the trials are colder, slower, and every warmth matters more.',unlockedBy:'tier11'},
+  {id:'eitr',term:'Eitr',subtitle:'The World-Venom',body:'In Norse cosmology, eitr is the primordial venom that fills the rivers of Niflheim. It is the source of all poison, all corruption, and — paradoxically — all life, since the first living things were formed from its interaction with heat. At Ragnarök Tier 13, eitr has risen into the air of the trials. It kills. It also concentrates into a weapon for those who can use it.',unlockedBy:'tier13'},
+  {id:'nidhoggr',term:'Níðhöggr',subtitle:'The Gnawer — Corpse-Gnawer of Náströnd',body:'The great serpent (or dragon) who gnaws eternally at the roots of Yggdrasil. In the Poetic Edda, Níðhöggr survives Ragnarök and rises at the end of the world with corpses in its wings. In the trials, Níðhöggr is not a distant myth. The corruption you have felt since Trial 1 is its work. What lies at the deepest root — what True Ragnarök faces — is something that has been awake and eating for a very long time.',unlockedBy:'tier15'},
+  {id:'ragnarök',term:'Ragnarök',subtitle:'The Fate of the Gods — The Final Battle',body:"Ragnarök is not simply 'the apocalypse.' It is a specific, fated sequence: Fimbulwinter, the breaking of Fenrir's chain, Jörmungandr rising from the sea, Surtr marching from Muspelheim with fire, the Bifröst shattering. The gods know it is coming and prepare anyway. Your bloodline runs the same trials: knowing failure is possible, running regardless, hoping that the right thread survives.",unlockedBy:'tier5'},
+];
+function unlockCodexEntry(id){
+  normalizeMeta();
+  if(!META.codexUnlocked.includes(id)){META.codexUnlocked.push(id);saveMeta();}
+}
+function checkCodexUnlocks(){
+  const tier=META.ragnarökTier||0;
+  if(tier>=5)unlockCodexEntry('ragnarök');
+  if(tier>=11)unlockCodexEntry('fimbulwinter');
+  if(tier>=13)unlockCodexEntry('eitr');
+  if(tier>=15)unlockCodexEntry('nidhoggr');
+  if(META.retiredPool&&META.retiredPool.length>0){unlockCodexEntry('einherjar');unlockCodexEntry('völva');unlockCodexEntry('dvergar');}
+  if(META.family&&Object.keys(META.family).some(id=>{const r=META.family[id];return r&&r.parentIds&&r.parentIds.length>0;}))unlockCodexEntry('wyrd');
+}
+function codexHTML(){
+  checkCodexUnlocks();
+  const unlocked=new Set(META.codexUnlocked||[]);
+  const visible=CODEX_ENTRIES.filter(e=>unlocked.has(e.id));
+  const locked=CODEX_ENTRIES.filter(e=>!unlocked.has(e.id));
+  let h=`<div style="padding:10px 0"><div style="font-size:10px;color:var(--txt3);margin-bottom:12px;font-style:italic">Terms revealed as your bloodline discovers them. ${locked.length>0?`${locked.length} entry${locked.length>1?'s':''} yet to be found.`:'All entries revealed.'}</div><div style="display:flex;flex-direction:column;gap:10px">`;
+  visible.forEach(entry=>{
+    h+=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px"><div style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;color:var(--violet)">${entry.term}</div><div style="font-size:9px;color:var(--txt3);font-style:italic">${entry.subtitle}</div></div><div style="font-size:11px;color:var(--txt2);line-height:1.7;margin-top:6px">${entry.body}</div></div>`;
+  });
+  if(locked.length>0){
+    h+=`<div style="border:1px dashed var(--border);border-radius:5px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--txt3);font-style:italic">${locked.length} entry${locked.length>1?'s':''} locked. Continue the saga to discover them.</div><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center">${locked.map(e=>`<div style="font-size:10px;color:var(--border2);background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:3px 8px">???</div>`).join('')}</div></div>`;
+  }
+  h+=`</div></div>`;
+  return h;
 }
 
 // ─── UPGRADES ─────────────────────────────────────────────────────────────────
@@ -2498,7 +3798,8 @@ function doResetMeta(){
   if(!confirm('Reset ALL legacy data? This cannot be undone.'))return;
   localStorage.removeItem(META_KEY);
   META={legacyEssence:0,salvage:0,retiredPool:[],fallenLedger:[],family:{},upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
-    unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),nextHeroId:1};
+    unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),nextHeroId:1,
+    ragnarökTier:0,ragnarökActive:0,eliteRoster:{},relics:0,hasSeenOpening:false,houseName:null,aspects:{},scarTokens:{},codexUnlocked:['yggdrasil','allfather','valhalla','saga','rune','norns']};
   saveMeta();setLegacyTab('upgrades');updateMetaHeader();
 }
 
@@ -2508,6 +3809,67 @@ function showOverlayContent(html){
   document.getElementById('overlay').style.display='flex';
 }
 function hideOverlay(){document.getElementById('overlay').style.display='none';}
+
+function showAllFatherGift(){
+  const owned=new Set(G.boons.map(b=>b.id));
+  const axioms=BOONS.filter(b=>b.rarity==='axiom'&&!owned.has(b.id));
+  const offered=rshuffle(axioms).slice(0,3);
+
+  if(!offered.length){
+    resumeAfterAllFatherGift();
+    return;
+  }
+
+  const html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;
+                color:var(--gold);margin-bottom:8px">ᛟ THE ALLFATHER'S LAST GIFT</div>
+    <div style="font-size:11px;color:var(--txt2);font-style:italic;margin-bottom:14px">
+      "He has nothing left to withhold."
+    </div>
+    <div style="font-size:11px;color:var(--txt3);margin-bottom:14px">
+      Choose one Rune Law. This is given freely — the cost is what comes next.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      ${offered.map(b=>`
+        <div class="boon-card rc-axiom" onclick="acceptAllFatherGift('${b.id}')">
+          <div style="font-size:9px;color:#d050ff;margin-bottom:4px">RUNE LAW</div>
+          <div><span style="font-size:14px">${b.icon}</span>
+               <span class="boon-name">${b.name.replace('RUNE: ','')}</span></div>
+          <div class="boon-desc" style="margin-top:3px">${b.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  showOverlayContent(html);
+}
+
+function acceptAllFatherGift(boonId){
+  const boon=BOONS.find(b=>b.id===boonId);
+  if(!boon)return;
+  G.boons.push(boon);
+  applyBoonEffectsOnPick(boon);
+  addLog(`ᛟ The Allfather's gift accepted: ${boon.name}`,'laxiom');
+  hideOverlay();
+  resumeAfterAllFatherGift();
+}
+
+function resumeAfterAllFatherGift(){
+  G.phase='BATTLE';
+  applyEnemyStartTraits();
+  applyBattleStartTactics();
+  if(G.waveFlags.heroStartVuln){
+    applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);
+    addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');
+  }
+  addLog(`⚔ Trial ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
+  NarrationEngine.reset();
+  const waveStartLine=MYTH_LINES.waveStart[G.wave];
+  if(waveStartLine)NarrationEngine.fire('waveStart',waveStartLine,'lstatus');
+  G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.displayName||e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
+  renderAll();
+  if(G.interval)clearInterval(G.interval);
+  G.interval=setInterval(combatTick,100/G.speed);
+}
 
 function showRetireConfirm(){
   const rec=G.hero.record;
@@ -2893,7 +4255,12 @@ function normalizeMeta(){
     META.aspects[a].rank = aspectRankFromXp(META.aspects[a].xp);
   }
   META.relics = Math.max(0, Math.floor(META.relics||0));
+  if(typeof META.ragnarökTier !== 'number') META.ragnarökTier = 0;
+  if(typeof META.ragnarökActive !== 'number') META.ragnarökActive = 0;
+  if(!META.eliteRoster || typeof META.eliteRoster !== 'object') META.eliteRoster = {};
+  if(typeof META.hasSeenOpening !== 'boolean') META.hasSeenOpening = false;
   if(!META.scarTokens || typeof META.scarTokens !== 'object') META.scarTokens = {};
+  if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
   for(const k of Object.keys(META.scarTokens)){
     META.scarTokens[k] = Math.max(0, Math.floor(META.scarTokens[k]||0));
     if(META.scarTokens[k] <= 0) delete META.scarTokens[k];
@@ -2970,74 +4337,214 @@ function applyBirthGift(hero, rec){
   };
 })();
 
-// --- Fallen harvest overlay (Relic vs Scar token) ---
+// --- Fallen scar/relic choice systems ---
 const SCAR_KEYS = ['frayed_nerves','cold_iron','brittle_edge','grave_salt'];
 
-function showFallenHarvest(heroId, salvageEarned){
-  const rec = META.family[heroId];
-  if(!rec) return;
+function deriveScarCandidates(){
+  const all=[...SCAR_KEYS];
+  const weights={frayed_nerves:1,cold_iron:1,brittle_edge:1,grave_salt:1};
+  const es=(G&&Array.isArray(G.enemies))?G.enemies:[];
+
+  if(es.some(e=>e.archId==='frost'||e.realmTier==='niflheim')){weights.cold_iron+=3;weights.frayed_nerves+=1;}
+  if(G&&G.hero&&G.hero.critChance>0.20)weights.brittle_edge+=2;
+  if(G&&G._narratedNearDeath)weights.frayed_nerves+=2;
+  if(es.some(e=>e.elite))weights.grave_salt+=2;
+
+  const candidates=[];
+  const pool=[...all];
+  while(candidates.length<3&&pool.length>0){
+    const pick=rwgt(pool,k=>weights[k]||1);
+    candidates.push(pick);
+    pool.splice(pool.indexOf(pick),1);
+  }
+  return candidates;
+}
+
+const SCAR_REASON_TEXT={
+  frayed_nerves:'The pressure never let up.',
+  cold_iron:'The cold found the gaps.',
+  brittle_edge:'Striking harder was never the answer.',
+  grave_salt:'Aggression left no room for defense.',
+};
+
+function showFallenScarChoice(heroId,salvageEarned){
+  const rec=META.family[heroId];
+  if(!rec){showStartScreen();return;}
   normalizeMeta();
-  const picks = rshuffle(SCAR_KEYS).slice(0,3);
-  const html = `
-    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--salvage);margin-bottom:8px">ᚱ FALLEN HARVEST</div>
-    <div style="color:var(--txt2);font-size:12px;margin-bottom:12px">
-      ${rec.name} fell at Wave ${rec.runResult?.wave||'?'}.
-      You recovered <span style="color:var(--salvage);font-weight:700">ᚱ${salvageEarned}</span>.
-      Decide what the failure becomes.
+
+  const candidates=deriveScarCandidates();
+  const html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
+                color:var(--red);margin-bottom:8px">☠ SAGA CLOSED</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:4px">
+      ${rec.name} fell at Trial ${rec.runResult?.wave||'?'}.
     </div>
-
-    <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px">
-      <div style="background:rgba(20,18,40,.75);border:1px solid rgba(144,80,232,.25);border-radius:8px;padding:12px;text-align:left">
-        <div style="font-weight:800;color:var(--gold);margin-bottom:4px">🗿 Refine into a Relic</div>
-        <div style="color:var(--txt2);font-size:11px;margin-bottom:8px">Gain <strong>1 Relic</strong> (used for Splice to lock a trait into a child).</div>
-        <button class="btn btn-gold" style="width:100%" onclick="harvestRelic('${heroId}')">Gain +1 Relic</button>
-      </div>
-
-      <div style="background:rgba(10,20,18,.65);border:1px solid rgba(48,208,192,.25);border-radius:8px;padding:12px;text-align:left">
-        <div style="font-weight:800;color:var(--salvage);margin-bottom:4px">🩹 Forge a Scar Token</div>
-        <div style="color:var(--txt2);font-size:11px;margin-bottom:8px">Choose a scar (power + drawback). Gain <strong>1 Scar Token</strong> you can implant via Splice.</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          ${picks.map(k=>{
-            const gt = GTRAITS[k];
-            return `<div class="imprint-card" onclick="harvestScar('${heroId}','${k}')">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="font-weight:800;color:#d090ff">${gt?gt.icon:''} ${gt?gt.name:k}</div>
-                <div style="font-size:10px;color:var(--salvage)">+1 token</div>
-              </div>
-              <div style="font-size:10px;color:var(--txt2);margin-top:4px">${gt?gt.desc:''}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
+    <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:16px">
+      "The saga passed to the next."
     </div>
-
-    <div style="color:var(--txt3);font-size:10px">Relics: ${META.relics} · Scar Tokens: ${totalScarTokens()}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--txt);margin-bottom:10px">
+      What did this saga teach the blood?
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      ${candidates.map(scarKey=>{
+        const gt=GTRAITS[scarKey];
+        return `
+          <div class="imprint-card" onclick="acceptScar('${heroId}','${scarKey}')">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:800;color:#d090ff">${gt?.icon||'🩹'} ${gt?.name||scarKey}</div>
+              <div style="font-size:9px;color:var(--salvage)">SCAR TOKEN +1</div>
+            </div>
+            <div style="font-size:10px;color:var(--txt2);margin-top:4px">${gt?.desc||''}</div>
+            <div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:3px">
+              ${SCAR_REASON_TEXT[scarKey]||''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--txt3);border-top:1px solid var(--border);padding-top:8px">
+      ᚱ${salvageEarned} Rune-Shards recovered. Fallen heroes cannot breed or bequeath gear.
+    </div>
   `;
   showOverlayContent(html);
 }
 
-function harvestRelic(heroId){
-  const rec = META.family[heroId];
-  if(!rec) return;
+function acceptScar(heroId,scarKey){
+  const rec=META.family[heroId];
+  if(!rec)return;
   normalizeMeta();
-  META.relics += 1;
-  if(rec.runResult) rec.runResult.harvest = 'relic';
-  META.family[heroId] = rec;
-  saveMeta(); updateMetaHeader();
+  addScarToken(scarKey,1);
+  try{META.unlockedTraits.add(scarKey);}catch(e){}
+  if(rec.runResult)rec.runResult.harvest='scar:'+scarKey;
+  META.family[heroId]=rec;
+  saveMeta();
+  updateMetaHeader();
   hideOverlay();
+  try{addLog(`🩹 Scar etched: ${GTRAITS[scarKey]?.name||scarKey} — the blood remembers.`,'laxiom');}catch(e){}
+  showStartScreen();
 }
-function harvestScar(heroId, scarKey){
-  const rec = META.family[heroId];
-  if(!rec) return;
-  normalizeMeta();
-  addScarToken(scarKey, 1);
-  // Unlock into mutation pool once discovered
-  try{ META.unlockedTraits.add(scarKey); }catch(e){}
-  if(rec.runResult) rec.runResult.harvest = 'scar:' + scarKey;
-  META.family[heroId] = rec;
-  saveMeta(); updateMetaHeader();
+
+const TAG_RELIC_MAP={
+  Bleed:{key:'relic_bleed_mastery',label:'Blood-Rite Mastery',icon:'🩸',desc:'When Spliced: child has 90% chance to inherit a Bleed-related trait.'},
+  Poison:{key:'relic_eitr_touch',label:'Eitr-Touch',icon:'☠',desc:'When Spliced: child has 90% chance to inherit a Poison-related trait.'},
+  Crit:{key:'relic_keen_eye',label:'Keen-Eye Technique',icon:'🎯',desc:'When Spliced: child inherits +5 bonus Crit EV.'},
+  Tempo:{key:'relic_stormswift',label:'Stormswift Legacy',icon:'⚡',desc:'When Spliced: child inherits +5 bonus SPD EV.'},
+  Bulwark:{key:'relic_ironwall',label:'Iron-Wall Lineage',icon:'🛡',desc:'When Spliced: child inherits +5 bonus DEF EV.'},
+  Axiom:{key:'relic_rune_law',label:'Rune Law Fragment',icon:'ᚢ',desc:'When Spliced: child has 70% chance to start with an Axiom boon in the first draft.'},
+  Execute:{key:'relic_wolf_oath',label:'Wolf-Oath',icon:'🐺',desc:'When Spliced: child has 90% chance to inherit an Execute-related trait.'},
+  Sustain:{key:'relic_lifeline',label:'Life-Root Binding',icon:'💚',desc:'When Spliced: child inherits +5 bonus HP EV.'},
+};
+
+function deriveRelicCandidates(rec){
+  const tagCounts={};
+  (rec.runResult?.boons||[]).forEach(boonId=>{
+    const boon=BOONS.find(b=>b.id===boonId);
+    if(boon)boon.tags.forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;});
+  });
+  const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([tag])=>tag);
+  const results=topTags.map(tag=>TAG_RELIC_MAP[tag]).filter(Boolean);
+  const allOptions=Object.values(TAG_RELIC_MAP);
+  while(results.length<3){
+    const fallback=allOptions.find(r=>!results.some(x=>x.key===r.key));
+    if(fallback)results.push(fallback);else break;
+  }
+  return results.slice(0,3);
+}
+
+function showRetireRelicChoice(rec,essence){
+  const candidates=deriveRelicCandidates(rec);
+  const html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
+                color:var(--gold);margin-bottom:8px">🏛 SAGA SEALED</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:4px">
+      ${rec.name} — Trial ${rec.runResult?.wave||'?'} · Lv.${rec.runResult?.level||1}
+    </div>
+    <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:16px">
+      "Let the blood carry the rest."
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--txt);margin-bottom:10px">
+      What does this saga leave behind?
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      ${candidates.map(r=>`
+        <div class="imprint-card" style="border-color:rgba(212,160,23,.4)" onclick="acceptRelic('${rec.id}','${r.key}')">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-weight:800;color:var(--gold)">${r.icon} ${r.label}</div>
+            <div style="font-size:9px;color:var(--amber)">RELIC +1</div>
+          </div>
+          <div style="font-size:10px;color:var(--txt2);margin-top:4px">${r.desc}</div>
+          <div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:3px">Usable in Splice during breeding to lock this mastery into a child.</div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--green)">+${essence} Allfather's Blessing · This hero may breed.</div>
+  `;
+  showOverlayContent(html);
+}
+
+function showBequeathChoice(rec,essence){
+  if(!G||!G.hero||!G.hero.gear){proceedAfterBequeath(rec,essence);return;}
+  const gearSlots=Object.entries(G.hero.gear).filter(([slot,item])=>item!==null);
+  if(!gearSlots.length){proceedAfterBequeath(rec,essence);return;}
+  const html=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--gold);margin-bottom:8px">⚒ WHAT REMAINS</div>
+    <div style="font-size:11px;color:var(--txt2);margin-bottom:14px">Choose one item to pass to your bloodline. It will be available to the next hero bred from ${rec.name}.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      ${gearSlots.map(([slot,item])=>{
+        const waveBonus=Math.min(3,Math.floor((rec.runResult?.wave||1)/6));
+        const primaryStatLabel={weapon:'ATK',armor:'DEF',talisman:'EVA'}[slot]||slot;
+        return `<div class="imprint-card" style="border-color:${rarityBorderColor(item.rarity)}" onclick="bequeathGear('${rec.id}','${slot}',${waveBonus})">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800;color:${rarityColor(item.rarity)}">${item.name}</div><div style="font-size:9px;color:var(--txt3)">${item.rarity.toUpperCase()}</div></div>
+          <div style="font-size:10px;color:var(--txt2);margin-top:3px">${(item.affixes||[]).map(a=>a.label).join(' · ')||'No affixes'}</div>
+          ${item.sagaHistory?.length?`<div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:3px">"${item.sagaHistory[item.sagaHistory.length-1]}"</div>`:''}
+          ${item.notches>0?`<div style="font-size:9px;color:var(--amber);margin-top:2px">${item.notches} Notch${item.notches>1?'es':''}${item.sundered?' — SUNDERED':''}</div>`:''}
+          ${waveBonus>0?`<div style="font-size:9px;color:var(--green);margin-top:2px">Legacy bonus: +${waveBonus} ${primaryStatLabel} for the next wielder</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn btn-sm btn-ghost" style="width:100%" onclick="skipBequeath('${rec.id}',${essence})">Bequeath nothing — carry on</button>
+  `;
+  showOverlayContent(html);
+}
+function gearSlotPrimaryStat(slot){return {weapon:'atk',armor:'def',talisman:'evasion'}[slot]||'atk';}
+function bequeathGear(heroId,slot,waveBonus){
+  const rec=META.family[heroId];
+  const item=(G&&G.hero&&G.hero.gear)?G.hero.gear[slot]:null;
+  if(!rec||!item){proceedAfterBequeath(rec,META.legacyEssence);return;}
+  item.sagaHistory=item.sagaHistory||[];
+  if(item.sagaHistory.length>=3)item.sagaHistory.shift();
+  item.sagaHistory.push(`Last wielded by ${rec.name}, Trial ${rec.runResult?.wave||'?'}`);
+  const primaryStat=gearSlotPrimaryStat(slot);
+  if(waveBonus>0)item.passiveBonus={stat:primaryStat,value:waveBonus,label:`+${waveBonus} legacy (${rec.name})`};
+  item.forgedBy=heroId; item.forgedByName=rec.name;
+  rec.equippedGear=rec.equippedGear||{};
+  rec.equippedGear[slot]=JSON.parse(JSON.stringify(item));
+  META.family[heroId]=rec;
+  saveMeta();
   hideOverlay();
-  try{ addLog(`🩹 Scar Token gained: ${GTRAITS[scarKey]?.name||scarKey}`,'laxiom'); }catch(e){}
+  addLog(`⚒ ${item.name} bequeathed. It will find the next worthy hand.`,'laxiom');
+  proceedAfterBequeath(rec,META.legacyEssence);
+}
+function skipBequeath(heroId,essence){hideOverlay();proceedAfterBequeath(META.family[heroId],essence);}
+function proceedAfterBequeath(rec,essence){
+  const axiomBoons=G?G.boons.filter(b=>b.rarity==='axiom'):[];
+  if(axiomBoons.length>0)showImprintOffer(rec,axiomBoons,essence);
+  else showRetireSummary(rec,essence,null);
+}
+
+function acceptRelic(heroId,relicKey){
+  const rec=META.family[heroId];
+  if(!rec)return;
+  normalizeMeta();
+  META.relics+=1;
+  rec.relicType=relicKey;
+  if(rec.runResult)rec.runResult.harvest='relic:'+relicKey;
+  META.family[heroId]=rec;
+  saveMeta();
+  updateMetaHeader();
+  hideOverlay();
+  try{addLog(`🗿 Relic forged: ${relicKey} — the mastery endures.`,'laxiom');}catch(e){}
+  showBequeathChoice(rec,META.legacyEssence);
 }
 
 // --- Breeding actions state ---
@@ -3243,6 +4750,19 @@ function breedHeroes(idA, idB, opts){
     finalTraits = finalTraits.slice(0, maxTraits);
   }
 
+  if(action==='splice'&&opts&&opts.spliceKind==='relic'&&opts.traitKey){
+    const relicEVBonus={
+      relic_keen_eye:{ev:'crit',bonus:5},
+      relic_stormswift:{ev:'spd',bonus:5},
+      relic_ironwall:{ev:'def',bonus:5},
+      relic_lifeline:{ev:'hp',bonus:5},
+    };
+    const relicBonus=relicEVBonus[opts.traitKey];
+    if(relicBonus){
+      childEVs[relicBonus.ev]=Math.min(cap,(childEVs[relicBonus.ev]||0)+relicBonus.bonus);
+    }
+  }
+
   // Determine child aspect (from EV + traits)
   const topEvK = EV_KEYS.reduce((a,b)=> (childEVs[a]||0) > (childEVs[b]||0) ? a : b);
   const evAspectMap = {hp:'Steel',def:'Steel',ls:'Venom',atk:'Execution',crit:'Execution',spd:'Gale',eva:'Gale',acc:'Execution'};
@@ -3304,6 +4824,16 @@ function breedHeroes(idA, idB, opts){
     const childRec = breedHeroes(a, b, opts);
     if(!childRec) return;
 
+    const bestParentId=[a,b].reduce((best,pid)=>{
+      const p=META.family[pid], bRec=META.family[best];
+      const pWave=(p?.runResult?.wave||0), bWave=(bRec?.runResult?.wave||0);
+      const pF=isFallenHero(pid), bF=isFallenHero(best);
+      if(bF&&!pF)return pid;
+      if(!bF&&pF)return best;
+      return pWave>=bWave?pid:best;
+    },a);
+    inheritGearFromParent(childRec.id,bestParentId);
+
     consumeBreedUse(a);
     consumeBreedUse(b);
     saveMeta();
@@ -3313,6 +4843,8 @@ function breedHeroes(idA, idB, opts){
     const lc=document.getElementById('legacy-content');
     const derived=evDerived(childRec.evs);
     lc.innerHTML=`<div class="slide-in" style="text-align:center;padding:30px">
+      <div style="font-size:11px;color:var(--violet);font-style:italic;
+              letter-spacing:1px;margin-bottom:8px">You tighten the weave.</div>
       <div style="font-size:22px;margin-bottom:8px">🧬</div>
       <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--violet);margin-bottom:6px">${childRec.name}</div>
       <div style="color:var(--txt3);font-size:12px;margin-bottom:18px">Generation ${childRec.gen} · ${ASPECT_ICON[childRec.birthAspect]||'✦'} ${childRec.birthAspect} lineage</div>
@@ -3320,9 +4852,10 @@ function breedHeroes(idA, idB, opts){
         <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC STATS</div>
         ${[['MaxHP',derived.maxHP],['ATK',Math.round(derived.atk)],['DEF',Math.round(derived.def)],['SPD',derived.spd],['Crit',Math.round(derived.critChance*100)+'%']].map(([l,v])=>`<div class="srow"><span class="sl" style="font-size:12px">${l}</span><span class="sv" style="font-size:12px;color:var(--green)">${v}</span></div>`).join('')}
         ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
+        ${childRec.inheritedGear&&Object.values(childRec.inheritedGear).some(Boolean)?`<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;text-align:left"><div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px">INHERITED GEAR</div>${Object.values(childRec.inheritedGear).filter(Boolean).map(item=>`<div style="font-size:10px;color:${rarityColor(item.rarity)};margin:2px 0">⚒ ${item.name}${item.passiveBonus?`<span style="color:var(--green)"> · ${item.passiveBonus.label}</span>`:''}</div>`).join('')}</div>`:''}
       </div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ Run with this Heir</button>
+        <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">You choose the next thread — Run as ${childRec.name}</button>
         <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border2);color:var(--txt3)" onclick="setLegacyTab('pool')">← Back</button>
       </div>
     </div>`;
@@ -3364,6 +4897,10 @@ function aspectsHTML(){
       <div style="font-weight:900;color:var(--gold)">ᛟ House ${META.houseName}</div>
       <div style="font-size:10px;color:var(--txt3)">Relics: 🗿${META.relics} · Scar Tokens: 🩹${totalScarTokens()}</div>
     </div>
+    <div style="font-size:10px;color:var(--txt3);margin-top:4px">
+      Ragnarök: ${rootDepthIcon(META.ragnarökTier)} Tier ${META.ragnarökTier || 0} unlocked
+      ${META.ragnarökTier > 0 ? `· "${rootDepthLabel(META.ragnarökTier)}"` : '· No tier unlocked yet'}
+    </div>
     <div style="font-size:10px;color:var(--txt3);margin-bottom:8px">Rename House:</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <input id="house-name-input" value="${(META.houseName||'')}" style="flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 10px;border-radius:6px;font-size:12px;font-family:'Share Tech Mono',monospace;outline:none">
@@ -3398,37 +4935,240 @@ function setHouseNameFromInput(){
   };
 })();
 
+
+function rootDepthIcon(tier){
+  // Returns a colored ᚢ rune representing Ragnarök depth
+  const t=Math.max(0,Math.min(15,tier||0));
+  let color;
+  if(t===0) color='var(--txt3)';
+  else if(t<=3) color='#c8cce8';
+  else if(t<=7) color='var(--amber)';
+  else if(t<=11) color='#c07810';
+  else color='#8a1010';
+  const glow=t>=12?';text-shadow:0 0 6px rgba(180,20,20,.5)':'';
+  return `<span style="color:${color}${glow};font-size:14px">ᚢ</span>`;
+}
+
+function rootDepthLabel(tier){
+  if(!tier||tier===0) return '';
+  const TIER_NAMES=[
+    '',
+    'First Root Darkens','The Wolves Stir','Mist Thickens',
+    'The Dead Remember','Jörmungandr Stirs','The Norns Bargain',
+    'Surtr Sends Scouts','Bifröst Cracks','Root Harvest',
+    'Elites Without Season','Fimbulwinter Arrives',"The Gnawer's Influence Spreads",
+    'Eitr in the Air','Twilight Accelerates','True Ragnarök'
+  ];
+  return TIER_NAMES[tier]||`Tier ${tier}`;
+}
+
+function updateRootDepthHeader(){
+  const el=document.getElementById('hdr-root-depth');
+  if(!el)return;
+  const tier=META.ragnarökActive||0;
+  if(tier===0){el.innerHTML='';el.title='';return;}
+  const tierDef=(typeof RAGNARÖK_TIERS!=='undefined')?RAGNARÖK_TIERS[tier-1]:null;
+  const tierName=rootDepthLabel(tier);
+  const omen=tierDef?.omen||'';
+  el.innerHTML=`${rootDepthIcon(tier)} <span style="font-family:'Share Tech Mono',monospace;font-size:10px">R${tier}</span>`;
+  el.title=`${tierName}
+"${omen}"`;
+  el.style.cursor='help';
+}
+
+function showOpeningNarrative(){
+  // Mark as seen immediately so a crash during the overlay doesn't re-show it
+  META.hasSeenOpening=true;
+  saveMeta();
+
+  const lines=[
+    'The World Tree is sick.',
+    'Something moves in the roots. The branches thin. The realms that hang from Yggdrasil grow colder, stranger, more dangerous — as though something beneath is feeding.',
+    'The Allfather has no answer yet. Only a belief: that the right bloodline, shaped across enough trials, might reach the source.',
+    'You are not the hero. You are the line itself — the thread that persists when each champion falls. You choose who carries it next. You decide what each saga leaves behind.',
+  ];
+
+  const lineHTML=lines.map((l,i)=>`
+    <p style="
+      color:${i===3?'var(--txt)':'var(--txt2)'};
+      font-size:${i===3?'13px':'12px'};
+      line-height:1.8;
+      margin-bottom:${i===3?'0':'14px'};
+      font-weight:${i===3?'700':'400'};
+      opacity:0;
+      animation: fadeInLine .6s ease forwards;
+      animation-delay:${(i+1)*1.1}s;
+    ">${l}</p>
+  `).join('');
+
+  const html=`
+    <div style="text-align:center;padding:8px 0 20px">
+      <div style="
+        font-size:28px;
+        color:var(--txt3);
+        margin-bottom:28px;
+        opacity:0;
+        animation: fadeInLine 1.2s ease forwards;
+        animation-delay:.2s;
+      ">ᚢ</div>
+      <div style="text-align:left;margin-bottom:28px">
+        ${lineHTML}
+      </div>
+      <button id="opening-begin-btn" class="btn btn-primary" disabled style="
+        opacity:0;
+        animation: fadeInLine .6s ease forwards;
+        animation-delay:${(lines.length+1)*1.1}s;
+        padding:10px 32px;
+        font-size:14px;
+      " onclick="hideOverlay();showStartScreen()">Begin</button>
+    </div>
+  `;
+
+  if(!document.getElementById('narrative-style')){
+    const style=document.createElement('style');
+    style.id='narrative-style';
+    style.textContent=`@keyframes fadeInLine { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }`;
+    document.head.appendChild(style);
+  }
+
+  showOverlayContent(html);
+  const enableAfter=((lines.length+1)*1.1+0.65)*1000;
+  setTimeout(()=>{
+    const btn=document.getElementById('opening-begin-btn');
+    if(btn) btn.disabled=false;
+  },enableAfter);
+}
+
 // --- Show house on start screen (override) ---
 function showStartScreen(){
   normalizeMeta();
-  const hasRetired = META.retiredPool && META.retiredPool.length>0;
-  let html=`<div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:var(--violet);margin-bottom:6px;text-shadow:0 0 20px rgba(144,80,232,.6)">ᚠ RUNESAGA</div>
-  <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:12px">ᛟ House ${META.houseName} · Relics 🗿${META.relics} · Scar Tokens 🩹${totalScarTokens()}</div>
-  <p style="color:var(--txt2);margin:8px 0 18px;line-height:1.7;font-size:12px">Raise a Champion. Forge a Legacy.<br>Invoke <span style="color:var(--violet)">Runes</span> · Find synergies · Build your lineage.</p>`;
-  if(hasRetired){
-    html+=`<div style="background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.3);border-radius:5px;padding:10px;margin-bottom:14px;font-size:11px;color:var(--txt2)">
-      🏛 You have <strong style="color:var(--gold)">${META.retiredPool.length}</strong> retired ${META.retiredPool.length===1?'hero':'heroes'} ready for breeding.
-      <span style="color:var(--txt3)">Go to Legacy → Breeding to create a stronger generation.</span>
-    </div>`;
+
+  // Gate: show opening narrative on first ever launch
+  if(!META.hasSeenOpening){
+    showOpeningNarrative();
+    return;
   }
-  html+=`<div style="margin:0 0 14px"><label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Run Seed (optional)</label>
-    <input id="seed-input" type="text" placeholder="Leave blank for random" style="width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 12px;border-radius:4px;font-size:12px;font-family:'Share Tech Mono',monospace;text-align:center;outline:none"></div>
+
+  closeDrawers();
+
+  const hasRetired=META.retiredPool&&META.retiredPool.length>0;
+  const retiredCount=META.retiredPool?META.retiredPool.length:0;
+  const fallenCount=META.fallenLedger?META.fallenLedger.length:0;
+  const activeTier=META.ragnarökActive||0;
+  const maxTier=META.ragnarökTier||0;
+  const tierName=rootDepthLabel(activeTier);
+  const tierOmen=(typeof RAGNARÖK_TIERS!=='undefined'&&activeTier>0)
+    ? ((RAGNARÖK_TIERS[activeTier-1]&&RAGNARÖK_TIERS[activeTier-1].omen)||'') : '';
+
+  let html=`
+    <div style="text-align:center;margin-bottom:4px">
+      <div style="font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;
+                  color:var(--violet);text-shadow:0 0 20px rgba(144,80,232,.6)">ᚠ RUNESAGA</div>
+    </div>
+
+    <div style="background:rgba(212,160,23,.06);border:1px solid rgba(212,160,23,.2);
+                border-radius:6px;padding:10px 14px;margin:10px 0 14px;text-align:left">
+      <div style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;
+                  color:var(--gold);letter-spacing:1px">ᛟ House ${META.houseName}</div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:4px;font-family:'Share Tech Mono',monospace">
+        ${fallenCount} saga${fallenCount!==1?'s':''} closed · ${retiredCount} thread${retiredCount!==1?'s':''} endure
+      </div>
+      ${activeTier>0?`
+        <div style="margin-top:6px;display:flex;align-items:center;gap:6px">
+          ${rootDepthIcon(activeTier)}
+          <span style="font-size:11px;font-weight:700;color:var(--amber)">${tierName}</span>
+        </div>
+        ${tierOmen?`<div style="font-size:10px;color:var(--txt3);font-style:italic;margin-top:3px">"${tierOmen}"</div>`:''}
+      `:`
+        <div style="font-size:10px;color:var(--txt3);margin-top:4px;font-style:italic">
+          The root is uncharted. No depth selected.
+        </div>
+      `}
+    </div>
+  `;
+
+  if(hasRetired){
+    html+=`
+      <div style="background:rgba(64,224,120,.06);border:1px solid rgba(64,224,120,.2);
+                  border-radius:5px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--txt2)">
+        🏛 ${retiredCount} hero${retiredCount!==1?'es':''} await in the Hall. The thread grows stronger.
+      </div>
+    `;
+  }
+
+  if(maxTier>0){
+    html+=`
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;color:var(--txt3);letter-spacing:1px;text-transform:uppercase;
+                    margin-bottom:6px">Root Depth — Choose how deep</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn btn-sm btn-ghost" onclick="adjustRagnarökActive(-1)"
+                  ${activeTier<=0?'disabled style="opacity:.4"':''}>◀</button>
+          <div style="flex:1;text-align:center">
+            ${rootDepthIcon(activeTier)}
+            <span style="font-family:'Share Tech Mono',monospace;font-size:12px;
+                         color:var(--gold);margin-left:6px">${activeTier===0?'Surface (Tier 0)':`Tier ${activeTier}: ${tierName}`}</span>
+          </div>
+          <button class="btn btn-sm btn-ghost" onclick="adjustRagnarökActive(1)"
+                  ${activeTier>=maxTier?'disabled style="opacity:.4"':''}>▶</button>
+        </div>
+        ${activeTier>0?`
+          <div style="font-size:10px;color:var(--txt3);text-align:center;margin-top:4px;font-style:italic">
+            "You descend the root."
+          </div>
+        `:''}
+      </div>
+    `;
+  }
+
+  html+=`
+    <div style="margin-bottom:14px">
+      <button class="btn btn-sm btn-ghost" style="width:100%;font-size:10px"
+              onclick="document.getElementById('seed-wrap').style.display=(document.getElementById('seed-wrap').style.display==='none'?'block':'none')">
+        Advanced ▾
+      </button>
+      <div id="seed-wrap" style="display:none;margin-top:8px">
+        <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:4px;
+                       letter-spacing:1px;text-transform:uppercase">Run Seed (optional)</label>
+        <input id="seed-input" type="text" placeholder="Leave blank for random"
+          style="width:100%;background:var(--bg2);border:1px solid var(--border2);
+                 color:var(--txt);padding:8px 12px;border-radius:4px;font-size:12px;
+                 font-family:'Share Tech Mono',monospace;text-align:center;outline:none">
+      </div>
+    </div>
+
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-primary" style="flex:2;min-width:200px;padding:11px" onclick="startNewRunFromOverlay()">▶ Start New Run (Founder)</button>
-      <button class="btn btn-gold" style="flex:1;min-width:130px;padding:11px" onclick="hideOverlay();showLegacy()">ᛟ Hero Hall</button>
-    </div>`;
+      <button class="btn btn-primary" style="flex:2;min-width:180px;padding:11px"
+              onclick="startNewRunFromOverlay()">▶ Begin New Saga</button>
+      <button class="btn btn-gold" style="flex:1;min-width:120px;padding:11px"
+              onclick="hideOverlay();showLegacy()">ᛟ Hero Hall</button>
+    </div>
+  `;
+
   showOverlayContent(html);
+  updateDifficultyUI();
+  syncChromeHeights();
+}
+
+function adjustRagnarökActive(delta){
+  normalizeMeta();
+  const maxTier=META.ragnarökTier||0;
+  const prevTier=META.ragnarökActive||0;
+  META.ragnarökActive=Math.max(0,Math.min(maxTier,prevTier+delta));
+  saveMeta();
+  updateRootDepthHeader();
+  showStartScreen();
 }
 
 // --- Ensure founder record uses house + aspect naming ---
 function startFirstHero(){
   normalizeMeta();
-  const founder = mkHeroRecord(genName(0,'Steel',null,null), 0, [], emptyEVs(), []);
-  founder.birthAspect = 'Steel';
-  founder.birthFlags = {};
-  META.family[founder.id] = founder;
+  const founder=mkHeroRecord(genName(0,'Steel',null,null),0,[],emptyEVs(),[]);
+  founder.birthAspect='Steel';
+  founder.birthFlags={};
+  META.family[founder.id]=founder;
   saveMeta();
-  initGame(null, emptyEVs(), [], founder);
+  initGame(null,emptyEVs(),[],founder);
 }
 
 // --- Award aspect XP on retire/victory/fallen, and show fallen harvest ---
@@ -3436,6 +5176,7 @@ function startFirstHero(){
   const _retireHero = retireHero;
   retireHero = function(){
     try{ awardAspectXPFromRun('retired'); }catch(e){}
+    try{ checkRagnarökUnlock(); }catch(e){}
     _retireHero();
     // ensure persisted
     try{ saveMeta(); }catch(e){}
@@ -3460,7 +5201,7 @@ function startFirstHero(){
       if(rec && rec.id){
         const saved = META.family[rec.id];
         const sal = saved?.runResult?.salvageEarned || 0;
-        showFallenHarvest(rec.id, sal);
+        showFallenScarChoice(rec.id, sal);
       }
     }catch(e){}
   };
@@ -3470,9 +5211,32 @@ function startFirstHero(){
 window.onload = ()=>{
   loadMeta();
   normalizeMeta();
-  // Ensure all heroes have evs
-  Object.values(META.family||{}).forEach(h=>{ if(!h.evs) h.evs = emptyEVs(); if(!h.traits) h.traits=[]; if(!h.birthAspect) h.birthAspect='Steel'; if(!h.birthFlags) h.birthFlags={}; });
-  showStartScreen();
+  Object.values(META.family||{}).forEach(h=>{
+    if(!h.evs) h.evs=emptyEVs();
+    if(!h.traits) h.traits=[];
+    if(!h.birthAspect) h.birthAspect='Steel';
+    if(!h.birthFlags) h.birthFlags={};
+  });
+  if(Array.isArray(META.retiredPool)){
+    META.retiredPool=META.retiredPool.filter(id=>{
+      const r=META.family[id];
+      if(!r) return false;
+      return getBreedUses(r).left>0;
+    });
+  }
+  saveMeta();
+  const small=window.matchMedia('(max-width: 420px)').matches;
+  if(small&&localStorage.getItem(UI_KEY)===null){
+    UI.logCollapsed=true;
+    saveUI();
+  }
+  loadUI();
+  if(typeof UI.difficulty!=='number') UI.difficulty=1;
+  setCombatLogCollapsed(UI.logCollapsed);
+  updateDifficultyUI();
+  updateRootDepthHeader();
+  showStartScreen(); // Handles opening narrative gate internally
+  setTimeout(applyResponsiveLayout,0);
 };
 
 
