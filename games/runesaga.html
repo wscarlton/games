@@ -2004,8 +2004,14 @@ function tryImprint(heroId,traitKey,chance,boonId){
 function showRetireSummary(rec,essence,earnedEVs){
   const ev=rec.evs;
   let html=`
-    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 HERO RETIRED</div>
-    <div style="color:var(--txt2);font-size:13px;margin-bottom:14px">${rec.name} has been added to the Chosen of the Hall and will be available for breeding.</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
+              color:var(--gold);margin-bottom:8px">🏛 SAGA SEALED</div>
+    <div style="color:var(--txt2);font-size:13px;margin-bottom:6px">
+      ${rec.name} has been added to the Chosen of the Hall.
+    </div>
+    <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:14px">
+      "Let the blood carry the rest."
+    </div>
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px;margin-bottom:14px;text-align:left">
       <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC PROFILE</div>
       ${EV_KEYS.map(k=>`<div class="srow"><span class="sl">${k.toUpperCase()}_EV</span><span class="sv">${ev[k]||0} / ${evCap()}</span></div>`).join('')}
@@ -2039,7 +2045,7 @@ function heroFell(){
   META.fallenLedger.push(rec.id);
   META.salvage+=salvageEarned;
   saveMeta();
-  addLog(`ᚱ ${salvageEarned} Relics recovered from ${rec.name}'s legacy.`,'ldeath');
+  addLog(`  The saga closed. ᚱ${salvageEarned} Rune-Shards recovered from ${rec.name}'s last stand.`,'ldeath');
   updateMetaHeader();
 }
 
@@ -2449,10 +2455,23 @@ function renderEndScreen(){
   const tagCounts={};G.boons.forEach(b=>b.tags.forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
   const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const score=G.level*50+G.boons.length*30+(won?300:0)+G.wave*20;
-  const retiredMsg=won?'(Auto-retired to pool)':'';
+
+  const heroName=rec?.name||'the Champion';
+  const outcomeHeader=won?'⭐ SAGA COMPLETE':'☠ SAGA CLOSED';
+  const outcomeColor=won?'var(--gold)':'var(--red)';
+  const outcomeShadow=won?'rgba(212,160,23,.6)':'rgba(224,64,64,.5)';
+  const outcomeSubtext=won
+    ? `All twelve trials survived. The Allfather's wager holds. ${heroName} may now rest.`
+    : `Trial ${G.wave} — ${heroName}'s saga ends here. The thread passes to the next.`;
+
   return `<div class="slide-in" style="padding:24px;text-align:center">
-    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:${won?'var(--gold)':'var(--red)'};text-shadow:0 0 20px ${won?'rgba(212,160,23,.6)':'rgba(224,64,64,.5)'};margin-bottom:8px">${won?'⭐ SAGA COMPLETE':'💀 FALLEN WARRIOR'}</div>
-    <div style="color:var(--txt2);margin-bottom:16px;font-size:12px">${won?'All 12 trials survived. '+retiredMsg:'Wave '+G.wave+' — '+(rec?.name||'Hero')+' has fallen.'}</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;
+                color:${outcomeColor};text-shadow:0 0 20px ${outcomeShadow};margin-bottom:8px">
+      ${outcomeHeader}
+    </div>
+    <div style="color:var(--txt2);margin-bottom:16px;font-size:12px;font-style:italic">
+      ${outcomeSubtext}
+    </div>
     <div style="display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:14px 20px;margin-bottom:16px;text-align:left;min-width:260px">
       <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Run Summary</div>
       <div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px"><span style="color:var(--txt3)">Waves Survived</span><span style="font-weight:700">${G.wave}/${G.maxWaves}</span></div>
@@ -2464,7 +2483,7 @@ function renderEndScreen(){
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-gold" onclick="showLegacy()">🏛 View Legacy</button>
-      <button class="btn btn-primary" onclick="showStartScreen()">▶ New Run</button>
+      <button class="btn btn-primary" onclick="showStartScreen()">▶ Begin New Saga</button>
     </div>
   </div>`;
 }
@@ -2594,6 +2613,9 @@ function renderBreeding(){
   const allTraits=[...new Set([...recA.traits,...recB.traits])];
 
   let h=`<div>
+    <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:12px">
+      You choose the next thread.
+    </div>
     <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px">⚗ Breeding Chamber</div>
     <div style="display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:center;margin-bottom:20px">
       <div class="child-preview" style="background:rgba(72,120,240,.08);border-color:rgba(72,120,240,.4)">
@@ -2708,8 +2730,11 @@ function renderFallenLedger(){
     const rr=rec.runResult||{};
     const sal=rr.salvageEarned||0;
     h+=`<div class="hero-card hc-dead">
-      <div class="hc-gen">GEN ${rec.gen} · FALLEN</div>
+      <div class="hc-gen">GEN ${rec.gen} · SAGA CLOSED</div>
       <div class="hc-name">☠ ${rec.name}</div>
+      <div style="font-size:10px;color:var(--txt3);font-style:italic;margin:3px 0">
+        "What remained was taken by the root."
+      </div>
       ${rec.traits.length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin:4px 0">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait" style="font-size:9px">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
       <div class="hc-stats">Wave ${rr.wave||'?'} · ${(rr.boons?.length||0)} boons · Lv.${rr.level||1}</div>
       ${rr.axioms?.length?`<div style="font-size:10px;color:#d050ff;margin-top:3px">Runes: ${rr.axioms.length}</div>`:''}
@@ -2764,7 +2789,9 @@ function renderFamilyTree(){
     const statusColor=isRetired?'var(--gold)':(isSpentRetired?'var(--txt2)':(isFallen?'var(--red)':'var(--txt3)'));
     const derived=evDerived(h.evs);
     nodes+=`<div class="tree-node ${cls}" style="left:${p.x}px;top:${p.y}px;width:${NODE_W}px" onclick="showHeroDetail('${h.id}')">
-      <div style="font-size:9px;color:${statusColor};letter-spacing:1px">G${h.gen} ${isRetired?'★':(isSpentRetired?'☆':(isFallen?'☠':''))}</div>
+      <div style="font-size:9px;color:${statusColor};letter-spacing:1px">
+        G${h.gen} ${isRetired ? '★ Sealed' : (isSpentRetired ? '☆ Spent' : (isFallen ? '☠ Closed' : ''))}
+      </div>
       <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.name}</div>
       <div style="font-size:9px;color:var(--txt3);margin-top:2px">ATK:${Math.round(derived.atk)} DEF:${Math.round(derived.def)}</div>
       ${h.traits.length?`<div style="margin-top:3px">${h.traits.slice(0,2).map(tk=>{const gt=GTRAITS[tk];return gt?`<span style="font-size:10px">${gt.icon}</span>`:''}).join('')}</div>`:''}
@@ -2776,7 +2803,7 @@ function renderFamilyTree(){
         <div style="font-size:16px;font-weight:700;color:var(--gold)">🌳 Family Tree</div>
         <div style="font-size:11px;color:var(--txt3);margin-top:2px">${allHeroes.length} heroes across ${maxGen+1} generations</div>
       </div>
-      <div style="font-size:10px;color:var(--txt3)"><span style="color:var(--gold)">★</span> In Pool &nbsp; <span style="color:var(--txt2)">☆</span> Retired (spent) &nbsp; <span style="color:var(--red)">☠</span> Fallen &nbsp; Click node for details</div>
+      <div style="font-size:10px;color:var(--txt3)"><span style="color:var(--gold)">★</span> Sealed &nbsp; <span style="color:var(--txt2)">☆</span> Spent &nbsp; <span style="color:var(--red)">☠</span> Closed &nbsp; Click node for details</div>
     </div>
     <div style="position:relative;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-height:200px">
       <svg style="position:absolute;top:0;left:0;width:${canvasW}px;height:${canvasH}px;pointer-events:none">${svgLines}</svg>
@@ -2786,10 +2813,67 @@ function renderFamilyTree(){
   </div>`;
 }
 
+function generateSagaPage(rec) {
+  if (!rec || !rec.runResult) {
+    return `${rec?.name || 'Unknown'} — Saga unwritten.`;
+  }
+  const rr      = rec.runResult;
+  const outcome = rr.outcome;
+  const wave    = rr.wave    || '?';
+  const level   = rr.level   || 1;
+  const boonCount  = rr.boons?.length  || 0;
+  const axiomCount = rr.axioms?.length || 0;
+
+  const tagCounts = {};
+  (rr.boons || []).forEach(boonId => {
+    const boon = BOONS.find(b => b.id === boonId);
+    if (boon) boon.tags.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
+  });
+  const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+  const topTrait = rec.traits?.[0] ? GTRAITS[rec.traits[0]]?.name : null;
+
+  const gearItems = rec.equippedGear ? Object.values(rec.equippedGear).filter(Boolean) : [];
+  const gearNote  = gearItems.length
+    ? `Left behind ${gearItems.map(i => i.name).join(' and ')}.`
+    : '';
+
+  let harvestNote = '';
+  if (rr.harvest) {
+    if (rr.harvest.startsWith('scar:')) {
+      const sk = rr.harvest.split(':')[1];
+      harvestNote = `Scar of ${GTRAITS[sk]?.name || 'the fallen'} endures.`;
+    } else if (rr.harvest.startsWith('relic:')) {
+      harvestNote = 'Mastery preserved as Relic.';
+    }
+  }
+
+  const tierNote = rec.ragnarökStamp ? `Root Depth ${rec.ragnarökStamp} witnessed.` : '';
+
+  const outcomePhrase = {
+    'retired': `Chose to seal the saga at Trial ${wave}.`,
+    'victory': `Survived all twelve trials.`,
+    'fallen':  `Fell at Trial ${wave}.`,
+  }[outcome] || `Saga ended at Trial ${wave}.`;
+
+  const parts = [
+    outcomePhrase,
+    topTag    ? `Carried the ${topTag} path.`           : null,
+    axiomCount > 0 ? `${axiomCount} Rune Law${axiomCount > 1 ? 's' : ''} learned.` : null,
+    topTrait  ? `Blood of ${topTrait}.`                 : null,
+    gearNote  || null,
+    harvestNote || null,
+    tierNote  || null,
+  ].filter(Boolean);
+
+  return parts.join(' ');
+}
+
 function showHeroDetail(id){
   const rec=META.family[id];if(!rec)return;
   const derived=evDerived(rec.evs);
   const rr=rec.runResult||{};
+  const sagaPage=generateSagaPage(rec);
   const isRetired=META.retiredPool.includes(id);
   const isFallen=META.fallenLedger.includes(id);
   const status=isRetired?'Retired ★':isFallen?'Fallen ☠':'Active';
@@ -2826,6 +2910,12 @@ function showHeroDetail(id){
       </div>
     </div>
     <div style="margin-top:10px;font-size:10px;color:var(--txt3)">Parents: ${rec.parentIds?.length?rec.parentIds.map(pid=>META.family[pid]?.name||'Unknown').join(' × '):'Founder hero'}</div>
+    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+      <div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px">SAGA PAGE</div>
+      <div style="font-size:11px;color:var(--txt2);font-style:italic;line-height:1.6">
+        "${sagaPage}"
+      </div>
+    </div>
   </div>`;
 }
 
@@ -3717,6 +3807,8 @@ function breedHeroes(idA, idB, opts){
     const lc=document.getElementById('legacy-content');
     const derived=evDerived(childRec.evs);
     lc.innerHTML=`<div class="slide-in" style="text-align:center;padding:30px">
+      <div style="font-size:11px;color:var(--violet);font-style:italic;
+              letter-spacing:1px;margin-bottom:8px">You tighten the weave.</div>
       <div style="font-size:22px;margin-bottom:8px">🧬</div>
       <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--violet);margin-bottom:6px">${childRec.name}</div>
       <div style="color:var(--txt3);font-size:12px;margin-bottom:18px">Generation ${childRec.gen} · ${ASPECT_ICON[childRec.birthAspect]||'✦'} ${childRec.birthAspect} lineage</div>
@@ -3726,7 +3818,7 @@ function breedHeroes(idA, idB, opts){
         ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
       </div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ Run with this Heir</button>
+        <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">You choose the next thread — Run as ${childRec.name}</button>
         <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border2);color:var(--txt3)" onclick="setLegacyTab('pool')">← Back</button>
       </div>
     </div>`;
