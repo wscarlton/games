@@ -133,7 +133,7 @@ body{
 .t-Sustain{background:rgba(40,180,80,.12);color:#60e090;border:1px solid rgba(40,180,80,.3);}
 .t-Axiom{background:rgba(200,60,255,.15);color:#e070ff;border:1px solid rgba(200,60,255,.4);}
 
-/* Genetic trait badge */
+/* Pattern trait badge */
 .gtrait{
   display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;
   font-size:10px;font-weight:700;margin:2px;
@@ -306,10 +306,10 @@ body{
 .tree-node.tn-dead{border-color:rgba(200,40,40,.3);opacity:.7;}
 .tree-node.tn-selected{border-color:var(--gold);box-shadow:0 0 12px rgba(212,160,23,.3);z-index:6;}
 
-/* Breeding preview */
+/* Memory Binding preview */
 .child-preview{background:linear-gradient(135deg,#0a0820,#120a30);border:1px solid rgba(144,80,232,.4);border-radius:6px;padding:14px;}
 
-/* Imprint card */
+/* Echo Binding card */
 .imprint-card{background:var(--bg2);border:1px solid rgba(200,60,255,.3);border-radius:5px;padding:10px;cursor:pointer;transition:all .15s;margin:5px 0;}
 .imprint-card:hover{border-color:rgba(200,60,255,.6);background:#120a1e;transform:translateY(-2px);}
 
@@ -472,7 +472,7 @@ body{
 .tactic-pill{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid rgba(240,168,40,.35);background:rgba(240,168,40,.08);font-size:10px;color:var(--amber);}
 
 
-/* ── V5: Breeding Actions + Bloodline Aspects ── */
+/* ── V5: Memory Binding Actions + Lineage Aspects ── */
 .breed-actions{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
 .ba-btn{background:var(--bg2);border:1px solid var(--border2);color:var(--txt2);}
 .ba-btn.active{border-color:rgba(212,160,23,.55);box-shadow:0 0 10px rgba(212,160,23,.18);color:var(--txt);}
@@ -509,7 +509,7 @@ body{
       </div>
 
       <button class="btn btn-sm" id="btn-speed" onclick="cycleSpeed()">1× Speed</button>
-      <button class="btn btn-sm btn-gold" onclick="showLegacy()">ᛟ Hero Hall</button>
+      <button class="btn btn-sm btn-gold" onclick="showLegacy()">ᛟ Minni-Höll</button>
       <button class="btn btn-sm btn-danger" onclick="confirmReset()">Reset Lineage</button>
     </div>
   </div>
@@ -545,18 +545,18 @@ body{
 <!-- ─── LEGACY SCREEN ──────────────────────────────────────── -->
 <div id="legacy-screen">
   <div id="legacy-header">
-    <span style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:var(--gold);letter-spacing:2px;text-shadow:0 0 12px rgba(212,160,23,.4)">ᛟ HERO HALL</span>
+    <span style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:var(--gold);letter-spacing:2px;text-shadow:0 0 12px rgba(212,160,23,.4)">ᛟ MINNI-HÖLL</span>
     <div style="width:1px;height:20px;background:var(--border2)"></div>
     <div class="legacy-tabs">
-      <div class="ltab active" id="ltab-pool" onclick="setLegacyTab('pool')">Chosen of the Hall</div>
-      <div class="ltab" id="ltab-breed" onclick="setLegacyTab('breed')">Breeding</div>
-      <div class="ltab" id="ltab-fallen" onclick="setLegacyTab('fallen')">Fallen Saga</div>
+      <div class="ltab active" id="ltab-pool" onclick="setLegacyTab('pool')">Memory Stones</div>
+      <div class="ltab" id="ltab-breed" onclick="setLegacyTab('breed')">BIND</div>
+      <div class="ltab" id="ltab-fallen" onclick="setLegacyTab('fallen')">SCARRED RUNES</div>
       <div class="ltab" id="ltab-tree" onclick="setLegacyTab('tree')">Family Tree</div>
       <div class="ltab" id="ltab-upgrades" onclick="setLegacyTab('upgrades')">Runesmith</div>
       <div class="ltab" id="ltab-codex" onclick="setLegacyTab('codex')">📖 Codex</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:14px;align-items:center;font-size:12px;font-family:'Share Tech Mono',monospace">
-      <span style="color:var(--gold)">ᛒ <span id="leg-essence">0</span> Allfather's Blessing</span>
+      <span style="color:var(--gold)">ᛒ <span id="leg-essence">0</span> Minni</span>
       <span style="color:var(--salvage)">ᚱ <span id="leg-salvage">0</span> Rune-Shards</span>
       <span style="color:var(--gold)">🗿 <span id="leg-relics">0</span> Relics</span>
       <button class="btn btn-sm btn-danger" onclick="hideLegacy()">✕ Return to Saga</button>
@@ -567,7 +567,7 @@ body{
   </div>
 </div>
 
-<!-- ─── OVERLAY (start screen / retire / imprint) ────────── -->
+<!-- ─── OVERLAY (start screen / retire / echo binding) ────────── -->
 <div id="overlay" style="display:none">
   <div class="ov-box" id="overlay-content"></div>
 </div>
@@ -583,7 +583,7 @@ function rpick(a){return a[Math.floor(rng()*a.length)];}
 function rshuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
 function rwgt(items,wfn){const ws=items.map(wfn),t=ws.reduce((a,b)=>a+b,0);let r=rng()*t;for(let i=0;i<items.length;i++){r-=ws[i];if(r<=0)return items[i];}return items[items.length-1];}
 
-const LEX={trial:'Trial',trials:'Trials',saga:'Saga',runeGift:'Rune-Gift',runeGifts:'Rune-Gifts',sagaMarks:'Saga-Marks',runeShards:'Rune-Shards',allfatherBlessing:"Allfather's Blessing",seekOmen:'Seek Another Omen',draftTitle:'Rune-Gift Draft',omens:'Omens',offerings:'Offerings'};
+const LEX={trial:'Trial',trials:'Trials',saga:'Saga',runeGift:'Rune-Gift',runeGifts:'Rune-Gifts',sagaMarks:'Saga-Marks',runeShards:'Rune-Shards',allfatherBlessing:"Minni",seekOmen:'Seek Another Omen',draftTitle:'Rune-Gift Draft',omens:'Omens',offerings:'Offerings'};
 function trialStr(n){return `${LEX.trial} ${n}`;}
 function trialsSurvivedStr(n,max){return `${LEX.trials} Survived`;}
 function sagaSeedLabel(){return `${LEX.saga} Seed (optional)`;}
@@ -857,82 +857,146 @@ function buyGear(){
 }
 const MYTH_LINES = {
   crit_first: [
-    'The Norns smiled.',
-    'Fate leaned in.',
-    'The thread tightens.',
+    'I mark the flaw; steel yields where I ask.',
+    'A clean strike. One branch opens.',
+    'I test this line; it rings true.',
+    'I do not foretell. I trace what may be.',
+    'The cut holds. Continue the pattern.',
+    'One notch carved; the work continues.',
   ],
   crit_third: [
-    'The thread sharpens.',
-    'The saga quickens.',
-    'Something ancient stirs.',
+    'Three true strikes; the pattern tightens.',
+    'I temper this strand in motion.',
+    'The structure answers my hand.',
+    'The line grows precise under strain.',
+    'I carve by increments; this one is sound.',
+    'Another branch proves workable.',
   ],
   crit_fifth: [
-    'Fate moves through you now.',
-    'The Norns weave faster.',
-    'Earned. Utterly earned.',
+    'Five true hits; the lattice sings.',
+    'I have heat, pressure, and a usable shape.',
+    'The knot loosens. What may be expands.',
+    'This edge remembers my measure.',
+    'A strong sequence. Keep the rhythm.',
+    'The craft holds even here at the root.',
   ],
 
   nearDeath: [
-    'Even the dying wolf bites.',
-    'The thread frays — but holds.',
-    'Not yet. The saga is unfinished.',
-    'This is what the blood was shaped for.',
+    'The seam splits. I bind it and continue.',
+    'Almost broken; not yet unusable.',
+    'Under this strain, I learn the weak points.',
+    'I keep one ember for what may be.',
+    'The pattern frays; I re-knot it.',
+    'This thread bends hard, but does not snap.',
   ],
   nearDeathKill: [
-    'The saga grows heavier.',
-    'Death passed over. Not forgotten.',
-    'The root remembers this.',
+    'I answer the crack with force.',
+    'Debt pressed close; I cut a path anyway.',
+    'A narrow margin, still enough to carve.',
+    'I salvage the moment and continue shaping.',
+    'The flaw is costly, but instructive.',
+    'I keep the thread from cooling out.',
   ],
 
   kill_first: [
-    'The saga grows.',
+    'One obstacle removed from the pattern.',
+    'I clear the surface and keep carving.',
+    'A clean reduction. Continue.',
+    'This line remains viable.',
+    'I mark the cut and move deeper.',
+    'The structure opens by one notch.',
   ],
   kill_multi: [
-    'The Allfather watches.',
-    'Another thread cut.',
+    'Multiple cuts. The branch map simplifies.',
+    'I remove noise from the lattice.',
+    'Several knots untied in one pass.',
+    'The kiln burns hot; I stay methodical.',
+    'Good sequence. Keep pressure steady.',
+    'More room to shape what may be.',
   ],
   rootDrinks: [
-    'The root drinks.',
-    'What falls, feeds.',
+    'The root takes all residue; I keep the form.',
+    'What falls is ash; what remains is pattern.',
+    'The deep wood drinks; I continue carving.',
+    'Loss feeds the dark. I retain the design.',
+    'At this depth, every cut has a cost.',
+    'The root consumes. I still bind what may be.',
   ],
 
   levelUp: [
-    'Your saga is etched.',
-    'The blood strengthens.',
-    'The weave holds another layer.',
+    'I anneal the line and set it stronger.',
+    'Another layer tempered into memory.',
+    'The strand accepts new structure.',
+    'I reinforce the weak seam.',
+    'Progress recorded in Minni.',
+    'The pattern grows dense and usable.',
   ],
 
   waveStart: {
-    1:  'The first trial begins. Write something worth remembering.',
-    2:  'The second trial. The root stirs.',
-    3:  'Three trials. The Norns have noted you.',
-    4:  'The dead remember everything here.',
-    5:  'Halfway. The tree grows heavier above.',
-    6:  'The sixth trial. The strongest of the dead.',
-    7:  'Jotunheim sends its own. Brace.',
-    8:  'Eight trials survived. The root shifts.',
-    9:  'Three trials remain. The tree can feel you.',
-    10: 'The strong ones no longer wait.',
-    11: 'One thread from the end.',
-    12: 'The final trial. What you were shaped for.',
+    1:  'Trial one. A single generation begins its thread.',
+    2:  'Trial two. I test this pattern under load.',
+    3:  'Trial three. The sisters watch, but I still carve.',
+    4:  'Trial four. Debt gathers in the grain.',
+    5:  'Trial five. The roadside fire will judge this line.',
+    6:  'Trial six. I keep to structure, not panic.',
+    7:  'Trial seven. The root pressure increases.',
+    8:  'Trial eight. Few branches remain stable now.',
+    9:  'Trial nine. I measure every flaw twice.',
+    10: 'Trial ten. The world-decay shows in every strike.',
+    11: 'Trial eleven. One test remains after this.',
+    12: 'Trial twelve. End this generation without breaking.',
   },
 
   waveEnd: {
-    1:  'The first deed is written.',
-    4:  'The dead fell again. As they should.',
-    6:  'The sixth trial survives the saga. The tree breathes.',
-    12: 'All twelve trials. The thread held.',
+    1:  'First trial finished; Minni holds the mark.',
+    3:  'Three trials complete. The thread is still workable.',
+    6:  'Six trials tempered. Structure remains.',
+    9:  'Nine trials carved. I can still descend.',
+    11: 'Eleven trials survived. One final test.',
+    12: 'Twelve trials complete. I bind this generation to Minni-Höll.',
   },
 
   axiomPicked: [
-    'The Allfather watches.',
-    'A Rune Law learned. The tree remembers.',
-    'This is why the trial exists.',
+    'A rune-gift fitted into the frame.',
+    'I choose this branch of what may be.',
+    'Useful law. I set it in place.',
+    'Another tool for line and load.',
+    'I carve this choice into Minni.',
+    'The pattern accepts this addition.',
+  ],
+
+  retire: [
+    'I seal this generation into Minni-Höll.',
+    'Thread cooled, recorded, and set as stone.',
+    'I bind this memory for future tempering.',
+    'This line is complete enough to preserve.',
+    'I close the ledger and carry the pattern forward.',
+    'Workpiece retired; structure retained.',
+  ],
+  death: [
+    'This thread failed under load; I keep the data.',
+    'Fracture complete. Record the flaw and continue.',
+    'The line broke, but Minni still takes its shape.',
+    'Skuld claimed this branch; others remain.',
+    'I mark the failure and reforge the next.',
+    'Thread lost. Pattern not wasted.',
+  ],
+  roadside: [
+    'I keep the roadside kiln lit between trials.',
+    'Water, Clay, Ash — choose your treatment.',
+    'I offer structure, not comfort.',
+    'Every choice here alters what may be.',
+    'This fire is where I meet each generation.',
+    'Take only what your pattern can bear.',
   ],
 
   shieldBroke: [
-    'The ward falls. Hold the line.',
-    'Exposed. Adapt.',
+    'The ward cracked; rework immediately.',
+    'Outer layer gone. Keep the core intact.',
+    'Protection failed. Adapt the structure.',
+    'The plating split; hold the line.',
+    'A fracture is data. Continue.',
+    'The shell is gone; the pattern remains.',
   ],
 };
 
@@ -1301,7 +1365,7 @@ let META={
   relics:0,
   hasSeenOpening:false,
   houseName:null,
-  codexUnlocked:['yggdrasil','allfather','valhalla','saga','rune','norns'],
+  codexUnlocked:['weaver','minni','yggdrasil','allfather','valhalla','saga','rune','norns'],
 };
 
 function saveMeta(){
@@ -1405,7 +1469,7 @@ function genName(gen,topTag,parentNames){
   return `${base} ${ep}`;
 }
 
-// Imprint chance
+// Echo Binding chance
 function imprintChance(){return Math.min(.75,.15+(META.upgrades.imprintChance||0)*.15);}
 // Mutation chance
 function mutationRate(){return Math.min(.20,.04+(META.upgrades.mutationRate||0)*.03);}
@@ -1670,11 +1734,11 @@ function newHero(evs,traits,record){
     gear:{weapon:null,armor:null,talisman:null},
   };
   if(record&&record.inheritedGear)Object.assign(h.gear,record.inheritedGear);
-  applyGeneticTraitStats(h);
+  applyPatternTraitStats(h);
   applyAllGearMaxHP(h);
   return h;
 }
-function applyGeneticTraitStats(h){
+function applyPatternTraitStats(h){
   for(const tk of (h.traits||[])){
     if(tk==='ironblood')h.def+=5;
     if(tk==='swift_born')h.spd+=8;
@@ -2618,7 +2682,8 @@ function retireHero(trialOverride){
   const essence=Math.floor(baseEssence*(G.roadside?.essenceMult||1));
   META.legacyEssence+=essence;
   if(G.interval)clearInterval(G.interval);
-  addLog(`🏛 ${rec.name} sealed their saga at Trial ${trial}! +${essence} Allfather's Blessing.`,'laxiom');
+  addLog(`🏛 ${rec.name} sealed their saga at Trial ${trial}! +${essence} Minni.`,'laxiom');
+  NarrationEngine.fire('generic',MYTH_LINES.retire,'laxiom');
   checkRagnarökUnlock();
   saveMeta();
   showRetireRelicChoice(rec, essence);
@@ -2628,9 +2693,9 @@ function showImprintOffer(rec,axiomBoons,essence){
   const candidates=axiomBoons.slice(0,3);
   const chance=imprintChance();
   let html=`
-    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px">ᚱᚢᚾ RUNE OATH</div>
-    <p style="color:var(--txt2);font-size:12px;margin-bottom:16px">${rec.name} carried Axiom knowledge. You may attempt to imprint one as a heritable genetic trait.<br>
-    <span style="color:var(--amber)">Imprint Chance: ${Math.round(chance*100)}%</span></p>
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--gold);margin-bottom:8px">ᚱᚢᚾ ECHO BINDING</div>
+    <p style="color:var(--txt2);font-size:12px;margin-bottom:16px">${rec.name} carried Axiom knowledge. You may attempt to echo binding one as a heritable pattern trait.<br>
+    <span style="color:var(--amber)">Echo Binding Chance: ${Math.round(chance*100)}%</span></p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
     ${candidates.map(b=>{
       const traitMapping={'ax_crimson':'serrated','ax_ghost':'skirmisher','ax_harvest':'resilient','ax_wrath':'gambler','ax_iron_law':'ironblood','ax_echo':'swift_born','ax_aegis':'aegis','ax_opening':'lucky','ax_kinetic':'lucky','ax_fortress':'tenacious','ax_plague':'venomkiss','ax_mirror':'spite'};
@@ -2641,11 +2706,11 @@ function showImprintOffer(rec,axiomBoons,essence){
           <div><span style="font-size:14px">${b.icon}</span> <strong style="font-size:12px">${b.name}</strong></div>
           <div style="font-size:10px;color:var(--amber)">${Math.round(chance*100)}% chance</div>
         </div>
-        <div style="font-size:10px;color:var(--txt3);margin-top:3px">→ Genetic: <span style="color:#d090ff">${gt?gt.icon+' '+gt.name:'Unknown'}</span>: ${gt?gt.desc:''}</div>
+        <div style="font-size:10px;color:var(--txt3);margin-top:3px">→ Pattern: <span style="color:#d090ff">${gt?gt.icon+' '+gt.name:'Unknown'}</span>: ${gt?gt.desc:''}</div>
       </div>`;
     }).join('')}
     </div>
-    <button class="btn btn-sm btn-ghost" style="width:100%" onclick="showRetireSummary(META.family['${rec.id}'],${essence},null)">Skip Imprint</button>`;
+    <button class="btn btn-sm btn-ghost" style="width:100%" onclick="showRetireSummary(META.family['${rec.id}'],${essence},null)">Skip Echo Binding</button>`;
   showOverlayContent(html);
 }
 
@@ -2666,19 +2731,19 @@ function showRetireSummary(rec,essence,earnedEVs){
   const ev=rec.evs;
   let html=`
     <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
-              color:var(--gold);margin-bottom:8px">🏛 SAGA SEALED</div>
+              color:var(--gold);margin-bottom:8px">🏛 MEMORY BOUND</div>
     <div style="color:var(--txt2);font-size:13px;margin-bottom:6px">
-      ${rec.name} has been added to the Chosen of the Hall.
+      ${rec.name} has been added to the Memory Stones.
     </div>
     <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:14px">
       "Let the blood carry the rest."
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px;margin-bottom:14px;text-align:left">
-      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC PROFILE</div>
+      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">SCARS / PATTERN</div>
       ${EV_KEYS.map(k=>`<div class="srow"><span class="sl">${k.toUpperCase()}_EV</span><span class="sv">${ev[k]||0} / ${evCap()}</span></div>`).join('')}
       ${rec.traits.length?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">${rec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:''}
     </div>
-    <div style="color:var(--green);font-size:13px;margin-bottom:16px">+${essence} Allfather's Blessing added to lineage coffers.</div>
+    <div style="color:var(--green);font-size:13px;margin-bottom:16px">+${essence} Minni added to lineage coffers.</div>
     <div style="margin:0 0 14px">
       <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Difficulty (enemy stats)</label>
       <div style="display:flex;align-items:center;gap:10px">
@@ -2691,7 +2756,7 @@ function showRetireSummary(rec,essence,earnedEVs){
       <div style="font-size:10px;color:var(--txt3);margin-top:4px">0 = trivial · 1 = default · 2 = brutal</div>
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:1" onclick="hideOverlay();showLegacy()">🏛 View Legacy</button>
+      <button class="btn btn-primary" style="flex:1" onclick="hideOverlay();showLegacy()">🏛 View Minni-Höll</button>
       <button class="btn btn-green" style="flex:1" onclick="hideOverlay();showStartScreen()">▶ Begin New Saga</button>
     </div>`;
   showOverlayContent(html);
@@ -2707,6 +2772,7 @@ function heroFell(){
   META.salvage+=salvageEarned;
   saveMeta();
   addLog(`  The saga closed. ᚱ${salvageEarned} Rune-Shards recovered from ${rec.name}'s last stand.`,'ldeath');
+  NarrationEngine.fire('generic',MYTH_LINES.death,'ldeath');
   updateMetaHeader();
 }
 
@@ -2992,8 +3058,8 @@ function renderWavePreview(){
   let h=`<div class="slide-in" style="padding:16px">`;
   if(G.roadsideAvailable){
     h+=`<div class="retire-banner">
-      <div class="retire-banner-title">🔥 THE FIRE ON THE ROAD</div>
-      <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">Along the way, you see a light.<br>A hooded figure tends a fire and makes you an offer.</div>
+      <div class="retire-banner-title">🔥 THE WEAVER'S ROADSIDE FIRE</div>
+      <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">I tend the roadside kiln and offer three workings: Water, Clay, or Ash.</div>
       <button class="btn btn-gold btn-sm" onclick="showRoadsideFire()">🔥 Approach the Fire</button>
     </div>`;
   }
@@ -3216,7 +3282,7 @@ function renderEndScreen(){
   const outcomeColor=won?'var(--gold)':'var(--red)';
   const outcomeShadow=won?'rgba(212,160,23,.6)':'rgba(224,64,64,.5)';
   const outcomeSubtext=won
-    ? `All twelve trials survived. The Allfather's wager holds. ${heroName} may now rest.`
+    ? `All twelve Trials survived. This generation holds. ${heroName} may now rest.`
     : `Trial ${G.wave} — ${heroName}'s saga ends here. The thread passes to the next.`;
 
   return `<div class="slide-in" style="padding:24px;text-align:center">
@@ -3237,7 +3303,7 @@ function renderEndScreen(){
       ${topTags.length?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:2px">${topTags.map(([t,c])=>`<span class="tag t-${t}">${t} ×${c}</span>`).join('')}</div>`:''}
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-gold" onclick="showLegacy()">🏛 View Legacy</button>
+      <button class="btn btn-gold" onclick="showLegacy()">🏛 View Minni-Höll</button>
       <button class="btn btn-primary" onclick="showStartScreen()">▶ Begin New Saga</button>
     </div>
   </div>`;
@@ -3303,17 +3369,17 @@ function renderRetiredPool(){
   if(!heroes.length){
     return `<div style="text-align:center;padding:40px;color:var(--txt3)">
       <div style="font-size:32px;margin-bottom:12px">🏛</div>
-      <div style="font-size:13px">No retired heroes yet.</div>
-      <div style="font-size:11px;margin-top:6px">Complete a saga and choose to retire your hero instead of fighting on.</div>
+      <div style="font-size:13px">No memory stones yet.</div>
+      <div style="font-size:11px;margin-top:6px">Complete a saga and bind a memory stone instead of pressing onward.</div>
     </div>`;
   }
   let h=`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--gold)">Chosen of the Hall</div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${heroes.length}/${poolMax()} heroes · Select two to breed</div>
+        <div style="font-size:16px;font-weight:700;color:var(--gold)">Memory Stones</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${heroes.length}/${poolMax()} memory stones · Select two strands to bind</div>
       </div>
-      <button class="btn btn-green btn-sm" onclick="setLegacyTab('breed')">⚗ Breed →</button>
+      <button class="btn btn-green btn-sm" onclick="setLegacyTab('breed')">⚗ Bind →</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">`;
   heroes.forEach(rec=>{
@@ -3325,7 +3391,7 @@ function renderRetiredPool(){
     h+=`<div class="hero-card${sel?selClass:''}" onclick="toggleBreedSelect('${rec.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
         <div>
-          <div class="hc-gen">GEN ${rec.gen}${sel?' — PARENT '+(selIdx===0?'A':'B'):''}</div>
+          <div class="hc-gen">GEN ${rec.gen}${sel?' — STRAND '+(selIdx===0?'A':'B'):''}</div>
           <div class="hc-name">${rec.name}</div>
         </div>
         ${sel?`<div style="font-size:18px;color:${selIdx===0?'#4878f0':'var(--violet)'}">★</div>`:''}
@@ -3355,12 +3421,12 @@ function renderBreeding(){
   if(BREED_SELECTED.length<2){
     return `<div style="text-align:center;padding:40px;color:var(--txt3)">
       <div style="font-size:32px;margin-bottom:12px">⚗</div>
-      <div style="font-size:13px">Select two heroes from the Chosen of the Hall first.</div>
-      <button class="btn btn-gold btn-sm" style="margin-top:14px" onclick="setLegacyTab('pool')">← Chosen of the Hall</button>
+      <div style="font-size:13px">Select two memory stones first.</div>
+      <button class="btn btn-gold btn-sm" style="margin-top:14px" onclick="setLegacyTab('pool')">← Memory Stones</button>
     </div>`;
   }
   const recA=META.family[BREED_SELECTED[0]],recB=META.family[BREED_SELECTED[1]];
-  if(!recA||!recB||isFallenHero(recA.id)||isFallenHero(recB.id))return `<div style="color:var(--red);padding:20px">A fallen hero cannot enter the Breeding Chamber. Their saga is closed.</div>`;
+  if(!recA||!recB||isFallenHero(recA.id)||isFallenHero(recB.id))return `<div style="color:var(--red);padding:20px">A fallen hero cannot enter the Memory Binding Chamber. Their saga is closed.</div>`;
   const usesA=getBreedUses(recA), usesB=getBreedUses(recB);
 
   const cap=evCap();
@@ -3373,7 +3439,7 @@ function renderBreeding(){
     <div style="font-size:11px;color:var(--txt3);font-style:italic;margin-bottom:12px">
       You choose the next thread.
     </div>
-    <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px">⚗ Breeding Chamber</div>
+    <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px">⚗ Memory Binding Chamber</div>
     <div style="display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:center;margin-bottom:20px">
       <div class="child-preview" style="background:rgba(72,120,240,.08);border-color:rgba(72,120,240,.4)">
         <div style="font-size:10px;color:#80a8ff;letter-spacing:2px;margin-bottom:5px">PARENT A</div>
@@ -3426,7 +3492,7 @@ function renderBreeding(){
     </div>
 
     <div style="display:flex;gap:10px;align-items:center">
-      <button class="btn btn-primary" onclick="doBreed()">⚗ Begin Breeding</button>
+      <button class="btn btn-primary" onclick="doBreed()">⚗ Begin Memory Binding</button>
       <button class="btn btn-sm btn-ghost" onclick="BREED_SELECTED=[];setLegacyTab('pool')">✕ Clear Selection</button>
     </div>
   </div>`;
@@ -3437,7 +3503,7 @@ function doBreed(){
   if(BREED_SELECTED.length<2){alert('Select 2 heroes first.');return;}
   const a=BREED_SELECTED[0], b=BREED_SELECTED[1];
   const ua=getBreedUses(META.family[a]), ub=getBreedUses(META.family[b]);
-  if(ua.left<=0||ub.left<=0){alert('One of the selected parents has no breeding uses left.');return;}
+  if(ua.left<=0||ub.left<=0){alert('One of the selected strands has no memory binding uses left.');return;}
   const childRec=breedHeroes(a,b);
   if(!childRec)return;
   consumeBreedUse(a);
@@ -3451,10 +3517,10 @@ function doBreed(){
     <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--violet);margin-bottom:6px">${childRec.name}</div>
     <div style="color:var(--txt3);font-size:12px;margin-bottom:18px">Generation ${childRec.gen} · Born of legacy</div>
     <div style="display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:14px 20px;margin-bottom:18px;text-align:left;min-width:240px">
-      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC STATS</div>
+      <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">SCARS / PATTERN</div>
       ${[['MaxHP',derived.maxHP],['ATK',Math.round(derived.atk)],['DEF',Math.round(derived.def)],['SPD',derived.spd],['Crit',Math.round(derived.critChance*100)+'%']]
         .map(([l,v])=>`<div class="srow"><span class="sl" style="font-size:12px">${l}</span><span class="sv" style="font-size:12px;color:var(--green)">${v}</span></div>`).join('')}
-      ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
+      ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No pattern traits inherited.</div>`}
     </div>
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn btn-primary" onclick="hideLegacy();startWithChild('${childRec.id}')">▶ Continue Saga with ${childRec.name}</button>
@@ -3502,7 +3568,7 @@ function renderFallenLedger(){
   let h=`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--red)">ᚱ Fallen Saga</div>
+        <div style="font-size:16px;font-weight:700;color:var(--red)">ᚱ SCARRED RUNES</div>
         <div style="font-size:11px;color:var(--txt3);margin-top:2px">${fallen.length} fallen heroes · ᚱ${META.salvage} Rune-Shards available</div>
       </div>
     </div>`;
@@ -3746,7 +3812,7 @@ function showHeroDetail(id){
         </div>`:''}
       </div>
     </div>
-    <div style="margin-top:10px;font-size:10px;color:var(--txt3)">Parents: ${rec.parentIds?.length?rec.parentIds.map(pid=>META.family[pid]?.name||'Unknown').join(' × '):'Founder hero'}</div>
+    <div style="margin-top:10px;font-size:10px;color:var(--txt3)">Primary Strand & Secondary Strand: ${rec.parentIds?.length?rec.parentIds.map(pid=>META.family[pid]?.name||'Unknown').join(' × '):'Founder thread'}</div>
     <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
       <div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px">SAGA PAGE</div>
       <div style="font-size:11px;color:var(--txt2);font-style:italic;line-height:1.6">
@@ -3769,21 +3835,25 @@ function showHeroDetail(id){
 }
 
 const CODEX_ENTRIES=[
-  {id:'yggdrasil',term:'Yggdrasil',subtitle:'The World Tree',body:'The great ash tree at the center of Norse cosmology, connecting the Nine Realms. Its roots reach into Niflheim, Jotunheim, and the realm of the dead. Its branches hold Ásgarðr above and touch the outer void. The tree is alive — and currently dying.',unlockedBy:'always'},
-  {id:'allfather',term:'Allfather',subtitle:'Odin — God of Wisdom, War, and Sacrifice',body:'The Allfather sacrificed one eye for wisdom, hung nine days on Yggdrasil to learn the runes, and sends the Valkyries to choose the worthy dead. He does not offer trials without reason. Whether his reason serves the tree or only himself is a question the sagas never answer cleanly.',unlockedBy:'always'},
-  {id:'valhalla',term:'Valhalla',subtitle:"The Allfather's Hall of the Chosen Slain",body:"Warriors chosen by the Valkyries feast and fight in Valhalla, dying each day and rising whole each morning. They train for Ragnarök. Whether your bloodline's fallen reach Valhalla or are taken by the root is not yet known.",unlockedBy:'always'},
-  {id:'saga',term:'Saga',subtitle:'A life worth recording',body:'In the Norse tradition, a saga is a prose narrative of heroic deeds — something worthy of being written down and remembered. Your runs are sagas. Not all are long. All are recorded.',unlockedBy:'always'},
-  {id:'rune',term:'Rune',subtitle:'A letter, a mystery, a power',body:'The Elder Futhark runes are simultaneously an alphabet, a set of cosmological forces, and a magical system. Odin learned them through sacrifice. The runes that appear throughout the trials are not decorative — they are the alphabet of fate itself.',unlockedBy:'always'},
-  {id:'norns',term:'The Norns',subtitle:'Urðr, Verðandi, Skuld — Past, Present, Future',body:'The three Norns sit at the base of Yggdrasil and weave the fate of gods and mortals alike. Urðr (What Was) spins the thread. Verðandi (What Is) measures it. Skuld (What Shall Be) cuts it. Even Odin cannot undo what the Norns have woven — he can only try to weave alongside them. The breeding system is your attempt to do the same.',unlockedBy:'always'},
-  {id:'einherjar',term:'Einherjar',subtitle:'The Chosen Dead',body:'The warriors selected by Valkyries to dwell in Valhalla, training endlessly for the final battle of Ragnarök. They appear in the trials as the Veteran Shield archetype — the iron-willed dead who have already died once and lost nothing they were not prepared to lose.',unlockedBy:'firstRetire'},
-  {id:'völva',term:'Völva',subtitle:'A Norse Seeress',body:"A völva was a wandering prophetess in Norse society, practicing seiðr — a form of shamanic magic used to divine the future or alter fate. In the trials, the Curse-Weaver is a völva whose threads have been corrupted by what gnaws at the root. Odin himself consulted a völva's ghost to learn Ragnarök's shape.",unlockedBy:'firstRetire'},
-  {id:'wyrd',term:'Wyrd',subtitle:'Fate as a woven thread',body:"Old Norse: urðr. The concept that fate is not a fixed destination but a living, woven thing — shaped by past deeds as much as by the will of the Norns. Your breeding system is wyrd made mechanical: each hero's thread is woven from those who came before. The deeds of the dead literally shape the living.",unlockedBy:'firstBreed'},
-  {id:'dvergar',term:'Dvergar',subtitle:'The Norse Dwarves — Master Smiths',body:"In Norse myth, the dvergar forged the greatest artifacts in the Nine Realms: Mjölnir (Thor's hammer), Gungnir (Odin's spear), Gleipnir (the chain that bound Fenrir), Draupnir (the self-replicating ring). In the trials, the Rune-Smith archetype represents a dvergar whose overcharged runic devices have been turned against the living.",unlockedBy:'firstRetire'},
-  {id:'fimbulwinter',term:'Fimbulwinter',subtitle:'The Great Winter Before Ragnarök',body:'Three successive winters with no summer between them, described in the Prose Edda as the precursor to Ragnarök. Ice, starvation, and the breakdown of social order. When Ragnarök Tier 11 is active, Fimbulwinter has arrived — the trials are colder, slower, and every warmth matters more.',unlockedBy:'tier11'},
-  {id:'eitr',term:'Eitr',subtitle:'The World-Venom',body:'In Norse cosmology, eitr is the primordial venom that fills the rivers of Niflheim. It is the source of all poison, all corruption, and — paradoxically — all life, since the first living things were formed from its interaction with heat. At Ragnarök Tier 13, eitr has risen into the air of the trials. It kills. It also concentrates into a weapon for those who can use it.',unlockedBy:'tier13'},
-  {id:'nidhoggr',term:'Níðhöggr',subtitle:'The Gnawer — Corpse-Gnawer of Náströnd',body:'The great serpent (or dragon) who gnaws eternally at the roots of Yggdrasil. In the Poetic Edda, Níðhöggr survives Ragnarök and rises at the end of the world with corpses in its wings. In the trials, Níðhöggr is not a distant myth. The corruption you have felt since Trial 1 is its work. What lies at the deepest root — what True Ragnarök faces — is something that has been awake and eating for a very long time.',unlockedBy:'tier15'},
-  {id:'ragnarök',term:'Ragnarök',subtitle:'The Fate of the Gods — The Final Battle',body:"Ragnarök is not simply 'the apocalypse.' It is a specific, fated sequence: Fimbulwinter, the breaking of Fenrir's chain, Jörmungandr rising from the sea, Surtr marching from Muspelheim with fire, the Bifröst shattering. The gods know it is coming and prepare anyway. Your bloodline runs the same trials: knowing failure is possible, running regardless, hoping that the right thread survives.",unlockedBy:'tier5'},
-];
+  {id:'weaver',term:'The Weaver of May Be',subtitle:'The Unnamed Fourth Norn',body:'Urðr keeps what was. Verðandi keeps what is. Skuld keeps what shall be. I am the unsanctioned fourth: dvergar master-smith, rune-carver, and weaver of possibility. I do not foretell. I trace what may be, then temper it into Minni.',unlockedBy:'always'},
+  {id:'minni',term:'Minni',subtitle:'Memory as architecture',body:'Minni is not sentiment. It is load-bearing memory: pattern, scar, and tested structure carried forward between generations. Every run records stress and response. What survives becomes material for the next attempt.',unlockedBy:'always'},
+  {id:'yggdrasil',term:'Yggdrasil',subtitle:'The World Tree',body:'The great ash that binds the realms is rotting at the root. Each generation runs twelve Trials through that pressure. Ragnarök Tiers measure the wider decay of the world around those Trials.',unlockedBy:'always'},
+  {id:'allfather',term:'Allfather',subtitle:'Odin, watcher at the edge of this craft',body:'Odin bartered eye and body for runes, and he watches this work with interest. But he is not the loom. He offers hints, gifts, and wagers; I keep the tools and make the cuts.',unlockedBy:'always'},
+  {id:'valhalla',term:'Valhalla',subtitle:'A hall among many claims on the dead',body:'Valhalla trains its chosen for the final battle. Whether any fallen thread reaches that hall, or is consumed below, remains disputed. I log outcomes; I trust patterns over promises.',unlockedBy:'always'},
+  {id:'saga',term:'Saga',subtitle:"A single generation's thread",body:"A saga here is one generation of twelve Trials. It begins hot, takes strain, then either fails, retires into Minni-Höll, or reaches the deepest carve point.",unlockedBy:'always'},
+  {id:'rune',term:'Rune',subtitle:'Letter, tool, and pressure pattern',body:'A rune is language and mechanism at once. In these Trials, rune-gifts are functional edits to combat structure. Every chosen line reveals another branch of what may be.',unlockedBy:'always'},
+  {id:'norns',term:'The Norns',subtitle:'Urðr, Verðandi, Skuld',body:'The three sisters keep a strict tapestry: past fixed, present measured, future constrained. Skuld appears here as Debt, the hard edge of what shall be. My work is not to replace them, but to carve a lawful branch beside their weave.',unlockedBy:'always'},
+  {id:'minniholl',term:'Minni-Höll',subtitle:'Hall of Memory',body:'When a thread retires, it is cut from the current run and set as a Memory Stone in Minni-Höll. From there, strands can be bound, tempered, and reused in future generations.',unlockedBy:'firstRetire'},
+  {id:'skuldsDebt',term:"Skuld's Debt",subtitle:'Future as constraint',body:'Ash choices carry debt. You gain immediate force, but Skuld marks the line and demands repayment in later battles. Debt is not punishment; it is structural pressure.',unlockedBy:'ashDebt'},
+  {id:'wyrd',term:'Wyrd',subtitle:'Binding threads without certainty',body:'Wyrd is woven causality, not blood purity. Memory Binding joins a Primary Strand and Secondary Strand, tempering scars and pattern into a new thread. No outcome is guaranteed; only tested possibilities persist.',unlockedBy:'firstBreed'},
+  {id:'dvergar',term:'Dvergar',subtitle:'Smiths of impossible tools',body:'The dvergar forged chains for wolves and spears for gods. I inherit that craft: heat, measure, quench, and inscription. Rune-work is metallurgy applied to fate.',unlockedBy:'firstRetire'},
+  {id:'fimbulwinter',term:'Fimbulwinter',subtitle:'The long freeze before collapse',body:'When decay deepens, warmth fails and tempo slows. Tier 11 marks this stage clearly: endurance and timing become harder materials than damage.',unlockedBy:'tier11'},
+  {id:'eitr',term:'Eitr',subtitle:'World-venom in the grain',body:'Eitr is poison and catalyst. At high decay it enters everything: enemies, gifts, and risk calculations. Corruption and leverage become the same substance.',unlockedBy:'tier13'},
+  {id:'nidhoggr',term:'Níðhöggr',subtitle:'Gnawer at the deepest root',body:'Níðhöggr is no rumor. The pressure under every Trial is its bite. By high tier, the creature is an active condition you must hold and survive.',unlockedBy:'tier15'},
+  {id:'runeMayBe',term:'Rune of What May Be',subtitle:'Why Tier 15 matters',body:'Ragnarök Tier 15 is the deepest reachable root: maximum world-decay, minimum false branches. Hold Níðhöggr there and carve the Rune of What May Be into the source code of the world. This is the point of all prior generations.',unlockedBy:'tier15'},
+  {id:'ragnarök',term:'Ragnarök Tiers',subtitle:'Global decay over repeated generations',body:'Trials are per generation. Ragnarök Tiers are cumulative world deterioration across generations. You are not just surviving twelve fights; you are descending a failing system toward a final carve point.',unlockedBy:'tier5'},
+ ];
+
 function unlockCodexEntry(id){
   normalizeMeta();
   if(!META.codexUnlocked.includes(id)){META.codexUnlocked.push(id);saveMeta();}
@@ -3793,8 +3863,8 @@ function checkCodexUnlocks(){
   if(tier>=5)unlockCodexEntry('ragnarök');
   if(tier>=11)unlockCodexEntry('fimbulwinter');
   if(tier>=13)unlockCodexEntry('eitr');
-  if(tier>=15)unlockCodexEntry('nidhoggr');
-  if(META.retiredPool&&META.retiredPool.length>0){unlockCodexEntry('einherjar');unlockCodexEntry('völva');unlockCodexEntry('dvergar');}
+  if(tier>=15){unlockCodexEntry('nidhoggr');unlockCodexEntry('runeMayBe');}
+  if(META.retiredPool&&META.retiredPool.length>0){unlockCodexEntry('minniholl');unlockCodexEntry('einherjar');unlockCodexEntry('völva');unlockCodexEntry('dvergar');}
   if(META.family&&Object.keys(META.family).some(id=>{const r=META.family[id];return r&&r.parentIds&&r.parentIds.length>0;}))unlockCodexEntry('wyrd');
 }
 function codexHTML(){
@@ -3802,7 +3872,7 @@ function codexHTML(){
   const unlocked=new Set(META.codexUnlocked||[]);
   const visible=CODEX_ENTRIES.filter(e=>unlocked.has(e.id));
   const locked=CODEX_ENTRIES.filter(e=>!unlocked.has(e.id));
-  let h=`<div style="padding:10px 0"><div style="font-size:10px;color:var(--txt3);margin-bottom:12px;font-style:italic">Terms revealed as your bloodline discovers them. ${locked.length>0?`${locked.length} entry${locked.length>1?'s':''} yet to be found.`:'All entries revealed.'}</div><div style="display:flex;flex-direction:column;gap:10px">`;
+  let h=`<div style="padding:10px 0"><div style="font-size:10px;color:var(--txt3);margin-bottom:12px;font-style:italic">Terms revealed as your Minni lattice discovers them. ${locked.length>0?`${locked.length} entry${locked.length>1?'s':''} yet to be found.`:'All entries revealed.'}</div><div style="display:flex;flex-direction:column;gap:10px">`;
   visible.forEach(entry=>{
     h+=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px"><div style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;color:var(--violet)">${entry.term}</div><div style="font-size:9px;color:var(--txt3);font-style:italic">${entry.subtitle}</div></div><div style="font-size:11px;color:var(--txt2);line-height:1.7;margin-top:6px">${entry.body}</div></div>`;
   });
@@ -3816,11 +3886,11 @@ function codexHTML(){
 // ─── UPGRADES ─────────────────────────────────────────────────────────────────
 function renderRunesmith(){
   const ups=[
-    {id:'evCap',name:'Stronger Bloodline',icon:'🧬',desc:`Raise EV cap by +10 (currently ${evCap()})`,cost:30},
-    {id:'imprintChance',name:'Imprint Mastery',icon:'💫',desc:`+15% imprint success chance (currently ${Math.round(imprintChance()*100)}%)`,cost:25},
+    {id:'evCap',name:'Stronger Pattern',icon:'🧬',desc:`Raise EV cap by +10 (currently ${evCap()})`,cost:30},
+    {id:'imprintChance',name:'Echo Binding Mastery',icon:'💫',desc:`+15% Echo Binding success chance (currently ${Math.round(imprintChance()*100)}%)`,cost:25},
     {id:'poolSize',name:'Wider Pool',icon:'🏛',desc:`+2 retired pool slots (currently ${poolMax()})`,cost:20},
     {id:'mutationRate',name:'Mutation Catalyst',icon:'⚡',desc:`+3% mutation chance (currently ${Math.round(mutationRate()*100)}%)`,cost:20},
-  {id:'nursery', name:'Nursery Program', icon:'👶', desc:`+15% chance retired heroes have 2 breeding uses (currently +${Math.round((META.upgrades.nursery||0)*15)}%)`, cost:25, currency:'salvage'},
+  {id:'nursery', name:'Nursery Program', icon:'👶', desc:`+15% chance retired heroes have 2 memory binding uses (currently +${Math.round((META.upgrades.nursery||0)*15)}%)`, cost:25, currency:'salvage'},
 ];
   const unlocked=[...META.unlockedTraits];
   const locked=GTRAIT_KEYS.filter(k=>!unlocked.includes(k));
@@ -3840,7 +3910,7 @@ function renderRunesmith(){
     </div>`;
   if(locked.length){
     h+=`<div style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--cyan)">🧬 Unlock Mutation Traits</div>
-      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Spend Relics to add new traits to your mutation pool. These can appear during breeding.</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Spend Relics to add new traits to your mutation pool. These can appear during memory binding.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
         ${locked.map(tk=>{
           const gt=GTRAITS[tk];if(!gt)return '';
@@ -3882,7 +3952,7 @@ function doResetMeta(){
   localStorage.removeItem(META_KEY);
   META={legacyEssence:0,salvage:0,retiredPool:[],fallenLedger:[],family:{},upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
     unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),nextHeroId:1,
-    ragnarökTier:0,ragnarökActive:0,eliteRoster:{},relics:0,hasSeenOpening:false,houseName:null,aspects:{},scarTokens:{},codexUnlocked:['yggdrasil','allfather','valhalla','saga','rune','norns']};
+    ragnarökTier:0,ragnarökActive:0,eliteRoster:{},relics:0,hasSeenOpening:false,houseName:null,aspects:{},scarTokens:{},codexUnlocked:['weaver','minni','yggdrasil','allfather','valhalla','saga','rune','norns']};
   saveMeta();setLegacyTab('upgrades');updateMetaHeader();
 }
 
@@ -3931,7 +4001,7 @@ function acceptAllFatherGift(boonId){
   if(!boon)return;
   G.boons.push(boon);
   applyBoonEffectsOnPick(boon);
-  addLog(`ᛟ The Allfather's gift accepted: ${boon.name}`,'laxiom');
+  addLog(`ᛟ A watcher-gift accepted: ${boon.name}`,'laxiom');
   hideOverlay();
   resumeAfterAllFatherGift();
 }
@@ -4037,6 +4107,7 @@ function chooseRoadsideAsh(){
     const d=rpick(debtPool);
     if(typeof d.apply==='function')d.apply(G);
     G.roadside.debts.push({id:d.id,name:d.name,icon:d.icon,desc:d.desc,battleStart:(d.battleStart||[]).map(x=>({...x}))});
+    unlockCodexEntry('skuldsDebt');
     addLog(`⚱️ ${d.name} — ${d.desc}`,'laxiom');
   }
   applyRandomSacrifice();
@@ -4044,14 +4115,15 @@ function chooseRoadsideAsh(){
 }
 function showRoadsideFire(){
   if(!G||!G.roadsideAvailable)return;
-  const html=`<div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--amber);margin-bottom:8px">🔥 THE FIRE ON THE ROAD</div>
-    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Along the way, you see a light.<br>A hooded figure tends a fire and makes you an offer.</div>
+  const html=`<div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--amber);margin-bottom:8px">🔥 THE WEAVER'S ROADSIDE FIRE</div>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">I tend the roadside kiln and offer three workings: Water, Clay, or Ash.</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn" onclick="resolveRoadside();retireHero(G.wave-1)">💧 Water — Cut the thread.</button>
-      <button class="btn" onclick="chooseRoadsideClay()">🧱 Clay — Strengthen your resolve.</button>
-      <button class="btn" onclick="chooseRoadsideAsh()">⚱️ Ash — Pay the debt of another.</button>
+      <button class="btn" onclick="resolveRoadside();retireHero(G.wave-1)">💧 Water — Quench this generation.</button>
+      <button class="btn" onclick="chooseRoadsideClay()">🧱 Clay — Temper the living pattern.</button>
+      <button class="btn" onclick="chooseRoadsideAsh()">⚱️ Ash — Accept Skuld's Debt.</button>
       <button class="btn btn-sm btn-ghost" onclick="resolveRoadside()">Keep Walking</button>
     </div>`;
+  NarrationEngine.fire('generic',MYTH_LINES.roadside,'lstatus');
   showOverlayContent(html);
 }
 
@@ -4059,15 +4131,15 @@ function showRetireConfirm(){
   const rec=G.hero.record;
   const earnedEVs=computeEarnedEVs();
   let html=`
-    <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 RETIRE HERO?</div>
-    <p style="color:var(--txt2);font-size:12px;margin-bottom:14px">End your saga at Trial ${G.wave} and add <strong style="color:var(--gold)">${rec?.name||'your hero'}</strong> to the Chosen of the Hall for future breeding.</p>
+    <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--gold);margin-bottom:8px">🏛 BIND THIS MEMORY STONE?</div>
+    <p style="color:var(--txt2);font-size:12px;margin-bottom:14px">End your saga at Trial ${G.wave} and add <strong style="color:var(--gold)">${rec?.name||'your hero'}</strong> to the Memory Stones for future memory binding.</p>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:14px;text-align:left">
       <div style="font-size:10px;color:var(--txt3);margin-bottom:5px">EARNED EVs THIS SAGA</div>
       ${EV_KEYS.map(k=>`<div class="srow"><span class="sl" style="font-size:11px">${k.toUpperCase()}_EV</span><span class="sv sdp" style="font-size:11px">+${earnedEVs[k]||0}</span></div>`).join('')}
-      <div style="margin-top:8px;font-size:11px;color:var(--gold)">+${Math.floor(G.gold*.35)+G.wave*4} Allfather's Blessing</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--gold)">+${Math.floor(G.gold*.35)+G.wave*4} Minni</div>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="btn btn-gold" style="flex:1" onclick="hideOverlay();retireHero()">🏛 Retire Now</button>
+      <button class="btn btn-gold" style="flex:1" onclick="hideOverlay();retireHero()">🏛 Bind to Minni-Höll</button>
       <button class="btn btn-sm btn-ghost" style="flex:1" onclick="hideOverlay()">⚔ Keep Fighting</button>
     </div>`;
   showOverlayContent(html);
@@ -4166,7 +4238,7 @@ window.onload=()=>{
   loadUI();
   if(typeof UI.difficulty!=='number')UI.difficulty=1;
   Object.values(META.family).forEach(h=>{if(!h.evs)h.evs=emptyEVs();});
-  // Ensure retired heroes have breeding uses; remove spent/missing from pool
+  // Ensure retired heroes have memory binding uses; remove spent/missing from pool
   Object.values(META.family).forEach(h=>{
     if(h && h.runResult && (h.runResult.outcome==='retired' || h.runResult.outcome==='victory')){
       if(typeof h.breedUsesMax!=='number' || h.breedUsesMax<=0) h.breedUsesMax=1;
@@ -4195,7 +4267,7 @@ window.onload=()=>{
 
 
 // ═══════════════════════════════════════════════════════════════
-// V5 PATCH — Aspects + Breeding Actions + Fallen Scars/Relics
+// V5 PATCH — Aspects + Memory Binding Actions + Fallen Scars/Relics
 // Naming — Generations + Blended Children
 // ═══════════════════════════════════════════════════════════════
 
@@ -4277,7 +4349,7 @@ function computeRunAspectScores(){
     if(b.rarity==='axiom') s.Axiom += 10;
     if(b.rarity==='legendary') s.Axiom += 2;
   });
-  // Genetic traits currently expressed
+  // Scars / Pattern currently expressed
   const tr = (G.hero && G.hero.traits) ? G.hero.traits : (G.hero && G.hero.record && G.hero.record.traits) ? G.hero.record.traits : [];
   (tr||[]).forEach(tk=>{
     const a = TRAIT_ASPECT[tk];
@@ -4443,9 +4515,9 @@ function addScarToken(k, n){
 
 // --- Apply trait stat effects (wrap original) ---
 (function(){
-  const _applyGeneticTraitStats = applyGeneticTraitStats;
-  applyGeneticTraitStats = function(h){
-    _applyGeneticTraitStats(h);
+  const _applyPatternTraitStats = applyPatternTraitStats;
+  applyPatternTraitStats = function(h){
+    _applyPatternTraitStats(h);
     // Scars
     if(!h || !h.traits) return;
     if(h.traits.includes('frayed_nerves')) h.spd += 12;
@@ -4562,7 +4634,7 @@ function showFallenScarChoice(heroId,salvageEarned){
       }).join('')}
     </div>
     <div style="font-size:10px;color:var(--txt3);border-top:1px solid var(--border);padding-top:8px">
-      ᚱ${salvageEarned} Rune-Shards recovered. Fallen heroes cannot breed or bequeath gear.
+      ᚱ${salvageEarned} Rune-Shards recovered. Fallen heroes cannot be bound or bequeath gear.
     </div>
   `;
   showOverlayContent(html);
@@ -4614,7 +4686,7 @@ function showRetireRelicChoice(rec,essence){
   const candidates=deriveRelicCandidates(rec);
   const html=`
     <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
-                color:var(--gold);margin-bottom:8px">🏛 SAGA SEALED</div>
+                color:var(--gold);margin-bottom:8px">🏛 MEMORY BOUND</div>
     <div style="font-size:13px;color:var(--txt2);margin-bottom:4px">
       ${rec.name} — Trial ${rec.runResult?.wave||'?'} · Lv.${rec.runResult?.level||1}
     </div>
@@ -4632,11 +4704,11 @@ function showRetireRelicChoice(rec,essence){
             <div style="font-size:9px;color:var(--amber)">RELIC +1</div>
           </div>
           <div style="font-size:10px;color:var(--txt2);margin-top:4px">${r.desc}</div>
-          <div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:3px">Usable in Splice during breeding to lock this mastery into a child.</div>
+          <div style="font-size:9px;color:var(--txt3);font-style:italic;margin-top:3px">Usable in Splice during memory binding to lock this mastery into a child.</div>
         </div>
       `).join('')}
     </div>
-    <div style="font-size:10px;color:var(--green)">+${essence} Allfather's Blessing · This hero may breed.</div>
+    <div style="font-size:10px;color:var(--green)">+${essence} Minni · This memory stone can be used in binding.</div>
   `;
   showOverlayContent(html);
 }
@@ -4647,7 +4719,7 @@ function showBequeathChoice(rec,essence){
   if(!gearSlots.length){proceedAfterBequeath(rec,essence);return;}
   const html=`
     <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--gold);margin-bottom:8px">⚒ WHAT REMAINS</div>
-    <div style="font-size:11px;color:var(--txt2);margin-bottom:14px">Choose one item to pass to your bloodline. It will be available to the next hero bred from ${rec.name}.</div>
+    <div style="font-size:11px;color:var(--txt2);margin-bottom:14px">Choose one item to pass into your Minni lattice. It will be available to the next thread bound from ${rec.name}.</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
       ${gearSlots.map(([slot,item])=>{
         const waveBonus=Math.min(3,Math.floor((rec.runResult?.wave||1)/6));
@@ -4706,7 +4778,7 @@ function acceptRelic(heroId,relicKey){
   showBequeathChoice(rec,META.legacyEssence);
 }
 
-// --- Breeding actions state ---
+// --- Memory Binding actions state ---
 let BREED_ACTION = {mode:'none', spliceKind:'relic', traitKey:null, scarKey:null};
 function resetBreedAction(){ BREED_ACTION = {mode:'none', spliceKind:'relic', traitKey:null, scarKey:null}; }
 
@@ -4757,7 +4829,7 @@ function breedingActionsHTML(){
 
   let html = `
     <div style="margin:10px 0 16px">
-      <div class="sec-title">Breeding Actions</div>
+      <div class="sec-title">Memory Binding Actions</div>
       <div class="breed-actions">
         ${btn(`🧊 Stabilize <span style="color:var(--gold);font-family:'Share Tech Mono',monospace">ᛋ${stabilizeCost()}</span>`, 'stabilize', hasEss)}
         ${btn(`⚡ Catalyze <span style="color:var(--salvage);font-family:'Share Tech Mono',monospace">ᚱ${catalyzeCost()}</span>`, 'catalyze', hasSal)}
@@ -4773,7 +4845,7 @@ function breedingActionsHTML(){
   }else if(mode==='catalyze'){
     html += `<div class="breed-subpanel">
       <div style="font-weight:800;color:var(--salvage);margin-bottom:4px">Catalyze</div>
-      <div style="font-size:11px;color:var(--txt2)">Higher EV variance and mutation chance. More likely to produce an unexpected heir.</div>
+      <div style="font-size:11px;color:var(--txt2)">Higher EV variance and mutation chance. More likely to produce an unexpected thread.</div>
     </div>`;
   }else if(mode==='splice'){
     const a = BREED_SELECTED[0], b = BREED_SELECTED[1];
@@ -4791,10 +4863,10 @@ function breedingActionsHTML(){
     `;
 
     if(BREED_ACTION.spliceKind==='relic'){
-      html += `<div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Consume <strong>1 Relic</strong> to lock a parent trait into the child (high chance).</div>
+      html += `<div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Consume <strong>1 Relic</strong> to lock a strand pattern into the new thread (high chance).</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">`;
-      if(!hasRel) html += `<div style="color:var(--txt3);font-size:11px">No Rune-Shards available.</div>`;
-      else if(!parentTraits.length) html += `<div style="color:var(--txt3);font-size:11px">Parents have no traits to lock.</div>`;
+      if(!hasRel) html += `<div style="color:var(--txt3);font-size:11px">No Relics available.</div>`;
+      else if(!parentTraits.length) html += `<div style="color:var(--txt3);font-size:11px">Primary Strand & Secondary Strand have no traits to lock.</div>`;
       else{
         html += parentTraits.map(tk=>{
           const gt = GTRAITS[tk];
@@ -4831,7 +4903,7 @@ function traitInheritBonus(tk){
   return getAspectRank(a) * 0.03; // up to +9%
 }
 
-// Override breedHeroes to accept breeding action options + naming flags
+// Override breedHeroes to accept memory binding action options + naming flags
 function breedHeroes(idA, idB, opts){
   const recA = META.family[idA], recB = META.family[idB];
   if(!recA || !recB) return null;
@@ -4926,7 +4998,7 @@ function breedHeroes(idA, idB, opts){
   const topEvK = EV_KEYS.reduce((a,b)=> (childEVs[a]||0) > (childEVs[b]||0) ? a : b);
   const evAspectMap = {hp:'Steel',def:'Steel',ls:'Venom',atk:'Execution',crit:'Execution',spd:'Gale',eva:'Gale',acc:'Execution'};
   let birthAspect = evAspectMap[topEvK] || 'Steel';
-  // If child has an Axiom boon later, that will shift; for birth we keep genetics.
+  // If child has an Axiom boon later, that will shift; for birth we keep patterns.
   if(finalTraits.some(t=>TRAIT_ASPECT[t]==='Axiom')) birthAspect = 'Axiom';
 
   const genNum = Math.max(recA.gen||0, recB.gen||0) + 1;
@@ -4948,7 +5020,7 @@ function breedHeroes(idA, idB, opts){
     normalizeMeta();
     const a = BREED_SELECTED[0], b = BREED_SELECTED[1];
     const ua = getBreedUses(META.family[a]), ub = getBreedUses(META.family[b]);
-    if(ua.left<=0||ub.left<=0){alert('One of the selected parents has no breeding uses left.');return;}
+    if(ua.left<=0||ub.left<=0){alert('One of the selected strands has no memory binding uses left.');return;}
 
     const mode = BREED_ACTION.mode;
     const opts = {mode:'none'};
@@ -4956,7 +5028,7 @@ function breedHeroes(idA, idB, opts){
     // Pay costs / consume inventory
     if(mode==='stabilize'){
       const c = stabilizeCost();
-      if((META.legacyEssence||0) < c){ alert("Not enough Allfather's Blessing for Stabilize."); return; }
+      if((META.legacyEssence||0) < c){ alert("Not enough Minni for Stabilize."); return; }
       META.legacyEssence -= c;
       opts.mode = 'stabilize';
     }else if(mode==='catalyze'){
@@ -4968,8 +5040,8 @@ function breedHeroes(idA, idB, opts){
       opts.mode = 'splice';
       opts.spliceKind = BREED_ACTION.spliceKind;
       if(BREED_ACTION.spliceKind==='relic'){
-        if((META.relics||0) <= 0){ alert('No Rune-Shards available.'); return; }
-        if(!BREED_ACTION.traitKey){ alert('Choose a parent trait to lock.'); return; }
+        if((META.relics||0) <= 0){ alert('No Relics available.'); return; }
+        if(!BREED_ACTION.traitKey){ alert('Choose a strand pattern to lock.'); return; }
         META.relics -= 1;
         opts.traitKey = BREED_ACTION.traitKey;
       }else{
@@ -5008,9 +5080,9 @@ function breedHeroes(idA, idB, opts){
       <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--violet);margin-bottom:6px">${childRec.name}</div>
       <div style="color:var(--txt3);font-size:12px;margin-bottom:18px">Generation ${childRec.gen} · ${ASPECT_ICON[childRec.birthAspect]||'✦'} ${childRec.birthAspect} lineage</div>
       <div style="display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:14px 20px;margin-bottom:18px;text-align:left;min-width:240px">
-        <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">GENETIC STATS</div>
+        <div style="font-size:10px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">SCARS / PATTERN</div>
         ${[['MaxHP',derived.maxHP],['ATK',Math.round(derived.atk)],['DEF',Math.round(derived.def)],['SPD',derived.spd],['Crit',Math.round(derived.critChance*100)+'%']].map(([l,v])=>`<div class="srow"><span class="sl" style="font-size:12px">${l}</span><span class="sv" style="font-size:12px;color:var(--green)">${v}</span></div>`).join('')}
-        ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No genetic traits inherited.</div>`}
+        ${childRec.traits.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-wrap:wrap;gap:3px">${childRec.traits.map(tk=>{const gt=GTRAITS[tk];return gt?`<span class="gtrait">${gt.icon} ${gt.name}</span>`:''}).join('')}</div>`:`<div style="margin-top:8px;color:var(--txt3);font-size:10px">No pattern traits inherited.</div>`}
         ${childRec.inheritedGear&&Object.values(childRec.inheritedGear).some(Boolean)?`<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;text-align:left"><div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px">INHERITED GEAR</div>${Object.values(childRec.inheritedGear).filter(Boolean).map(item=>`<div style="font-size:10px;color:${rarityColor(item.rarity)};margin:2px 0">⚒ ${item.name}${item.passiveBonus?`<span style="color:var(--green)"> · ${item.passiveBonus.label}</span>`:''}</div>`).join('')}</div>`:''}
       </div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
@@ -5021,14 +5093,14 @@ function breedHeroes(idA, idB, opts){
   };
 })();
 
-// Inject breeding actions UI into Breeding tab (wrap renderBreeding)
+// Inject memory binding actions UI into Memory Binding tab (wrap renderBreeding)
 (function(){
   const _renderBreeding = renderBreeding;
   renderBreeding = function(){
     const base = _renderBreeding();
     if(BREED_SELECTED.length<2) return base;
-    // Insert after the "Breeding Chamber" title
-    const needle = `⚗ Breeding Chamber</div>`;
+    // Insert after the "Memory Binding Chamber" title
+    const needle = `⚗ Memory Binding Chamber</div>`;
     if(base.includes(needle)){
       return base.replace(needle, needle + breedingActionsHTML());
     }
@@ -5065,7 +5137,7 @@ function aspectsHTML(){
       <input id="house-name-input" value="${(META.houseName||'')}" style="flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);padding:8px 10px;border-radius:6px;font-size:12px;font-family:'Share Tech Mono',monospace;outline:none">
       <button class="btn btn-sm btn-amber" onclick="setHouseNameFromInput()">Save</button>
     </div>
-    <div class="sec-title" style="margin-top:0">Bloodline Aspects</div>
+    <div class="sec-title" style="margin-top:0">Lineage Aspects</div>
     ${rows}
     <div style="font-size:10px;color:var(--txt3);margin-top:8px">Earn Aspect XP by retiring or winning. Each family develops a distinct identity over generations. (Venom aspect lore: Venom (Eitr))</div>
   </div>`;
@@ -5141,10 +5213,10 @@ function showOpeningNarrative(){
   saveMeta();
 
   const lines=[
-    'The World Tree is sick.',
-    'Something moves in the roots. The branches thin. The realms that hang from Yggdrasil grow colder, stranger, more dangerous — as though something beneath is feeding.',
-    'The Allfather has no answer yet. Only a belief: that the right bloodline, shaped across enough trials, might reach the source.',
-    'You are not the hero. You are the line itself — the thread that persists when each champion falls. You choose who carries it next. You decide what each saga leaves behind.',
+    'Urðr, Verðandi, and Skuld keep a fixed tapestry: what was, what is, what must be.',
+    'I am the unnamed Fourth Norn — dvergar smith, rune-carver, and weaver of what may be. Unsanctioned. Uninvited. Still working.',
+    "I do not own fate. I temper Minni, bind memory to memory, and test alternate branches inside each generation's twelve Trials.",
+    "At the deepest root, Skuld stands as Debt: future as iron constraint. Reach Ragnarök Tier 15, hold Níðhöggr, and carve the Rune of What May Be into the world's source code.",
   ];
 
   const lineHTML=lines.map((l,i)=>`
@@ -5250,7 +5322,7 @@ function showStartScreen(){
     html+=`
       <div style="background:rgba(64,224,120,.06);border:1px solid rgba(64,224,120,.2);
                   border-radius:5px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--txt2)">
-        🏛 ${retiredCount} hero${retiredCount!==1?'es':''} await in the Hall. The thread grows stronger.
+        🏛 ${retiredCount} hero${retiredCount!==1?'es':''} await in Minni-Höll. The lattice grows stronger.
       </div>
     `;
   }
@@ -5259,7 +5331,7 @@ function showStartScreen(){
     html+=`
       <div style="margin-bottom:14px">
         <div style="font-size:10px;color:var(--txt3);letter-spacing:1px;text-transform:uppercase;
-                    margin-bottom:6px">Root Depth — Choose how deep</div>
+                    margin-bottom:6px">Ragnarök Decay — Choose world depth</div>
         <div style="display:flex;align-items:center;gap:10px">
           <button class="btn btn-sm btn-ghost" onclick="adjustRagnarökActive(-1)"
                   ${activeTier<=0?'disabled style="opacity:.4"':''}>◀</button>
@@ -5300,7 +5372,7 @@ function showStartScreen(){
       <button class="btn btn-primary" style="flex:2;min-width:180px;padding:11px"
               onclick="startNewRunFromOverlay()">▶ Begin New Saga</button>
       <button class="btn btn-gold" style="flex:1;min-width:120px;padding:11px"
-              onclick="hideOverlay();showLegacy()">ᛟ Hero Hall</button>
+              onclick="hideOverlay();showLegacy()">ᛟ Minni-Höll</button>
     </div>
   `;
 
@@ -5399,7 +5471,7 @@ window.onload = ()=>{
 };
 
 
-// --- V5: Breeding-use calculation considers Catalyze + Gale Aspect ---
+// --- V5: Memory Binding-use calculation considers Catalyze + Gale Aspect ---
 function calcBreedUsesForRetire(rec){
   normalizeMeta();
   const n = (META.upgrades && META.upgrades.nursery) ? META.upgrades.nursery : 0;
