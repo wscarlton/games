@@ -175,6 +175,11 @@ body{
   display:flex;align-items:flex-start;gap:10px;
 }
 .enemy-card.ec-elite{border-color:var(--amber2);background:#141008;}
+.enemy-card.ec-root-touched {
+  border-color: #4a1a6a;
+  background: #0e0818;
+  box-shadow: 0 0 8px rgba(100, 20, 140, 0.3);
+}
 .eicon{width:38px;height:38px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
 .einfo{flex:1;min-width:0;}
 .ename{font-weight:700;font-size:13px;}
@@ -710,19 +715,154 @@ const BOONS=[
 ];
 
 // ═══ ENEMY ARCHETYPES ═══
-const ARCHETYPES=[
-  {id:'bruiser',name:'Bruiser',icon:'💪',col:'#a03020',base:{hp:80,atk:14,def:8,spd:40,cc:.05,cd:1.5},scl:{hp:28,atk:5,def:3,spd:2},trait:'Relentless',td:'Immune to Slow.',beh:'steady'},
-  {id:'striker',name:'Striker',icon:'⚡',col:'#806010',base:{hp:48,atk:16,def:4,spd:70,cc:.22,cd:2.0},scl:{hp:12,atk:6,def:1,spd:5},trait:'Keen Edge',td:'+25% Crit Chance.',beh:'fast'},
-  {id:'tank',name:'Tank',icon:'🛡',col:'#305080',base:{hp:120,atk:10,def:22,spd:25,cc:.03,cd:1.5},scl:{hp:38,atk:3,def:5,spd:1},trait:'Iron Will',td:'First hit against it is negated.',beh:'steady'},
-  {id:'shaman',name:'Shaman',icon:'🔮',col:'#702080',base:{hp:58,atk:12,def:6,spd:45,cc:.08,cd:1.5},scl:{hp:15,atk:4,def:2,spd:2},trait:'Hex',td:'Every 3rd attack applies Weak.',beh:'caster'},
-  {id:'swarm',name:'Swarm',icon:'🐜',col:'#406020',base:{hp:20,atk:8,def:2,spd:62,cc:.05,cd:1.5},scl:{hp:6,atk:3,def:1,spd:3},trait:'Swarming',td:'Spawns in groups of 3.',beh:'fast'},
-  {id:'assassin',name:'Assassin',icon:'🗡',col:'#301840',base:{hp:38,atk:22,def:3,spd:58,cc:.28,cd:2.2},scl:{hp:10,atk:8,def:1,spd:4},trait:'Ambush',td:'First attack deals 2× damage.',beh:'burst'},
-  {id:'leech',name:'Leech',icon:'🧛',col:'#402040',base:{hp:64,atk:13,def:5,spd:42,cc:.08,cd:1.5},scl:{hp:18,atk:4,def:2,spd:2},trait:'Vampiric',td:'Heals 30% of damage dealt.',beh:'sustain',ls:.30},
-  {id:'bombardier',name:'Bombardier',icon:'💣',col:'#6a4000',base:{hp:68,atk:30,def:10,spd:20,cc:.10,cd:2.0},scl:{hp:20,atk:10,def:3,spd:1},trait:'Overcharge',td:'Every 3rd attack deals 2× damage.',beh:'slow'},
-
-  {id:'archer',name:'Archer',icon:'🏹',col:'#305a6a',base:{hp:44,atk:15,def:3,spd:62,cc:.16,cd:1.8},scl:{hp:14,atk:5,def:1,spd:3},trait:'Piercing Shot',td:'Every 4th attack ignores most Defense.',beh:'fast'},
-  {id:'warden',name:'Warden',icon:'🧿',col:'#5a4a10',base:{hp:76,atk:11,def:12,spd:34,cc:.05,cd:1.6},scl:{hp:22,atk:3,def:3,spd:1},trait:'Banner',td:'Battle start: grants Shield to allies.',beh:'steady'},
-  {id:'frost',name:'Frostbinder',icon:'❄️',col:'#204070',base:{hp:58,atk:12,def:6,spd:44,cc:.08,cd:1.6},scl:{hp:16,atk:4,def:2,spd:2},trait:'Frostbite',td:'Every 3rd attack applies Slow.',beh:'caster'},
+const ARCHETYPES = [
+  // ── MIDGARD TIER (Trials 1–3) ─────────────────────────────────
+  {
+    id: 'bruiser',
+    displayName: 'Wolf-Warrior',
+    norseName: 'Úlfheðinn',
+    realmTier: 'midgard',
+    icon: '🐺', col: '#a03020',
+    base: { hp:80, atk:14, def:8, spd:40, cc:.05, cd:1.5 },
+    scl:  { hp:28, atk:5,  def:3, spd:2  },
+    trait: 'Wolf-Rage',
+    td: 'Immune to Slow. Enrages below 35% HP (+5 ATK).',
+    beh: 'steady',
+    tier2Behavior: 'enrageOnLowHP', tier2Threshold: 0.35, tier2BonusAtk: 5,
+  },
+  {
+    id: 'striker',
+    displayName: 'Keen Scout',
+    norseName: 'Stormfarer',
+    realmTier: 'midgard',
+    icon: '⚡', col: '#806010',
+    base: { hp:48, atk:16, def:4, spd:70, cc:.22, cd:2.0 },
+    scl:  { hp:12, atk:6,  def:1, spd:5  },
+    trait: 'Keen Edge',
+    td: '+25% Crit Chance.',
+    beh: 'fast',
+    tier2Behavior: 'dodgeAfterCrit', tier2DodgeChance: 0.10,
+  },
+  {
+    id: 'tank',
+    displayName: 'Veteran Shield',
+    norseName: 'Einherjar',
+    realmTier: 'midgard',
+    icon: '🛡', col: '#305080',
+    base: { hp:120, atk:10, def:22, spd:25, cc:.03, cd:1.5 },
+    scl:  { hp:38,  atk:3,  def:5,  spd:1  },
+    trait: 'Iron Will',
+    td: 'First hit negated. Regains 2% HP on first attack (Tier 2+).',
+    beh: 'steady',
+    tier2Behavior: 'regenOnFirstAttack', tier2RegenPct: 0.02,
+  },
+  {
+    id: 'archer',
+    displayName: 'Runic Archer',
+    norseName: "Ullr's Chosen",
+    realmTier: 'midgard',
+    icon: '🏹', col: '#305a6a',
+    base: { hp:44, atk:15, def:3, spd:62, cc:.16, cd:1.8 },
+    scl:  { hp:14, atk:5,  def:1, spd:3  },
+    trait: 'Piercing Shot',
+    td: 'Every 4th attack ignores most Defense. Crits may expose Vulnerable.',
+    beh: 'fast',
+    tier2Behavior: 'exposeCritVuln', tier2ExposeChance: 0.35,
+  },
+  // ── NIFLHEIM / HELHEIM TIER (Trials 4–6) ──────────────────────
+  {
+    id: 'swarm',
+    displayName: 'Risen Dead',
+    norseName: 'Draugr Pack',
+    realmTier: 'niflheim',
+    icon: '💀', col: '#406020',
+    base: { hp:20, atk:8, def:2, spd:62, cc:.05, cd:1.5 },
+    scl:  { hp:6,  atk:3, def:1, spd:3  },
+    trait: 'Swarming Dead',
+    td: 'Spawns in groups of 3. At Ragnarök Tier 4+, slain members may rise once.',
+    beh: 'fast',
+    tier2Behavior: null,
+  },
+  {
+    id: 'shaman',
+    displayName: 'Curse-Weaver',
+    norseName: 'Völva',
+    realmTier: 'niflheim',
+    icon: '🔮', col: '#702080',
+    base: { hp:58, atk:12, def:6, spd:45, cc:.08, cd:1.5 },
+    scl:  { hp:15, atk:4,  def:2, spd:2  },
+    trait: 'Curse-Weaving',
+    td: 'Every 3rd attack applies Weak. First attack also applies Weak (Tier 2+).',
+    beh: 'caster',
+    tier2Behavior: 'weakOnFirstAttack',
+  },
+  {
+    id: 'leech',
+    displayName: 'Blood-Mage',
+    norseName: 'Galdramaðr',
+    realmTier: 'helheim',
+    icon: '🩸', col: '#402040',
+    base: { hp:64, atk:13, def:5, spd:42, cc:.08, cd:1.5 },
+    scl:  { hp:18, atk:4,  def:2, spd:2  },
+    trait: 'Life-Drain',
+    td: 'Heals 30% of damage dealt.',
+    beh: 'sustain', ls: .30,
+    tier2Behavior: null,
+  },
+  {
+    id: 'warden',
+    displayName: 'Hel-Chieftain',
+    norseName: 'Hersir',
+    realmTier: 'helheim',
+    icon: '🧿', col: '#5a4a10',
+    base: { hp:76, atk:11, def:12, spd:34, cc:.05, cd:1.6 },
+    scl:  { hp:22, atk:3,  def:3,  spd:1  },
+    trait: 'Death-Banner',
+    td: 'Battle start: grants Shield to allies. Every 4th attack applies Weak.',
+    beh: 'steady',
+    tier2Behavior: null,
+  },
+  // ── JOTUNHEIM TIER (Trials 7–9) ───────────────────────────────
+  {
+    id: 'assassin',
+    displayName: 'Shadow-Stalker',
+    norseName: 'Níðing',
+    realmTier: 'jotunheim',
+    icon: '🗡', col: '#301840',
+    base: { hp:38, atk:22, def:3, spd:58, cc:.28, cd:2.2 },
+    scl:  { hp:10, atk:8,  def:1, spd:4  },
+    trait: 'Dishonored Strike',
+    td: 'First attack deals 2× damage.',
+    beh: 'burst',
+    tier2Behavior: 'dodgeAfterCrit', tier2DodgeChance: 0.15,
+  },
+  {
+    id: 'frost',
+    displayName: 'Ice-Binder',
+    norseName: 'Ísalfr',
+    realmTier: 'jotunheim',
+    icon: '❄️', col: '#204070',
+    base: { hp:58, atk:12, def:6, spd:44, cc:.08, cd:1.6 },
+    scl:  { hp:16, atk:4,  def:2, spd:2  },
+    trait: 'Frostbite',
+    td: 'Every 3rd attack applies Slow. Crits may Stun.',
+    beh: 'caster',
+    tier2Behavior: null,
+  },
+  // ── MUSPELHEIM TIER (Trials 10–11) ────────────────────────────
+  {
+    id: 'bombardier',
+    displayName: 'Rune-Smith',
+    norseName: 'Dvergar Engineer',
+    realmTier: 'muspelheim',
+    icon: '💣', col: '#6a4000',
+    base: { hp:68, atk:30, def:10, spd:20, cc:.10, cd:2.0 },
+    scl:  { hp:20, atk:10, def:3,  spd:1  },
+    trait: 'Runic Overcharge',
+    td: 'Every 3rd attack deals 2× damage.',
+    beh: 'slow',
+    tier2Behavior: null,
+  },
 ];
 
 // ═══ WAVE TRAITS ═══
@@ -1096,13 +1236,25 @@ function mkEnemy(arch,wave,boss){
   const def=Math.max(0,Math.floor((b.def+s.def*w)*mult));
   const spdMult=0.6+0.4*mult;const spd=Math.max(5,Math.floor((b.spd+s.spd*w)*spdMult));
 
-  return{id:arch.id+'_'+ri(1000,9999),archId:arch.id,name:arch.name,icon:arch.icon,col:arch.col,
+  return{id:arch.id+'_'+ri(1000,9999),archId:arch.id,
+    // Layer 1: plain English name used in all combat references
+    displayName:arch.displayName||arch.name||arch.id,
+    // Layer 2: Norse name shown in trait line only
+    norseName:arch.norseName||null,
+    // Keep name for backward-compat with log references
+    name:arch.displayName||arch.name||arch.id,
+    realmTier:arch.realmTier||'midgard',
+    icon:arch.icon,col:arch.col,
     hp,maxHP:hp,atk,def,spd,
     cc:arch.id==='striker'?Math.min(.7,b.cc+.25+.003*w):b.cc,cd:b.cd,
     lifesteal:arch.ls||0,trait:arch.trait,td:arch.td,beh:arch.beh,
     statuses:{},actionMeter:rng()*.5,
     _firstAtkDone:false,_hexCtr:0,_chargeCtr:0,_tankGuard:true,
-    elite:boss||false,dead:false};
+    _tier2Done:false,
+    elite:boss||false,dead:false,
+    rootTouched:false,
+    namedElite:false,
+    signature:null};
 }
 function addShieldToUnit(unit,amt){
   if(!unit.statuses.shield)unit.statuses.shield={stacks:1,value:0,dur:9999};
@@ -1445,7 +1597,30 @@ function doHeroAtk(){
 
 function doEnemyAtk(enemy){
   const h=G.hero,ev=effectiveStats().evasion;
-  if(rng()<ev){addLog(`  💃 Dodged ${enemy.name}!`,'lmiss');trigBoon('onDodge',h,enemy);return;}
+  const pendingDodge=enemy._tier2DodgePending||0;
+  enemy._tier2DodgePending=0; // consume immediately
+  if(rng()<ev+pendingDodge){
+    addLog(`  💃 Dodged ${enemy.displayName||enemy.name}!`,'lmiss');
+    trigBoon('onDodge',h,enemy);
+    return;
+  }
+
+  // ── TIER 2 BEHAVIORS (active when G.tierFlags.archetypeBehaviors is true) ──
+  const tier2Active=!!(G.tierFlags&&G.tierFlags.archetypeBehaviors);
+  const arch=ARCHETYPES.find(a=>a.id===enemy.archId);
+  if(tier2Active&&arch&&arch.tier2Behavior){
+    if(arch.tier2Behavior==='regenOnFirstAttack'&&!enemy._tier2Done){
+      enemy._tier2Done=true;
+      const heal=Math.floor(enemy.maxHP*(arch.tier2RegenPct||0));
+      enemy.hp=Math.min(enemy.maxHP,enemy.hp+heal);
+      addLog(`  ⚙ ${enemy.displayName||enemy.name} Iron Regen: +${heal} HP`,'lstatus');
+    }
+    if(arch.tier2Behavior==='weakOnFirstAttack'&&!enemy._tier2Done){
+      enemy._tier2Done=true;
+      applyStatus(h,'weak',1,3);
+      addLog(`  🔮 ${enemy.displayName||enemy.name} Hex — first strike! Weak applied.`,'lstatus');
+    }
+  }
 
   let dmg=enemy.atk;
   let crit=rng()<(enemy.cc||.05);
@@ -1453,35 +1628,49 @@ function doEnemyAtk(enemy){
   // New archetype abilities
   if(enemy.archId==='archer'){
     enemy._pierceCtr=(enemy._pierceCtr||0)+1;
-    enemy._pierce = (enemy._pierceCtr%4===0);
+    enemy._pierce=(enemy._pierceCtr%4===0);
     if(enemy._pierce) addLog(`  🏹 Piercing Shot!`,'lstatus');
-    if(crit && rng()<0.35){applyStatus(h,'vulnerable',1,3);addLog(`  🎯 Exposed! Vulnerable`,'lstatus');}
   }
   if(enemy.archId==='frost'){
     enemy._frostCtr=(enemy._frostCtr||0)+1;
     if(enemy._frostCtr%3===0){applyStatus(h,'slow',1,3);addLog(`  ❄️ Frostbite! Slow`,'lstatus');}
-    if(crit && rng()<0.15){applyStatus(h,'stun',1,1);addLog(`  💫 Frozen! Stun`,'lstatus');}
+    if(crit&&rng()<0.15){applyStatus(h,'stun',1,1);addLog(`  💫 Frozen! Stun`,'lstatus');}
   }
   if(enemy.archId==='warden'){
     enemy._bannerCtr=(enemy._bannerCtr||0)+1;
     if(enemy._bannerCtr%4===0){applyStatus(h,'weak',1,3);addLog(`  🧿 Suppressed! Weak`,'lstatus');}
   }
 
-
-  if(enemy.beh==='burst'&&!enemy._firstAtkDone){enemy._firstAtkDone=true;dmg*=2;addLog(`  🗡 AMBUSH! ${enemy.name}!`,'lcrit');}
-  if(enemy.archId==='bombardier'){enemy._chargeCtr++;if(enemy._chargeCtr%3===0){dmg*=2;addLog(`  💣 OVERCHARGE! ${enemy.name}!`,'lcrit');}}
+  if(enemy.beh==='burst'&&!enemy._firstAtkDone){enemy._firstAtkDone=true;dmg*=2;addLog(`  🗡 AMBUSH! ${enemy.displayName||enemy.name}!`,'lcrit');}
+  if(enemy.archId==='bombardier'){enemy._chargeCtr++;if(enemy._chargeCtr%3===0){dmg*=2;addLog(`  💣 OVERCHARGE! ${enemy.displayName||enemy.name}!`,'lcrit');}}
   if(enemy.archId==='shaman'){enemy._hexCtr++;if(enemy._hexCtr%3===0){applyStatus(h,'weak',1,4);addLog(`  🔮 Hex! Weak on hero`,'lstatus');}}
+
+  if(tier2Active&&arch&&arch.tier2Behavior==='enrageOnLowHP'){
+    if(enemy.hp<enemy.maxHP*(arch.tier2Threshold||0.35)&&!enemy._tier2Enraged){
+      enemy._tier2Enraged=true;
+      enemy.atk+=arch.tier2BonusAtk||5;
+      addLog(`  🐺 ${enemy.displayName||enemy.name} Wolf-Rage! +${arch.tier2BonusAtk||5} ATK`,'lcrit');
+    }
+  }
 
   if(crit)dmg=Math.floor(dmg*(enemy.cd||1.5));
 
-  const heroDef = (enemy.archId==='archer' && enemy._pierce) ? Math.floor(h.def*0.2) : h.def;
+  const heroDef=(enemy.archId==='archer'&&enemy._pierce)?Math.floor(h.def*0.2):h.def;
   const reduced=Math.max(1,Math.floor(dmg)-heroDef);
   const actual=heroDmg(reduced,enemy,'attack');
 
-  if(crit)addLog(`  💥 ${enemy.name} CRITS! ${actual}`,'lcrit');
-  else addLog(`  👊 ${enemy.name} hits ${actual}`,'lhit');
+  if(crit)addLog(`  💥 ${enemy.displayName||enemy.name} CRITS! ${actual}`,'lcrit');
+  else addLog(`  👊 ${enemy.displayName||enemy.name} hits ${actual}`,'lhit');
 
   if(enemy.lifesteal>0)enemy.hp=Math.min(enemy.maxHP,enemy.hp+Math.floor(actual*enemy.lifesteal));
+
+  if(crit&&tier2Active&&arch&&arch.tier2Behavior==='dodgeAfterCrit'&&arch.tier2DodgeChance){
+    enemy._tier2DodgePending=arch.tier2DodgeChance;
+  }
+  if(crit&&tier2Active&&arch&&arch.tier2Behavior==='exposeCritVuln'&&arch.tier2ExposeChance&&rng()<arch.tier2ExposeChance){
+    applyStatus(h,'vulnerable',1,3);
+    addLog(`  🎯 ${enemy.displayName||enemy.name} exposes weakness! Vulnerable`,'lstatus');
+  }
 
   if(G.waveFlags.eEcho&&rng()<.25){
     const e2=Math.max(1,Math.floor(enemy.atk*.55)-h.def);
@@ -1987,12 +2176,17 @@ function renderWavePreview(){
 
   h+=`<div class="sec-title">Enemy Lineup (${G.enemies.length} units)</div>`;
   G.enemies.forEach(e=>{
-    h+=`<div class="enemy-card${e.elite?' ec-elite':''}">
+    const rootBorder=e.rootTouched?'border-color:#4a1a6a;background:#0e0818;box-shadow:0 0 8px rgba(100,20,140,.3)':'';
+    h+=`<div class="enemy-card${e.elite?' ec-elite':''}" style="${rootBorder}">
       <div class="eicon" style="background:${e.col}22;border:1px solid ${e.col}55">${e.icon}</div>
       <div class="einfo">
-        <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.name}</div>
-        <div class="etrait">◈ ${e.trait}: ${e.td}</div>
+        <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">
+          ${e.displayName||e.name}
+          ${e.namedElite?'<span style="font-size:9px;color:var(--amber);margin-left:6px;font-style:italic">— A familiar name returns.</span>':''}
+        </div>
+        <div class="etrait">◈ ${e.norseName?`<em style="color:var(--txt3)">${e.norseName}</em> — `:''}${e.trait}: ${e.td}</div>
         <div class="estats">HP:${e.hp} ATK:${e.atk} DEF:${e.def} SPD:${e.spd}</div>
+        ${e.signature?`<div style="font-size:10px;color:var(--amber);margin-top:3px;border-top:1px solid rgba(240,168,40,.2);padding-top:3px">⭐ ${e.signature.name}: ${e.signature.desc}</div>`:''}
       </div>
     </div>`;
   });
@@ -2010,11 +2204,11 @@ function renderBattle(){
   alive.forEach(e=>{
     const hp=Math.max(0,e.hp/e.maxHP*100),shv=e.statuses.shield,shpct=shv?Math.min(100-hp,shv.value/e.maxHP*100):0;
     const sbs=Object.entries(e.statuses).filter(([k])=>e.statuses[k]&&k!=='shield'&&e.statuses[k].stacks>0);
-    h+=`<div class="enemy-card${e.elite?' ec-elite':''}">
+    h+=`<div class="enemy-card${e.elite?' ec-elite':''}${e.rootTouched?' ec-root-touched':''}">
       <div class="eicon" style="background:${e.col}22;border:1px solid ${e.col}55">${e.icon}</div>
       <div class="einfo">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.name}</div>
+          <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.displayName||e.name}</div>
           <div style="font-size:10px;color:var(--txt3);font-family:'Share Tech Mono',monospace">${e.hp}/${e.maxHP}${shv?' 🛡'+shv.value:''}</div>
         </div>
         <div class="ehpbar" style="position:relative">
