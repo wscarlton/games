@@ -553,6 +553,7 @@ body{
       <div class="ltab" id="ltab-fallen" onclick="setLegacyTab('fallen')">Fallen Saga</div>
       <div class="ltab" id="ltab-tree" onclick="setLegacyTab('tree')">Family Tree</div>
       <div class="ltab" id="ltab-upgrades" onclick="setLegacyTab('upgrades')">Runesmith</div>
+      <div class="ltab" id="ltab-codex" onclick="setLegacyTab('codex')">📖 Codex</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:14px;align-items:center;font-size:12px;font-family:'Share Tech Mono',monospace">
       <span style="color:var(--gold)">ᛋ <span id="leg-essence">0</span> Essence</span>
@@ -921,6 +922,7 @@ const NarrationEngine = {
     this.critCount = 0;
     this.killCount = 0;
     this._narratedNearDeath = false;
+    if(G)G._narratedNearDeath=false;
   },
 
   canFire(category) {
@@ -962,6 +964,7 @@ const NarrationEngine = {
   onNearDeath() {
     if (this._narratedNearDeath) return;
     this._narratedNearDeath = true;
+    if(G)G._narratedNearDeath=true;
     this.fire('nearDeath', MYTH_LINES.nearDeath, 'lstatus');
   },
 
@@ -1263,6 +1266,7 @@ let META={
   relics:0,
   hasSeenOpening:false,
   houseName:null,
+  codexUnlocked:['yggdrasil','allfather','valhalla','saga','rune','norns'],
 };
 
 function saveMeta(){
@@ -1281,6 +1285,7 @@ function loadMeta(){
     if(!META.eliteRoster||typeof META.eliteRoster!=='object')META.eliteRoster={};
     if(typeof META.relics!=='number')META.relics=0;
     if(typeof META.hasSeenOpening!=='boolean')META.hasSeenOpening=false;
+    if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
   }catch(e){}
 }
 function exportSave(){
@@ -1746,6 +1751,16 @@ function buildEnemies(wave){
       }
     }
   }
+  exp.forEach(e=>{
+    if(e.elite&&!e.namedElite){
+      const namedEntry=checkForNamedEliteReturn(e.archId);
+      if(namedEntry){
+        e.namedElite=true;
+        e.displayName=namedEntry.name;
+        e.name=namedEntry.name;
+      }
+    }
+  });
   return exp.slice(0,8);
 }
 function mkEnemy(arch,wave,boss){
@@ -2110,7 +2125,7 @@ function startBattle(){
   applyEnemyStartTraits();
   applyBattleStartTactics();
   if(G.waveFlags.heroStartVuln){applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');}
-  G.phase='BATTLE';G.tick=0;G.statusTick=0;
+  G.phase='BATTLE';G.tick=0;G.statusTick=0;G._critLandedThisWave=false;G._narratedNearDeath=false;
   addLog(`⚔ Trial ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
 
   // Narration: wave start line
@@ -2144,8 +2159,18 @@ function combatTick(){
       const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
       healHero(Math.floor(G.hero.maxHP*ren*(1+regenBonus)),'regen');
     }
-    const ges=effectiveStats();
-    if(ges._gearRegenPct)healHero(Math.floor(G.hero.maxHP*ges._gearRegenPct),'regen');
+    if(G.hero.gear){
+      Object.values(G.hero.gear).forEach(item=>{
+        if(!item)return;
+        getGearEffectiveAffixes(item).forEach(affix=>{
+          if(affix.stat==='regenPct'&&typeof affix.value==='number'){
+            const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
+            const healAmt=Math.floor(G.hero.maxHP*affix.effectiveValue*(1+regenBonus));
+            if(healAmt>0)healHero(healAmt,'gear-regen');
+          }
+        });
+      });
+    }
   }
   if(checkEnd())return;
 
@@ -2212,6 +2237,7 @@ function doHeroAtk(){
   }
 
   if(crit){
+    G._critLandedThisWave=true;
     addLog(`  ⚔ CRIT! ${target.displayName||target.name} ← ${actual}`,'lcrit');
     NarrationEngine.onCrit();
   } else addLog(`  ⚔ ${target.displayName||target.name} ← ${actual}`,'lhit');
@@ -2347,6 +2373,14 @@ function doEnemyAtk(enemy){
   if(enemy.signature&&typeof enemy.signature.apply==='function'){
     enemy.signature.apply(enemy,G.hero);
   }
+  if(G.tierFlags&&G.tierFlags.eliteSecondPhase&&enemy.elite&&!enemy._secondPhaseActivated){
+    if(enemy.hp<enemy.maxHP*0.40){
+      enemy._secondPhaseActivated=true;
+      enemy.atk=Math.floor(enemy.atk*1.20);
+      enemy.spd=Math.floor(enemy.spd*1.15);
+      addLog(`  ⭐ ${enemy.displayName||enemy.name} — SECOND WIND! +20% ATK, +15% SPD!`,'lcrit');
+    }
+  }
 }
 
 function onKill(enemy){
@@ -2456,6 +2490,11 @@ function checkEnd(){
     G.activeTactic=null;G.waveGoldMult=1;
     checkLevelUp();
     G.rerollCost=10;
+    G.enemies.filter(e=>e.elite).forEach(e=>{
+      const heroSurvived=G.hero.hp>0;
+      recordEliteEncounter(e.archId,heroSurvived,G._narratedNearDeath||false,G._critLandedThisWave||false);
+    });
+    G._critLandedThisWave=false;
     genDraft();
     const waveEndLine=MYTH_LINES.waveEnd[G.wave];
     if(waveEndLine) NarrationEngine.fire('waveEnd',waveEndLine,'lstatus');
@@ -2744,6 +2783,7 @@ function updateMetaHeader(){
   const el2=document.getElementById('leg-salvage');if(el2)el2.textContent=META.salvage;
   const el3=document.getElementById('leg-relics');if(el3)el3.textContent=META.relics||0;
   const hs=document.getElementById('hdr-salvage');if(hs)hs.textContent=META.salvage;
+  checkCodexUnlocks();
   updateRootDepthHeader();
 }
 
@@ -3153,7 +3193,7 @@ function hideLegacy(){
 }
 function setLegacyTab(tab){
   currentLegacyTab=tab;
-  ['pool','breed','fallen','tree','upgrades'].forEach(t=>{
+  ['pool','breed','fallen','tree','upgrades','codex'].forEach(t=>{
     document.getElementById('ltab-'+t).className='ltab'+(t===tab?' active':'');
   });
   const lc=document.getElementById('legacy-content');
@@ -3162,6 +3202,7 @@ function setLegacyTab(tab){
   else if(tab==='fallen')lc.innerHTML=renderFallenLedger();
   else if(tab==='tree')renderFamilyTree();
   else if(tab==='upgrades')lc.innerHTML=renderRunesmith();
+  else if(tab==='codex')lc.innerHTML=codexHTML();
 }
 
 // ─── RETIRED POOL ─────────────────────────────────────────────────────────────
@@ -3406,6 +3447,56 @@ function renderFallenLedger(){
   return h;
 }
 
+const ELITE_NAME_PREFIXES={
+  midgard:['Ulf','Bjorn','Sigr','Hrafn','Dag','Leif','Tor'],
+  niflheim:['Grym','Skoll','Hati','Mist','Yng','Hvel'],
+  jotunheim:['Thrym','Ymir','Berg','Sten','Fjord','Hymir'],
+  muspelheim:['Brand','Eldr','Askr','Surla','Logi'],
+  helheim:['Nál','Garm','Hod','Vánr'],
+};
+const ELITE_EPITHETS_BY_OUTCOME={
+  barely:['the Unbroken','the Relentless','the Patient','the Stubborn'],
+  crit:['the Exposed','the Unlucky','the Keen'],
+  easy:['the Persistent','the Wary','the Watchful'],
+  default:['the Remembered','the Scarred','the Returned','the Enduring'],
+};
+function generateEliteName(archId,lastOutcome){
+  const arch=ARCHETYPES.find(a=>a.id===archId);
+  const realm=arch?.realmTier||'midgard';
+  const prefixPool=ELITE_NAME_PREFIXES[realm]||ELITE_NAME_PREFIXES.midgard;
+  const prefix=rpick(prefixPool);
+  const epithets=ELITE_EPITHETS_BY_OUTCOME[lastOutcome]||ELITE_EPITHETS_BY_OUTCOME.default;
+  const epithet=rpick(epithets);
+  return `${prefix} ${epithet}`;
+}
+function recordEliteEncounter(archId,playerSurvived,wasNearDeath,critLanded){
+  normalizeMeta();
+  if(!META.eliteRoster[archId]){
+    META.eliteRoster[archId]={name:generateEliteName(archId,'default'),survivedByPlayer:false,encounterCount:0,lastOutcome:'default'};
+  }
+  const entry=META.eliteRoster[archId];
+  entry.encounterCount++;
+  if(playerSurvived){
+    entry.survivedByPlayer=true;
+    let outcome='easy';
+    if(wasNearDeath)outcome='barely';
+    else if(critLanded)outcome='crit';
+    entry.lastOutcome=outcome;
+    entry.name=generateEliteName(archId,outcome);
+  }
+  saveMeta();
+}
+function checkForNamedEliteReturn(archId){
+  const ragnarökTier=META.ragnarökActive||0;
+  if(ragnarökTier<10)return null;
+  if(!G.tierFlags||!G.tierFlags.namedElitesActive)return null;
+  const entry=META.eliteRoster[archId];
+  if(!entry||!entry.survivedByPlayer)return null;
+  const chance=0.12+(ragnarökTier>=10?0.08:0);
+  if(rng()>chance)return null;
+  return entry;
+}
+
 // ─── FAMILY TREE ──────────────────────────────────────────────────────────────
 function renderFamilyTree(){
   const lc=document.getElementById('legacy-content');
@@ -3510,6 +3601,7 @@ function generateSagaPage(rec) {
   }
 
   const tierNote = rec.ragnarökStamp ? `Root Depth ${rec.ragnarökStamp} witnessed.` : '';
+  const relicNote = rec.relicType ? `Mastery sealed as ${rec.relicType.replace('relic_','').replace(/_/g,' ')}.` : '';
 
   const outcomePhrase = {
     'retired': `Chose to seal the saga at Trial ${wave}.`,
@@ -3523,7 +3615,7 @@ function generateSagaPage(rec) {
     axiomCount > 0 ? `${axiomCount} Rune Law${axiomCount > 1 ? 's' : ''} learned.` : null,
     topTrait  ? `Blood of ${topTrait}.`                 : null,
     gearNote  || null,
-    harvestNote || null,
+    relicNote || harvestNote || null,
     tierNote  || null,
   ].filter(Boolean);
 
@@ -3591,6 +3683,51 @@ function showHeroDetail(id){
       </div>
     `:''}
   </div>`;
+}
+
+const CODEX_ENTRIES=[
+  {id:'yggdrasil',term:'Yggdrasil',subtitle:'The World Tree',body:'The great ash tree at the center of Norse cosmology, connecting the Nine Realms. Its roots reach into Niflheim, Jotunheim, and the realm of the dead. Its branches hold Ásgarðr above and touch the outer void. The tree is alive — and currently dying.',unlockedBy:'always'},
+  {id:'allfather',term:'Allfather',subtitle:'Odin — God of Wisdom, War, and Sacrifice',body:'The Allfather sacrificed one eye for wisdom, hung nine days on Yggdrasil to learn the runes, and sends the Valkyries to choose the worthy dead. He does not offer trials without reason. Whether his reason serves the tree or only himself is a question the sagas never answer cleanly.',unlockedBy:'always'},
+  {id:'valhalla',term:'Valhalla',subtitle:"The Allfather's Hall of the Chosen Slain",body:"Warriors chosen by the Valkyries feast and fight in Valhalla, dying each day and rising whole each morning. They train for Ragnarök. Whether your bloodline's fallen reach Valhalla or are taken by the root is not yet known.",unlockedBy:'always'},
+  {id:'saga',term:'Saga',subtitle:'A life worth recording',body:'In the Norse tradition, a saga is a prose narrative of heroic deeds — something worthy of being written down and remembered. Your runs are sagas. Not all are long. All are recorded.',unlockedBy:'always'},
+  {id:'rune',term:'Rune',subtitle:'A letter, a mystery, a power',body:'The Elder Futhark runes are simultaneously an alphabet, a set of cosmological forces, and a magical system. Odin learned them through sacrifice. The runes that appear throughout the trials are not decorative — they are the alphabet of fate itself.',unlockedBy:'always'},
+  {id:'norns',term:'The Norns',subtitle:'Urðr, Verðandi, Skuld — Past, Present, Future',body:'The three Norns sit at the base of Yggdrasil and weave the fate of gods and mortals alike. Urðr (What Was) spins the thread. Verðandi (What Is) measures it. Skuld (What Shall Be) cuts it. Even Odin cannot undo what the Norns have woven — he can only try to weave alongside them. The breeding system is your attempt to do the same.',unlockedBy:'always'},
+  {id:'einherjar',term:'Einherjar',subtitle:'The Chosen Dead',body:'The warriors selected by Valkyries to dwell in Valhalla, training endlessly for the final battle of Ragnarök. They appear in the trials as the Veteran Shield archetype — the iron-willed dead who have already died once and lost nothing they were not prepared to lose.',unlockedBy:'firstRetire'},
+  {id:'völva',term:'Völva',subtitle:'A Norse Seeress',body:"A völva was a wandering prophetess in Norse society, practicing seiðr — a form of shamanic magic used to divine the future or alter fate. In the trials, the Curse-Weaver is a völva whose threads have been corrupted by what gnaws at the root. Odin himself consulted a völva's ghost to learn Ragnarök's shape.",unlockedBy:'firstRetire'},
+  {id:'wyrd',term:'Wyrd',subtitle:'Fate as a woven thread',body:"Old Norse: urðr. The concept that fate is not a fixed destination but a living, woven thing — shaped by past deeds as much as by the will of the Norns. Your breeding system is wyrd made mechanical: each hero's thread is woven from those who came before. The deeds of the dead literally shape the living.",unlockedBy:'firstBreed'},
+  {id:'dvergar',term:'Dvergar',subtitle:'The Norse Dwarves — Master Smiths',body:"In Norse myth, the dvergar forged the greatest artifacts in the Nine Realms: Mjölnir (Thor's hammer), Gungnir (Odin's spear), Gleipnir (the chain that bound Fenrir), Draupnir (the self-replicating ring). In the trials, the Rune-Smith archetype represents a dvergar whose overcharged runic devices have been turned against the living.",unlockedBy:'firstRetire'},
+  {id:'fimbulwinter',term:'Fimbulwinter',subtitle:'The Great Winter Before Ragnarök',body:'Three successive winters with no summer between them, described in the Prose Edda as the precursor to Ragnarök. Ice, starvation, and the breakdown of social order. When Ragnarök Tier 11 is active, Fimbulwinter has arrived — the trials are colder, slower, and every warmth matters more.',unlockedBy:'tier11'},
+  {id:'eitr',term:'Eitr',subtitle:'The World-Venom',body:'In Norse cosmology, eitr is the primordial venom that fills the rivers of Niflheim. It is the source of all poison, all corruption, and — paradoxically — all life, since the first living things were formed from its interaction with heat. At Ragnarök Tier 13, eitr has risen into the air of the trials. It kills. It also concentrates into a weapon for those who can use it.',unlockedBy:'tier13'},
+  {id:'nidhoggr',term:'Níðhöggr',subtitle:'The Gnawer — Corpse-Gnawer of Náströnd',body:'The great serpent (or dragon) who gnaws eternally at the roots of Yggdrasil. In the Poetic Edda, Níðhöggr survives Ragnarök and rises at the end of the world with corpses in its wings. In the trials, Níðhöggr is not a distant myth. The corruption you have felt since Trial 1 is its work. What lies at the deepest root — what True Ragnarök faces — is something that has been awake and eating for a very long time.',unlockedBy:'tier15'},
+  {id:'ragnarök',term:'Ragnarök',subtitle:'The Fate of the Gods — The Final Battle',body:"Ragnarök is not simply 'the apocalypse.' It is a specific, fated sequence: Fimbulwinter, the breaking of Fenrir's chain, Jörmungandr rising from the sea, Surtr marching from Muspelheim with fire, the Bifröst shattering. The gods know it is coming and prepare anyway. Your bloodline runs the same trials: knowing failure is possible, running regardless, hoping that the right thread survives.",unlockedBy:'tier5'},
+];
+function unlockCodexEntry(id){
+  normalizeMeta();
+  if(!META.codexUnlocked.includes(id)){META.codexUnlocked.push(id);saveMeta();}
+}
+function checkCodexUnlocks(){
+  const tier=META.ragnarökTier||0;
+  if(tier>=5)unlockCodexEntry('ragnarök');
+  if(tier>=11)unlockCodexEntry('fimbulwinter');
+  if(tier>=13)unlockCodexEntry('eitr');
+  if(tier>=15)unlockCodexEntry('nidhoggr');
+  if(META.retiredPool&&META.retiredPool.length>0){unlockCodexEntry('einherjar');unlockCodexEntry('völva');unlockCodexEntry('dvergar');}
+  if(META.family&&Object.keys(META.family).some(id=>{const r=META.family[id];return r&&r.parentIds&&r.parentIds.length>0;}))unlockCodexEntry('wyrd');
+}
+function codexHTML(){
+  checkCodexUnlocks();
+  const unlocked=new Set(META.codexUnlocked||[]);
+  const visible=CODEX_ENTRIES.filter(e=>unlocked.has(e.id));
+  const locked=CODEX_ENTRIES.filter(e=>!unlocked.has(e.id));
+  let h=`<div style="padding:10px 0"><div style="font-size:10px;color:var(--txt3);margin-bottom:12px;font-style:italic">Terms revealed as your bloodline discovers them. ${locked.length>0?`${locked.length} entry${locked.length>1?'s':''} yet to be found.`:'All entries revealed.'}</div><div style="display:flex;flex-direction:column;gap:10px">`;
+  visible.forEach(entry=>{
+    h+=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px"><div style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;color:var(--violet)">${entry.term}</div><div style="font-size:9px;color:var(--txt3);font-style:italic">${entry.subtitle}</div></div><div style="font-size:11px;color:var(--txt2);line-height:1.7;margin-top:6px">${entry.body}</div></div>`;
+  });
+  if(locked.length>0){
+    h+=`<div style="border:1px dashed var(--border);border-radius:5px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--txt3);font-style:italic">${locked.length} entry${locked.length>1?'s':''} locked. Continue the saga to discover them.</div><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center">${locked.map(e=>`<div style="font-size:10px;color:var(--border2);background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:3px 8px">???</div>`).join('')}</div></div>`;
+  }
+  h+=`</div></div>`;
+  return h;
 }
 
 // ─── UPGRADES ─────────────────────────────────────────────────────────────────
@@ -3662,7 +3799,7 @@ function doResetMeta(){
   localStorage.removeItem(META_KEY);
   META={legacyEssence:0,salvage:0,retiredPool:[],fallenLedger:[],family:{},upgrades:{evCap:0,imprintChance:0,poolSize:0,mutationRate:0,nursery:0},
     unlockedTraits:new Set(['serrated','aegis','skirmisher','venomkiss','gambler','spite','ironblood','swift_born','lucky','resilient']),nextHeroId:1,
-    ragnarökTier:0,ragnarökActive:0,eliteRoster:{},relics:0,hasSeenOpening:false,houseName:null,aspects:{},scarTokens:{}};
+    ragnarökTier:0,ragnarökActive:0,eliteRoster:{},relics:0,hasSeenOpening:false,houseName:null,aspects:{},scarTokens:{},codexUnlocked:['yggdrasil','allfather','valhalla','saga','rune','norns']};
   saveMeta();setLegacyTab('upgrades');updateMetaHeader();
 }
 
@@ -4123,6 +4260,7 @@ function normalizeMeta(){
   if(!META.eliteRoster || typeof META.eliteRoster !== 'object') META.eliteRoster = {};
   if(typeof META.hasSeenOpening !== 'boolean') META.hasSeenOpening = false;
   if(!META.scarTokens || typeof META.scarTokens !== 'object') META.scarTokens = {};
+  if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
   for(const k of Object.keys(META.scarTokens)){
     META.scarTokens[k] = Math.max(0, Math.floor(META.scarTokens[k]||0));
     if(META.scarTokens[k] <= 0) delete META.scarTokens[k];
@@ -4826,11 +4964,16 @@ function rootDepthLabel(tier){
 
 function updateRootDepthHeader(){
   const el=document.getElementById('hdr-root-depth');
-  if(!el) return;
+  if(!el)return;
   const tier=META.ragnarökActive||0;
   if(tier===0){el.innerHTML='';el.title='';return;}
+  const tierDef=(typeof RAGNARÖK_TIERS!=='undefined')?RAGNARÖK_TIERS[tier-1]:null;
+  const tierName=rootDepthLabel(tier);
+  const omen=tierDef?.omen||'';
   el.innerHTML=`${rootDepthIcon(tier)} <span style="font-family:'Share Tech Mono',monospace;font-size:10px">R${tier}</span>`;
-  el.title=rootDepthLabel(tier);
+  el.title=`${tierName}
+"${omen}"`;
+  el.style.cursor='help';
 }
 
 function showOpeningNarrative(){
@@ -5010,8 +5153,10 @@ function showStartScreen(){
 function adjustRagnarökActive(delta){
   normalizeMeta();
   const maxTier=META.ragnarökTier||0;
-  META.ragnarökActive=Math.max(0,Math.min(maxTier,(META.ragnarökActive||0)+delta));
+  const prevTier=META.ragnarökActive||0;
+  META.ragnarökActive=Math.max(0,Math.min(maxTier,prevTier+delta));
   saveMeta();
+  updateRootDepthHeader();
   showStartScreen();
 }
 
