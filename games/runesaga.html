@@ -1235,12 +1235,12 @@ const WAVE_TRAITS=[
   {id:'elite_wave',name:'Elite',icon:'⭐',desc:'One enemy becomes Elite (+65% stats).',apply(es){if(es.length){const e=es[0];e.elite=true;e.hp=e.maxHP=Math.floor(e.hp*1.65);e.atk=Math.floor(e.atk*1.65);e.def=Math.floor(e.def*1.5);e.name='Elite '+e.name;}}},
   {id:'quickened',name:'Quickened',icon:'💨',desc:'Enemies +15% SPD, +10% Crit Chance.',apply(es){es.forEach(e=>{e.spd=Math.floor(e.spd*1.15);e.cc=Math.min(.8,(e.cc||.05)+.10);});}},
   {id:'echo_atk',name:'Echo Barrage',icon:'🔊',desc:'Enemies 25% chance to attack twice.',apply(es,h,Gx){Gx.waveFlags.eEcho=true;}},
-  {id:'reinforcements',name:'Horde-Call',icon:'🚨',desc:'+1 additional enemy joins the wave.',apply(es,h,Gx){if(es.length<8){const arch=rpick(ARCHETYPES);es.push(mkEnemy(arch,Gx.wave,false));}}},
+  {id:'reinforcements',name:'Horde-Call',icon:'🚨',desc:'+1 additional enemy joins the wave.',apply(es,h,Gx){const cap=(Gx.waveBodyCap||8);if(es.length<cap){const arch=reinforcementArchetypeForWave(Gx.wave);if(arch)es.push(mkEnemy(arch,Gx.wave,false,{isBoss:false}));}}},
   {id:'marked_prey',name:'Marked Prey',icon:'🎯',desc:'Battle start: hero becomes Vulnerable (3s). Enemies gain +10% Crit Chance.',apply(es,h,Gx){es.forEach(e=>{e.cc=Math.min(.8,(e.cc||.05)+.10);});Gx.waveFlags.heroStartVuln=3;}},
 ];
 
 const MINOR_WAVE_TRAIT_IDS = ['armored','frenzied','glass','blessed','enraged','regenerating','quickened'];
-const MAJOR_WAVE_TRAIT_IDS = ['toxic_air','echo_atk','elite_wave'];
+const MAJOR_WAVE_TRAIT_IDS = ['toxic_air','echo_atk','elite_wave','reinforcements'];
 
 const TRIAL_CONFIG = {
   1:{slotsMin:2,slotsMax:2,bodyCap:2,minorTraitsMin:0,minorTraitsMax:0,majorTraitsMax:0,allowEliteTrait:false},
@@ -1267,114 +1267,46 @@ function isRTPoolEntry(id){ return typeof id==='string' && id.startsWith('rt_');
 function baseArchFromPoolEntry(id){ return isRTPoolEntry(id)?id.replace(/^rt_/,''):id; }
 function enemyBodiesForPick(id){ return baseArchFromPoolEntry(id)==='swarm'?3:1; }
 function trialBlock(wave){ if(wave<=4)return 1; if(wave<=8)return 2; return 3; }
+function wavePoolIdsForReinforcement(wave){
+  if(wave===4)return TRIAL_POOLS.A;
+  if(wave<=3)return TRIAL_POOLS.A;
+  if(wave<=8)return TRIAL_POOLS.B;
+  if(wave===12)return ['rt_bruiser','rt_shaman','rt_warden','rt_swarm','assassin','frost'];
+  const pool=[...TRIAL_POOLS.C];
+  if(wave===9)pool.push('leech');
+  return pool;
+}
+function reinforcementArchetypeForWave(wave){
+  const ids=wavePoolIdsForReinforcement(wave)||[];
+  if(!ids.length)return null;
+  const pid=rpick(ids);
+  return ARCHETYPES.find(a=>a.id===baseArchFromPoolEntry(pid))||null;
+}
 
 
+
+function tfFlag(G,k){G.tierFlags[k]=true;}
+function tfAdd(G,k,v){G.tierFlags[k]=(G.tierFlags[k]||0)+v;}
+function tfMul(G,k,m){G.tierFlags[k]=(typeof G.tierFlags[k]==='number'?G.tierFlags[k]:1)*m;}
+function tfMax(G,k,v){G.tierFlags[k]=Math.max((G.tierFlags[k]||0),v);}
+function tfMin(G,k,v){G.tierFlags[k]=Math.min((typeof G.tierFlags[k]==='number'?G.tierFlags[k]:v),v);}
 
 const RAGNARÖK_TIERS = [
-  {
-    tier: 1, name: 'First Root Darkens',
-    omen: 'The cold comes earlier than it should.',
-    revealStage: 'none',
-    apply(G) { /* enemyHPMult handled in mkEnemy */ }
-  },
-  {
-    tier: 2, name: 'The Wolves Stir',
-    omen: 'They move in patterns now, not just hunger.',
-    revealStage: 'none',
-    apply(G) { G.tierFlags.archetypeBehaviors = true; }
-  },
-  {
-    tier: 3, name: 'Mist Thickens',
-    omen: 'The boundary between realms grows soft.',
-    revealStage: 'none',
-    apply(G) { G.tierFlags.minWaveTraits = 1; }
-  },
-  {
-    tier: 4, name: 'The Dead Remember',
-    omen: 'Some do not stay fallen.',
-    revealStage: 'none',
-    apply(G) { G.tierFlags.draugrEchoChance = 0.15; }
-  },
-  {
-    tier: 5, name: 'Jörmungandr Stirs',
-    omen: 'The ocean trembles. Something beneath has shifted weight.',
-    revealStage: 'indirect',
-    apply(G) { G.tierFlags.bossExtraEnemy = true; G.tierFlags.bossSignatureAbility = true; }
-  },
-  {
-    tier: 6, name: 'The Norns Bargain',
-    omen: 'Fate has a price. The question is whether you recognize it.',
-    revealStage: 'none',
-    apply(G) { G.tierFlags.cursedBargainInShop = true; }
-  },
-  {
-    tier: 7, name: 'Surtr Sends Scouts',
-    omen: 'Ash on the wind. The fire-realm reaches.',
-    revealStage: 'surtr',
-    apply(G) { G.tierFlags.muspelheimTagFromWave = 7; G.tierFlags.emberSparkChance = 0.20; }
-  },
-  {
-    tier: 8, name: 'Bifröst Cracks',
-    omen: 'The bridge between worlds fractures. Passage grows costly.',
-    revealStage: 'none',
-    apply(G) {
-      G.tierFlags.startingGoldReduction = 8;
-      G.tierFlags.rerollCostIncreaseOverride = 4;
-    }
-  },
-  {
-    tier: 9, name: 'Root Harvest',
-    omen: 'What falls feeds what grows beneath.',
-    revealStage: 'root',
-    apply(G) { G.tierFlags.killDropsMark = 1; }
-  },
-  {
-    tier: 10, name: 'Elites Without Season',
-    omen: 'The strong ones no longer wait for invitation.',
-    revealStage: 'indirect',
-    apply(G) {
-      G.tierFlags.elitesOnAnyWave    = true;
-      G.tierFlags.namedElitesActive  = true;
-      G.tierFlags.eliteSecondPhase   = true;
-    }
-  },
-  {
-    tier: 11, name: 'Fimbulwinter Arrives',
-    omen: 'Three winters without summer. The realms remember what cold means.',
-    revealStage: 'fimbulwinter',
-    apply(G) {
-      G.tierFlags.allWavesNiflheimTag   = true;
-      G.tierFlags.heroPermanentSPDPenalty = 5;
-      G.tierFlags.regenBoonBonus         = 0.40;
-    }
-  },
-  {
-    tier: 12, name: "The Gnawer's Influence Spreads",
-    omen: 'Root-corruption reaches the middle trials.',
-    revealStage: 'gnawer_indirect',
-    apply(G) { G.tierFlags.rootTouchedEnemyChance = 0.30; }
-  },
-  {
-    tier: 13, name: 'Eitr in the Air',
-    omen: 'The world-venom rises. Everything breathes it.',
-    revealStage: 'eitr',
-    apply(G) { G.tierFlags.toxicAirFromWave = 5; G.tierFlags.dotDamageBonus = 0.20; }
-  },
-  {
-    tier: 14, name: 'Twilight Accelerates',
-    omen: 'The end, when it comes, will come fast.',
-    revealStage: 'none',
-    apply(G) { G.tierFlags.enemySPDMult = 1.20; G.tierFlags.heroSPDBonus = 10; }
-  },
-  {
-    tier: 15, name: 'True Ragnarök',
-    omen: 'Níðhöggr no longer gnaws. It tears.',
-    revealStage: 'nidhoggr',
-    apply(G) {
-      G.tierFlags.enemyWaveScaleBonus = 2;
-      G.tierFlags.allFatherLastGift   = true;
-    }
-  },
+  {tier:1,name:'Fimbulwinter Begins',omen:'The first winter without summer settles over every road.',revealStage:'fimbulwinter',apply(G){tfAdd(G,'heroPermanentSPDPenalty',5);tfMul(G,'enemyHPMult',1.10);}},
+  {tier:2,name:'Fimbulwinter Deepens',omen:'Oaths crack in the cold; rage and panic come sooner.',revealStage:'none',apply(G){tfFlag(G,'allowAggroTraitsInBlock1');}},
+  {tier:3,name:'Third Winter / Fenrir’s Chain Weakens',omen:'Gleipnir strains. The old constraints no longer hold.',revealStage:'fenrir',apply(G){tfFlag(G,'archetypeBehaviors');}},
+  {tier:4,name:'Fenrir Breaks Free',omen:'The wolf runs. The dead rise before they cool.',revealStage:'fenrir',apply(G){tfMax(G,'draugrEchoChance',0.15);tfFlag(G,'eliteSecondPhase');}},
+  {tier:5,name:'Jörmungandr Rises',omen:'Venom rides the wind as the serpent coils around the world.',revealStage:'eitr',apply(G){tfMax(G,'toxicAirFromWave',5);tfMax(G,'toxicAirDmg',1);tfMax(G,'dotDamageBonus',0.10);tfFlag(G,'bossSignatureAbility');}},
+  {tier:6,name:'Naglfar Sets Sail',omen:'The corpse-ship reaches shore; every wave brings more bodies.',revealStage:'indirect',apply(G){tfAdd(G,'enemyMaxSlotsBonus',1);tfAdd(G,'enemyBodyCapBonus',1);tfFlag(G,'allowHordeCall');}},
+  {tier:7,name:'Loki Breaks Free',omen:'Bargains turn barbed. Every choice has a hook.',revealStage:'indirect',apply(G){tfFlag(G,'cursedBargainInShop');tfMax(G,'rerollCostIncreaseOverride',4);}},
+  {tier:8,name:'Surtr Marches / Bifröst Shatters',omen:'Fire crosses broken bridges. Even the first step burns.',revealStage:'surtr',apply(G){tfMax(G,'muspelheimTagFromWave',1);tfMax(G,'emberSparkChance',0.20);tfAdd(G,'startingGoldReduction',8);}},
+  {tier:9,name:'Gods Summon the Einherjar',omen:'Gjallarhorn sounds. The remembered dead answer.',revealStage:'indirect',apply(G){tfFlag(G,'namedElitesActive');tfMax(G,'killDropsMark',1);}},
+  {tier:10,name:'Vígríðr: Plain of Battle',omen:'All roads lead to open war. Nothing waits its turn.',revealStage:'indirect',apply(G){tfFlag(G,'elitesOnAnyWave');tfAdd(G,'heroSPDBonus',8);tfMul(G,'enemySPDMult',1.05);}},
+  {tier:11,name:'The Gods Fall',omen:'No guardians remain. Endurance must come from within.',revealStage:'indirect',apply(G){tfAdd(G,'heroPermanentSPDPenalty',8);tfFlag(G,'allWavesNiflheimTag');tfMax(G,'regenBoonBonus',0.40);tfMax(G,'lifestealBoonBonus',0.15);}},
+  {tier:12,name:'Surtr Burns the Nine Realms',omen:'Ash and venom mix. Corruption descends in sheets.',revealStage:'surtr',apply(G){tfMax(G,'rootTouchedEnemyChance',0.45);tfMax(G,'enemyWaveScaleBonus',1);tfAdd(G,'startingGoldReduction',5);tfMax(G,'toxicAirDmg',2);tfMax(G,'dotDamageBonus',0.20);}},
+  {tier:13,name:'Níðhöggr Ascends',omen:'The Gnawer rises from below; rot is now the atmosphere.',revealStage:'nidhoggr',apply(G){tfMax(G,'toxicAirFromWave',1);tfMax(G,'toxicAirDmg',2);tfMax(G,'dotDamageBonus',0.30);tfMax(G,'rootTouchedEnemyChance',0.60);tfMax(G,'rootTouchedStatMult',1.20);tfFlag(G,'guaranteeNamedEliteReturns');}},
+  {tier:14,name:'The Binding',omen:'Victory is not clean now. You bind collapse into pattern.',revealStage:'indirect',apply(G){tfMul(G,'enemySPDMult',1.20);tfAdd(G,'heroSPDBonus',10);tfAdd(G,'startingGoldReduction',3);}},
+  {tier:15,name:'The Rune of What May Be',omen:'At the deepest root, possibility is carved into law.',revealStage:'nidhoggr',apply(G){tfMax(G,'enemyWaveScaleBonus',2);tfFlag(G,'allFatherLastGift');}},
 ];
 
 
@@ -1804,34 +1736,29 @@ function initGame(seedVal,evs,traits,parentRecord){
     roadsideAvailable:false,
   };
   updateMetaHeader();
-  genWave();
   applyRagnarökTiers(G);
+  genWave();
   renderAll();
   updateDifficultyUI();
 }
 
 // Stub — fully implemented in Prompt 6
 function applyRagnarökTiers(G) {
-  G.tierFlags = {};
+  G.tierFlags = {
+    enemyHPMult:1,
+    enemySPDMult:1,
+    rootTouchedStatMult:1.10,
+    toxicAirDmg:1,
+  };
   const activeTier = G.ragnarökActive || 0;
   for (let i = 0; i < activeTier && i < RAGNARÖK_TIERS.length; i++) {
     const tierDef = RAGNARÖK_TIERS[i];
-    if (tierDef && typeof tierDef.apply === 'function') {
-      tierDef.apply(G);
-    }
+    if (tierDef && typeof tierDef.apply === 'function') tierDef.apply(G);
   }
 
-  if (G.tierFlags.startingGoldReduction) {
-    G.gold = Math.max(0, G.gold - G.tierFlags.startingGoldReduction);
-  }
-
-  if (G.tierFlags.heroPermanentSPDPenalty && G.hero) {
-    G.hero.spd = Math.max(5, G.hero.spd - G.tierFlags.heroPermanentSPDPenalty);
-  }
-
-  if (G.tierFlags.heroSPDBonus && G.hero) {
-    G.hero.spd += G.tierFlags.heroSPDBonus;
-  }
+  if (G.tierFlags.startingGoldReduction) G.gold = Math.max(0, G.gold - G.tierFlags.startingGoldReduction);
+  if (G.tierFlags.heroPermanentSPDPenalty && G.hero) G.hero.spd = Math.max(5, G.hero.spd - G.tierFlags.heroPermanentSPDPenalty);
+  if (G.tierFlags.heroSPDBonus && G.hero) G.hero.spd += G.tierFlags.heroSPDBonus;
 }
 
 function checkRagnarökUnlock() {
@@ -1884,9 +1811,12 @@ function genWave(){
 }
 function buildEnemies(wave){
   const cfg=TRIAL_CONFIG[wave]||{slotsMin:3,slotsMax:4,bodyCap:8};
-  const bodyCap=cfg.bodyCap||8;
+  const effSlotsMin=cfg.slotsMin;
+  const effSlotsMax=cfg.slotsMax + ((G.tierFlags&&G.tierFlags.enemyMaxSlotsBonus)||0);
+  const effBodyCap=(cfg.bodyCap||8) + ((G.tierFlags&&G.tierFlags.enemyBodyCapBonus)||0);
   const bossWave=(wave===8||wave===12);
-  const pickBodyCap=Math.max(0, bodyCap - (bossWave ? 1 : 0));
+  const pickBodyCap=Math.max(0, effBodyCap - (bossWave ? 1 : 0));
+  G.waveBodyCap=effBodyCap;
   const out=[]; const picks=[];
   const counts={anchors:0,assassin:0,rt:0,hasWarden:false,hasSwarm:false};
 
@@ -1925,10 +1855,10 @@ function buildEnemies(wave){
 
   const fill=(pool,slots,maxAttempts=120)=>{let a=0;while(picks.length<slots&&a<maxAttempts){a++;const pid=rpick(pool);if(!canPick(pid))continue;picks.push(pid);markPick(pid);}};
 
-  if(wave>=1&&wave<=3){ fill(TRIAL_POOLS.A,ri(cfg.slotsMin,cfg.slotsMax),80); }
+  if(wave>=1&&wave<=3){ fill(TRIAL_POOLS.A,ri(effSlotsMin,effSlotsMax),80); }
   else if(wave===4){
     if(canPick('swarm')){picks.push('swarm');markPick('swarm');}
-    const slots=ri(cfg.slotsMin,cfg.slotsMax);
+    const slots=ri(effSlotsMin,effSlotsMax);
     let a=0;
     while(picks.length<slots&&a<90){
       a++;
@@ -1937,9 +1867,9 @@ function buildEnemies(wave){
       if(!canPick(pid))continue;
       picks.push(pid);markPick(pid);
     }
-  }else if(wave>=5&&wave<=7){ fill(TRIAL_POOLS.B,ri(cfg.slotsMin,cfg.slotsMax),120); }
-  else if(wave===8){ fill(TRIAL_POOLS.B,ri(cfg.slotsMin,cfg.slotsMax),140); }
-  else if(wave>=9&&wave<=11){ const pool=[...TRIAL_POOLS.C]; if(wave===9&&cfg.allowRemnantLeech)pool.push('leech'); fill(pool,ri(cfg.slotsMin,cfg.slotsMax),150); }
+  }else if(wave>=5&&wave<=7){ fill(TRIAL_POOLS.B,ri(effSlotsMin,effSlotsMax),120); }
+  else if(wave===8){ fill(TRIAL_POOLS.B,ri(effSlotsMin,effSlotsMax),140); }
+  else if(wave>=9&&wave<=11){ const pool=[...TRIAL_POOLS.C]; if(wave===9&&cfg.allowRemnantLeech)pool.push('leech'); fill(pool,ri(effSlotsMin,effSlotsMax),150); }
   else if(wave===12){ fill(['rt_bruiser','rt_shaman','rt_warden','rt_swarm','assassin','frost'],cfg.slotsMin,160); }
 
   const forceEliteAnyWave=G.tierFlags&&G.tierFlags.elitesOnAnyWave&&!bossWave&&rng()<0.25;
@@ -1957,14 +1887,14 @@ function buildEnemies(wave){
     exp.push(e);
     if(e.archId==='swarm'){
       for(let i=1;i<3;i++){
-        if(exp.length>=bodyCap)break;
+        if(exp.length>=effBodyCap)break;
         const c={...JSON.parse(JSON.stringify(e)),id:e.id+'_'+i,actionMeter:rng()*.5,_isEcho:false};
         exp.push(c);
       }
     }
   });
-  exp.forEach(e=>{if(e.elite&&!e.namedElite){const n=checkForNamedEliteReturn(e.archId);if(n){e.namedElite=true;e.displayName=n.name;e.name=n.name;}}});
-  return exp.slice(0,bodyCap||8);
+  exp.forEach(e=>{if(e.elite&&!e.namedElite){const force=!!(G.tierFlags&&G.tierFlags.guaranteeNamedEliteReturns&&(wave===10||wave===11));const n=checkForNamedEliteReturn(e.archId,wave,force);if(n){e.namedElite=true;e.displayName=n.name;e.name=n.name;}}});
+  return exp.slice(0,effBodyCap||8);
 }
 function mkEnemy(arch,wave,boss,opts){
   opts=opts||{};
@@ -1973,12 +1903,11 @@ function mkEnemy(arch,wave,boss,opts){
   const w = effectiveWave - 1;
   const b = arch.base, s = arch.scl;
   const mult = (G && typeof G.difficulty === 'number') ? G.difficulty : 1;
-  const activeTier = (G && G.ragnarökActive) || 0;
-  const ragnarökHPMult = activeTier >= 1 ? 1.10 : 1.0;
+  const enemyHPMult = (G && G.tierFlags && G.tierFlags.enemyHPMult) || 1.0;
   const spdMult = (G && G.tierFlags && G.tierFlags.enemySPDMult) || 1.0;
   const baseHP = b.hp + s.hp * w;
   const enemyTuningMult = 0.75;
-  const hp = Math.max(1, Math.floor(baseHP * mult * ragnarökHPMult * enemyTuningMult));
+  const hp = Math.max(1, Math.floor(baseHP * mult * enemyHPMult * enemyTuningMult));
   const atk = Math.max(1, Math.floor((b.atk + s.atk * w) * mult * enemyTuningMult));
   const def = Math.max(0, Math.floor((b.def + s.def * w) * mult * enemyTuningMult));
   const baseSpdMult = 0.6 + 0.4 * mult;
@@ -1992,7 +1921,7 @@ function mkEnemy(arch,wave,boss,opts){
     cc:arch.id==='striker'?Math.min(.7,b.cc+.25+.003*w):b.cc,cd:b.cd,lifesteal:arch.ls||0,trait:arch.trait,td:arch.td,beh:arch.beh,
     statuses:{},actionMeter:rng()*.5,_firstAtkDone:false,_hexCtr:0,_chargeCtr:0,_tankGuard:true,_tier2Done:false,
     elite:!!(boss||opts.forceElite),dead:false,rootTouched,namedElite:false,signature:null,isBoss:!!opts.isBoss,_rootKingRevived:false,_noEcho:false};
-  if(rootTouched){enemy.displayName='Root-Touched '+(arch.displayName||arch.name||arch.id);enemy.name=enemy.displayName;enemy.col='#2a1a3a';enemy.hp=enemy.maxHP=Math.floor(enemy.hp*1.10);enemy.atk=Math.floor(enemy.atk*1.10);}
+  if(rootTouched){const rtMult=(G&&G.tierFlags&&G.tierFlags.rootTouchedStatMult)||1.10;enemy.displayName='Root-Touched '+(arch.displayName||arch.name||arch.id);enemy.name=enemy.displayName;enemy.col='#2a1a3a';enemy.hp=enemy.maxHP=Math.floor(enemy.hp*rtMult);enemy.atk=Math.floor(enemy.atk*rtMult);}
   return enemy;
 }
 
@@ -2006,10 +1935,12 @@ function pickWaveTraitsByTrial(wave) {
   const majorChance=(typeof cfg.majorChance==='number')?cfg.majorChance:0.45;
   const bossWave=!!((G&&G.enemies||[]).some(e=>e.isBoss) || (G&&G.bossWaves&&G.bossWaves.includes(wave)));
 
-  const minorPool=WAVE_TRAITS.filter(t=>MINOR_WAVE_TRAIT_IDS.includes(t.id));
+  let minorPool=WAVE_TRAITS.filter(t=>MINOR_WAVE_TRAIT_IDS.includes(t.id));
   let majorPool=WAVE_TRAITS.filter(t=>MAJOR_WAVE_TRAIT_IDS.includes(t.id));
+  if(wave<=4 && !(G.tierFlags&&G.tierFlags.allowAggroTraitsInBlock1)) minorPool=minorPool.filter(t=>t.id!=='enraged'&&t.id!=='frenzied');
   if(!cfg.allowEliteTrait)majorPool=majorPool.filter(t=>t.id!=='elite_wave');
   if(cfg.forbidMajorIds)majorPool=majorPool.filter(t=>!cfg.forbidMajorIds.includes(t.id));
+  if(!(G.tierFlags&&G.tierFlags.allowHordeCall)) majorPool=majorPool.filter(t=>t.id!=='reinforcements');
 
   const minorTarget=ri(cfg.minorTraitsMin||0,cfg.minorTraitsMax||0);
   const majorAllowed=(cfg.majorTraitsMax||0)>0;
@@ -2054,7 +1985,7 @@ function applyWaveTraitsToEnemies(){
     if(!G.waveFlags._fimbulwinterApplied){
       G.waveFlags._fimbulwinterApplied=true;
       applyStatus(G.hero,'slow',1,3);
-      addLog('  ❄️ Fimbulwinter: a biting cold slows you.','lstatus');
+      addLog('  ⚰ The gods fall — the air drags at your steps.','lstatus');
     }
   }
 }
@@ -2373,8 +2304,9 @@ function combatTick(){
     G.enemies.filter(e=>!e.dead).forEach(e=>tickStatuses(e,false));
     const toxicAirActive=G.waveFlags.toxicAir||(G.tierFlags&&G.tierFlags.toxicAirFromWave&&G.wave>=G.tierFlags.toxicAirFromWave);
     if(toxicAirActive){
-      G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.max(0,e.hp-1);if(e.hp<=0&&!e.dead){e.dead=true;onKill(e);}});
-      heroDmg(1,null,'dot');
+      const taDmg=(G.tierFlags&&G.tierFlags.toxicAirDmg)||1;
+      G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.max(0,e.hp-taDmg);if(e.hp<=0&&!e.dead){e.dead=true;onKill(e);}});
+      heroDmg(taDmg,null,'dot');
     }
     if(G.waveFlags.eRegen){
       G.enemies.filter(e=>!e.dead).forEach(e=>{e.hp=Math.min(e.maxHP,e.hp+Math.floor(e.maxHP*G.waveFlags.eRegen));});
@@ -3742,13 +3674,14 @@ function recordEliteEncounter(archId,playerSurvived,wasNearDeath,critLanded){
   }
   saveMeta();
 }
-function checkForNamedEliteReturn(archId){
+function checkForNamedEliteReturn(archId,wave,force){
   const ragnarökTier=META.ragnarökActive||0;
-  if(ragnarökTier<10)return null;
+  if(ragnarökTier<9)return null;
   if(!G.tierFlags||!G.tierFlags.namedElitesActive)return null;
   const entry=META.eliteRoster[archId];
   if(!entry||!entry.survivedByPlayer)return null;
-  const chance=0.12+(ragnarökTier>=10?0.08:0);
+  if(force)return entry;
+  const chance=0.15+(ragnarökTier>=13?0.10:0);
   if(rng()>chance)return null;
   return entry;
 }
@@ -3954,11 +3887,26 @@ const CODEX_ENTRIES=[
   {id:'skuldsDebt',term:"Skuld's Debt",subtitle:'Future as constraint',body:'Ash choices carry debt. You gain immediate force, but Skuld marks the line and demands repayment in later battles. Debt is not punishment; it is structural pressure.',unlockedBy:'ashDebt'},
   {id:'wyrd',term:'Wyrd',subtitle:'Binding threads without certainty',body:'Wyrd is woven causality, not blood purity. Memory Binding joins a Primary Strand and Secondary Strand, tempering scars and pattern into a new thread. No outcome is guaranteed; only tested possibilities persist.',unlockedBy:'firstBreed'},
   {id:'dvergar',term:'Dvergar',subtitle:'Smiths of impossible tools',body:'The dvergar forged chains for wolves and spears for gods. I inherit that craft: heat, measure, quench, and inscription. Rune-work is metallurgy applied to fate.',unlockedBy:'firstRetire'},
-  {id:'fimbulwinter',term:'Fimbulwinter',subtitle:'The long freeze before collapse',body:'When decay deepens, warmth fails and tempo slows. Tier 11 marks this stage clearly: endurance and timing become harder materials than damage.',unlockedBy:'tier11'},
-  {id:'eitr',term:'Eitr',subtitle:'World-venom in the grain',body:'Eitr is poison and catalyst. At high decay it enters everything: enemies, gifts, and risk calculations. Corruption and leverage become the same substance.',unlockedBy:'tier13'},
-  {id:'nidhoggr',term:'Níðhöggr',subtitle:'Gnawer at the deepest root',body:'Níðhöggr is no rumor. The pressure under every Trial is its bite. By high tier, the creature is an active condition you must hold and survive.',unlockedBy:'tier15'},
+  {id:'fimbulwinter',term:'Fimbulwinter',subtitle:'The long freeze before collapse',body:'When decay deepens, warmth fails and tempo slows. Tier 1 marks this stage clearly: endurance and timing become harder materials than damage.',unlockedBy:'tier11'},
+  {id:'eitr',term:'Eitr',subtitle:'World-venom in the grain',body:'Eitr is poison and catalyst. From Tier 5 it enters the air, and by Tier 13 it saturates everything: enemies, gifts, and risk calculations. Corruption and leverage become the same substance.',unlockedBy:'tier13'},
+  {id:'nidhoggr',term:'Níðhöggr',subtitle:'Gnawer at the deepest root',body:"Níðhöggr is no rumor. The pressure under every Trial is its bite. By Tier 13, the creature's pressure is an active condition you must hold and survive.",unlockedBy:'tier15'},
   {id:'runeMayBe',term:'Rune of What May Be',subtitle:'Why Tier 15 matters',body:'Ragnarök Tier 15 is the deepest reachable root: maximum world-decay, minimum false branches. Hold Níðhöggr there and carve the Rune of What May Be into the source code of the world. This is the point of all prior generations.',unlockedBy:'tier15'},
-  {id:'ragnarök',term:'Ragnarök Tiers',subtitle:'Global decay over repeated generations',body:'Trials are per generation. Ragnarök Tiers are cumulative world deterioration across generations. You are not just surviving twelve fights; you are descending a failing system toward a final carve point.',unlockedBy:'tier5'},
+  {id:'ragnarök',term:'Ragnarök Tiers',subtitle:'Global decay over repeated generations',body:'Trials are per generation. Ragnarök Tiers are cumulative world deterioration across generations. You are not just surviving twelve fights; you are descending a failing system toward a final carve point.',unlockedBy:'tier1'},
+  {id:'rtier1',term:'Ragnarök Tier 1 — Fimbulwinter Begins',subtitle:'Phase I: The Harbingers',body:'Cold arrives before its season. The descent slows and enemies endure longer. Mechanical expression: hero SPD -5; enemy HP +10%.',unlockedBy:'tier1'},
+  {id:'rtier2',term:'Ragnarök Tier 2 — Fimbulwinter Deepens',subtitle:'Oaths Break in Frost',body:'Order frays and aggression bleeds into early trials. Mechanical expression: Enraged/Frenzied can appear in Block 1.',unlockedBy:'tier2'},
+  {id:'rtier3',term:'Ragnarök Tier 3 — Third Winter / Fenrir’s Chain Weakens',subtitle:'Constraint Fails',body:'The old bindings loosen. Archetypes begin showing deeper behaviors. Mechanical expression: tier-2 archetype behavior flags activate.',unlockedBy:'tier3'},
+  {id:'rtier4',term:'Ragnarök Tier 4 — Fenrir Breaks Free',subtitle:'The Wolf Runs',body:'The dead refuse stillness and elite foes awaken when cornered. Mechanical expression: Draugr echo chance and elite second phase enabled.',unlockedBy:'tier4'},
+  {id:'rtier5',term:'Ragnarök Tier 5 — Jörmungandr Rises',subtitle:'Venom on the Wind',body:'Poison becomes atmosphere and bosses gain sharper signatures. Mechanical expression: toxic air starts at Trial 5; DoT bonus +10%; boss signatures on.',unlockedBy:'tier5'},
+  {id:'rtier6',term:'Ragnarök Tier 6 — Naglfar Sets Sail',subtitle:'More Ships, More Dead',body:'Waves crowd the shoreline. Mechanical expression: +1 slot/body cap baseline; Horde-Call can roll.',unlockedBy:'tier6'},
+  {id:'rtier7',term:'Ragnarök Tier 7 — Loki Breaks Free',subtitle:'Bargains with Hooks',body:'Deals become dangerous and chance costs more. Mechanical expression: cursed bargains enabled; reroll growth override +4.',unlockedBy:'tier7'},
+  {id:'rtier8',term:'Ragnarök Tier 8 — Surtr Marches / Bifröst Shatters',subtitle:'Fire at Run Start',body:'The world enters burning-state immediately. Mechanical expression: Muspelheim tags and ember sparks from Trial 1; starting gold reduced.',unlockedBy:'tier8'},
+  {id:'rtier9',term:'Ragnarök Tier 9 — Gods Summon the Einherjar',subtitle:'Gjallarhorn',body:'The remembered dead answer the call. Mechanical expression: named elite returns activate; kills can drop marks.',unlockedBy:'tier9'},
+  {id:'rtier10',term:'Ragnarök Tier 10 — Vígríðr: Plain of Battle',subtitle:'Open War',body:'Elites appear outside their old lanes and pace accelerates. Mechanical expression: elites-on-any-wave chance; hero +SPD with lighter enemy SPD ramp.',unlockedBy:'tier10'},
+  {id:'rtier11',term:'Ragnarök Tier 11 — The Gods Fall',subtitle:'No Guardians Left',body:'Survival becomes self-forged. Mechanical expression: further hero SPD penalty, all-wave chill tag, sustain/regen boon bonus.',unlockedBy:'tier11'},
+  {id:'rtier12',term:'Ragnarök Tier 12 — Surtr Burns the Nine Realms',subtitle:'Ash and Venom',body:'Corruption surges and scarcity deepens. Mechanical expression: higher root-touched chance, toxic air damage 2, stronger DoT, more gold loss.',unlockedBy:'tier12'},
+  {id:'rtier13',term:'Ragnarök Tier 13 — Níðhöggr Ascends',subtitle:'Full Saturation',body:'The Gnawer rises into open air. Mechanical expression: toxic air from Trial 1, max DoT bonus, stronger root-touched stats, guaranteed elite returns on Trials 10–11.',unlockedBy:'tier13'},
+  {id:'rtier14',term:'Ragnarök Tier 14 — The Binding',subtitle:'Hold the Pattern',body:'You do not win cleanly; you hold shape against collapse. Mechanical expression: speed acceleration persists, scarcity tightens.',unlockedBy:'tier14'},
+  {id:'rtier15',term:'Ragnarök Tier 15 — The Rune of What May Be',subtitle:'Fourth Norn Carving',body:'At the deepest root, Minni becomes architecture. Mechanical expression: highest wave scaling and final watcher-gift trigger.',unlockedBy:'tier15'},
  ];
 
 function unlockCodexEntry(id){
@@ -3967,13 +3915,16 @@ function unlockCodexEntry(id){
 }
 function checkCodexUnlocks(){
   const tier=META.ragnarökTier||0;
-  if(tier>=5)unlockCodexEntry('ragnarök');
-  if(tier>=11)unlockCodexEntry('fimbulwinter');
-  if(tier>=13)unlockCodexEntry('eitr');
-  if(tier>=15){unlockCodexEntry('nidhoggr');unlockCodexEntry('runeMayBe');}
+  if(tier>=1)unlockCodexEntry('ragnarök');
+  if(tier>=1)unlockCodexEntry('fimbulwinter');
+  if(tier>=5)unlockCodexEntry('eitr');
+  if(tier>=13)unlockCodexEntry('nidhoggr');
+  if(tier>=15)unlockCodexEntry('runeMayBe');
+  for(let n=1;n<=Math.min(15,tier);n++)unlockCodexEntry('rtier'+n);
   if(META.retiredPool&&META.retiredPool.length>0){unlockCodexEntry('minniholl');unlockCodexEntry('einherjar');unlockCodexEntry('völva');unlockCodexEntry('dvergar');}
   if(META.family&&Object.keys(META.family).some(id=>{const r=META.family[id];return r&&r.parentIds&&r.parentIds.length>0;}))unlockCodexEntry('wyrd');
 }
+
 function codexHTML(){
   checkCodexUnlocks();
   const unlocked=new Set(META.codexUnlocked||[]);
@@ -5291,11 +5242,11 @@ function rootDepthLabel(tier){
   if(!tier||tier===0) return '';
   const TIER_NAMES=[
     '',
-    'First Root Darkens','The Wolves Stir','Mist Thickens',
-    'The Dead Remember','Jörmungandr Stirs','The Norns Bargain',
-    'Surtr Sends Scouts','Bifröst Cracks','Root Harvest',
-    'Elites Without Season','Fimbulwinter Arrives',"The Gnawer's Influence Spreads",
-    'Eitr in the Air','Twilight Accelerates','True Ragnarök'
+    'Fimbulwinter Begins','Fimbulwinter Deepens','Third Winter / Fenrir’s Chain Weakens',
+    'Fenrir Breaks Free','Jörmungandr Rises','Naglfar Sets Sail',
+    'Loki Breaks Free','Surtr Marches / Bifröst Shatters','Gods Summon the Einherjar',
+    'Vígríðr: Plain of Battle','The Gods Fall','Surtr Burns the Nine Realms',
+    'Níðhöggr Ascends','The Binding','The Rune of What May Be'
   ];
   return TIER_NAMES[tier]||`Tier ${tier}`;
 }
