@@ -1885,10 +1885,10 @@ function genWave(){
 function buildEnemies(wave){
   const cfg=TRIAL_CONFIG[wave]||{slotsMin:3,slotsMax:4,bodyCap:8};
   const bodyCap=cfg.bodyCap||8;
+  const bossWave=(wave===8||wave===12);
   const pickBodyCap=Math.max(0, bodyCap - (bossWave ? 1 : 0));
   const out=[]; const picks=[];
   const counts={anchors:0,assassin:0,rt:0,hasWarden:false,hasSwarm:false};
-  const bossWave=(wave===8||wave===12);
 
   const markPick=(pid)=>{
     const base=baseArchFromPoolEntry(pid);
