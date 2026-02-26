@@ -294,6 +294,10 @@ body.embers-off::after{ opacity:0 !important; }
 .sb-slow{background:rgba(80,80,180,.2);color:#9090d8;border:1px solid rgba(80,80,180,.4);}
 .sb-stun{background:rgba(220,200,30,.2);color:#e8d840;border:1px solid rgba(220,200,30,.4);}
 .sb-tempo{background:rgba(144,80,232,.2);color:#c080ff;border:1px solid rgba(144,80,232,.4);}
+.sb-marked{background:rgba(240,168,40,.18);color:#f5bf5a;border:1px solid rgba(240,168,40,.4);}
+.sb-hexed{background:rgba(80,120,220,.18);color:#95b5ff;border:1px solid rgba(80,120,220,.4);}
+.sb-momentum{background:rgba(180,80,240,.2);color:#d498ff;border:1px solid rgba(180,80,240,.42);}
+.sb-patience{background:rgba(120,120,160,.2);color:#c4c4de;border:1px solid rgba(120,120,160,.42);}
 .sb-regen{background:rgba(40,200,80,.15);color:#50e880;border:1px solid rgba(40,200,80,.35);}
 
 /* Tags */
@@ -877,6 +881,10 @@ const STATUS={
   slow:{name:'Slow',icon:'🐌',cls:'sb-slow',desc:'-30% Speed'},
   stun:{name:'Stun',icon:'💫',cls:'sb-stun',desc:'Cannot act'},
   tempo:{name:'Tempo',icon:'⚡',cls:'sb-tempo',desc:'+3 SPD per stack'},
+  marked:{name:'Marked',icon:'🎯',cls:'sb-marked',desc:'Next hit +30% dmg; then consumed'},
+  hexed:{name:'Hexed',icon:'🌀',cls:'sb-hexed',desc:'Enemy attacks miss more often'},
+  momentum:{name:'Momentum',icon:'⚡',cls:'sb-momentum',desc:'+2 dmg per stack to next attack; then consumed'},
+  patience:{name:'Patience',icon:'🕰',cls:'sb-patience',desc:'+8% dmg per sec not attacking (max +40%); consumed on attack'},
   regen:{name:'Regen',icon:'💚',cls:'sb-regen',desc:'Heals HP per sec'},
 };
 
@@ -891,6 +899,9 @@ const BOONS=[
   {id:'swift_strikes',name:'Stormblows',rarity:'common',tags:['Tempo'],icon:'💨',desc:'+18 Speed.',effects:[{t:'stat',s:'spd',v:18}]},
   {id:'blood_sense',name:'Blood Sense',rarity:'common',tags:['Bleed'],icon:'🩸',desc:'On hit: 20% chance to apply 1 Bleed (3s).',effects:[{t:'onHit',ef:'statusEnemy',st:'bleed',sk:1,dur:3,ch:0.20}]},
   {id:'toxic_touch',name:'Eitr-Touch',rarity:'common',tags:['Poison'],icon:'☠',desc:'On hit: 20% chance to apply 1 Poison (4s).',effects:[{t:'onHit',ef:'statusEnemy',st:'poison',sk:1,dur:4,ch:0.20}]},
+  {id:'wound_count',name:'Wound-Counter',rarity:'common',tags:['Execute','Crit'],icon:'🎯',desc:'On hit: apply Marked (3s) to the target.',effects:[{t:'onHit',ef:'statusEnemy',st:'marked',sk:1,dur:3}]},
+  {id:'patient_blade',name:'Patient Blade',rarity:'common',tags:['Tempo'],icon:'🕰',desc:'Each second without attacking: +8% dmg to next attack (max +40%). Consumed on attack.',effects:[{t:'passive',k:'patienceBlade',v:0.08}]},
+  {id:'momentum_start',name:'First Fury',rarity:'common',tags:['Tempo','Crit'],icon:'💥',desc:'First attack of each battle deals +60% damage.',effects:[{t:'passive',k:'firstFury',v:true}]},
   {id:'vampiric',name:"Draugr's Thirst",rarity:'common',tags:['Sustain'],icon:'🩸',desc:'+8% Lifesteal.',effects:[{t:'stat',s:'lifesteal',v:.08}]},
   {id:'bulwark_start',name:'Bulwark',rarity:'common',tags:['Bulwark','Shield'],icon:'🔰',desc:'Start each battle with 35 Shield.',effects:[{t:'onBattleStart',ef:'shield',amt:35}]},
   {id:'dodge_step',name:'Skirmish-Step',rarity:'common',tags:['Tempo'],icon:'💃',desc:'+9% Evasion.',effects:[{t:'stat',s:'evasion',v:.09}]},
@@ -902,6 +913,7 @@ const BOONS=[
   {id:'virulent',name:'Festering',rarity:'uncommon',tags:['Poison'],icon:'🧪',desc:'Poison deals 70% more damage.',effects:[{t:'passive',k:'poisonMult',v:1.70}]},
   {id:'shield_bash',name:'Shield Bash',rarity:'uncommon',tags:['Bulwark','Thorns'],icon:'💥',desc:'When Shield breaks, deal 22 true dmg.',effects:[{t:'passive',k:'shieldBash',v:22}]},
   {id:'crit_surge',name:'Wound-Open',rarity:'uncommon',tags:['Crit'],icon:'⚡',desc:'Crits apply Vulnerable (3s) to enemy.',effects:[{t:'onCrit',ef:'statusEnemy',st:'vulnerable',sk:1,dur:3}]},
+  {id:'hexing_strike',name:'Hex-Strike',rarity:'uncommon',tags:['Arcane','Crit'],icon:'🌀',desc:'On crit: apply Hexed (4s) to the target (−30% accuracy).',effects:[{t:'onCrit',ef:'statusEnemy',st:'hexed',sk:1,dur:4}]},
   {id:'tempo_rise',name:'Battle-Rise',rarity:'uncommon',tags:['Tempo'],icon:'🌀',desc:'Each kill grants +1 Tempo stack.',effects:[{t:'onKill',ef:'status',st:'tempo',sk:1,dur:9999}]},
   {id:'executioner',name:'Executioner',rarity:'uncommon',tags:['Execute'],icon:'💀',desc:'+28% damage to enemies below 30% HP.',effects:[{t:'passive',k:'executioner',v:.28}]},
   {id:'thorns',name:'Thorns',rarity:'uncommon',tags:['Thorns'],icon:'🌵',desc:'Reflect 22% of damage taken.',effects:[{t:'passive',k:'thorns',v:.22}]},
@@ -943,6 +955,7 @@ const BOONS=[
   {id:'ax_kinetic',name:'RUNE: Storm-Edge',rarity:'axiom',tags:['Axiom','Crit','Tempo'],icon:'💠',desc:'Every 10 SPD = +2% Crit Chance.',effects:[{t:'passive',k:'axiomKinetic',v:true}]},
   {id:'ax_plague',name:'RUNE: Eitr Thread',rarity:'axiom',tags:['Axiom','Poison','Bleed'],icon:'🦠',desc:'Status effects last 60% longer.',effects:[{t:'passive',k:'axiomPlague',v:1.6}]},
   {id:'ax_mirror',name:'RUNE: Mirror Law',rarity:'axiom',tags:['Axiom','Thorns'],icon:'🪞',desc:'22% of post-shield HP damage is reflected (max 20/hit).',effects:[{t:'passive',k:'axiomMirror',v:.22}]},
+  {id:'ax_hunger_law',name:'RUNE: Hunger Law',rarity:'axiom',tags:['Axiom','Execute','Arcane'],icon:'🦷',desc:'Attacks against enemies below 50% HP ignore Shield.',effects:[{t:'passive',k:'axiomHungerLaw',v:true}]},
 
 {id:'precision_optics', name:'Hawk-Sight',      rarity:'common',  tags:['Crit'],                icon:'🔭',desc:'+8% Accuracy.', effects:[{t:'stat',s:'accuracy',v:.08}]},
 {id:'cleaving_arc',     name:'Cleaving Arc',          rarity:'uncommon',tags:['Execute','Tempo'],     icon:'🪓',desc:'On hit: splash 35% damage to a random other enemy.', effects:[{t:'onHit',ef:'splash',v:.35}]},
@@ -1477,10 +1490,12 @@ const WAVE_TRAITS=[
   {id:'echo_atk',name:'Echo Barrage',icon:'🔊',desc:'Enemies 25% chance to attack twice.',apply(es,h,Gx){Gx.waveFlags.eEcho=true;}},
   {id:'reinforcements',name:'Horde-Call',icon:'🚨',desc:'+1 additional enemy joins the wave.',apply(es,h,Gx){const cap=(Gx.waveBodyCap||8);if(es.length<cap){const arch=reinforcementArchetypeForWave(Gx.wave);if(arch)es.push(mkEnemy(arch,Gx.wave,false,{isBoss:false}));}}},
   {id:'marked_prey',name:'Marked Prey',icon:'🎯',desc:'Battle start: hero becomes Vulnerable (3s). Enemies gain +10% Crit Chance.',apply(es,h,Gx){es.forEach(e=>{e.cc=Math.min(.8,(e.cc||.05)+.10);});Gx.waveFlags.heroStartVuln=3;}},
+  {id:'echo_wounds',name:'Echo Wounds',icon:'🩸',desc:'All DoT damage dealt to enemies is reflected back to the hero at 25%.',apply(es,h,Gx){Gx.waveFlags.echoWounds=true;Gx.waveFlags.echoWoundsPct=0.25;}},
 ];
 
 const MINOR_WAVE_TRAIT_IDS = ['armored','frenzied','glass','blessed','enraged','regenerating','quickened'];
 const MAJOR_WAVE_TRAIT_IDS = ['toxic_air','echo_atk','elite_wave','reinforcements'];
+const SPECIAL_WAVE_TRAIT_IDS = ['echo_wounds'];
 
 const TRIAL_CONFIG = {
   1:{slotsMin:2,slotsMax:2,bodyCap:2,minorTraitsMin:0,minorTraitsMax:0,majorTraitsMax:0,allowEliteTrait:false},
@@ -2226,6 +2241,12 @@ function pickWaveTraitsByTrial(wave) {
   if(allowMajorInFill) fillPool=[...minorPool,...majorPool];
   while(picked.length<floor){if(!pickFrom(fillPool))break;}
 
+  if(wave>=7&&!bossWave&&rng()<0.12){
+    const specialPool=WAVE_TRAITS.filter(t=>SPECIAL_WAVE_TRAIT_IDS.includes(t.id)&&!used.has(t.id));
+    const blocked=picked.some(t=>t.id==='echo_atk'||t.id==='elite_wave');
+    if(!blocked&&specialPool.length){const st=rpick(specialPool);used.add(st.id);picked.push(st);}
+  }
+
   if(wave===12&&cfg.eitherMajorOrMinors){
     const isMajor=(t)=>MAJOR_WAVE_TRAIT_IDS.includes(t.id);
     const majors=picked.filter(isMajor);
@@ -2366,12 +2387,13 @@ function applyStatus(unit,key,stacks,dur,maxStacks){
 }
 
 // ═══ DAMAGE / HEAL ═══
-function dealToEnemy(enemy,dmg){
+function dealToEnemy(enemy,dmg,opts){
+  opts=opts||{};
   if(enemy.dead||dmg<=0)return 0;
   if(enemy.archId==='tank'&&enemy._tankGuard){enemy._tankGuard=false;addLog(`  🛡 ${enemy.displayName||enemy.name} Iron Will negates!`,'lstatus');return 0;}
 
   const sh=enemy.statuses.shield;
-  if(sh&&sh.value>0){
+  if(!opts.ignoreShield&&sh&&sh.value>0){
     const abs=Math.min(sh.value,dmg);sh.value-=abs;dmg-=abs;
     if(sh.value<=0)delete enemy.statuses.shield;
     if(dmg<=0)return abs;
@@ -2381,6 +2403,13 @@ function dealToEnemy(enemy,dmg){
   enemy.hp=Math.max(0,enemy.hp-dmg);
   if(enemy.hp<=0&&!enemy.dead){enemy.dead=true;onKill(enemy);}
   return Math.min(dmg,prev);
+}
+
+function dealToEnemyFromHero(enemy,dmg){
+  const hunger=passive('axiomHungerLaw');
+  const ignore=!!(hunger&&enemy&&!enemy.dead&&enemy.hp<enemy.maxHP*0.50);
+  if(ignore&&enemy.statuses&&enemy.statuses.shield&&enemy.statuses.shield.value>0)addLog('  🦷 Hunger Law pierces Shield!','laxiom');
+  return dealToEnemy(enemy,dmg,{ignoreShield:ignore});
 }
 
 function heroDmg(rawDmg,attacker,src){
@@ -2549,6 +2578,8 @@ function startBattle(){
   if(hasP('axiomOpen'))h.flags.openStrike=true;
   if(hasP('wardDebuff'))h.flags.debuffWard=true;
   h.flags.secondWindUsed=false;
+  h._firstFuryUsedThisBattle=false;
+  h._attackedThisSecond=false;
   applyWaveTraitsToEnemies();
   applyBattleStartBoons();
   if(heroHasShieldEquipped()&&carryShield>0)addShieldToUnit(h,carryShield,{bypassShieldPenalty:true});
@@ -2600,6 +2631,10 @@ function combatTick(){
     if(ren){
       const regenBonus=(G.tierFlags&&G.tierFlags.regenBoonBonus)||0;
       healHero(Math.floor(G.hero.maxHP*ren*(1+regenBonus)),'regen');
+    }
+    if(passive('patienceBlade')){
+      if(!G.hero._attackedThisSecond)applyStatus(G.hero,'patience',1,9999,5);
+      G.hero._attackedThisSecond=false;
     }
     if(G.hero.gear){
       Object.values(G.hero.gear).forEach(item=>{
@@ -2657,11 +2692,16 @@ function resolveHeroHit(target,opts={}){
     if(h.flags.tacticAmbush){dmg=Math.floor(dmg*2);addLog('  🗡 Ambush!','laxiom');}
     if(h.flags.deathMark){dmg=Math.floor(dmg*2.6);h.flags.deathMark=0;addLog('  ☠ Death Mark!','laxiom');}
     const tr=passive('trance');if(tr&&h.atkCount%tr===0){dmg=Math.floor(dmg*1.9);addLog('  🔁 Battle Trance!','laxiom');}
-    const arc=passive('arcane');if(arc&&h.atkCount%arc===0){const md=Math.floor(dmg*.9);addLog('  🔮 Arcane Surge! +'+md,'laxiom');dealToEnemy(target,md);}
-    const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog('  🌀 GINNUNGA-STRIKE! '+vd+'!','laxiom');dealToEnemy(target,vd);fxEnemyImpact(target.id,{big:true});if(target.dead)return {hit:true,crit:false,actual:0,killed:true};}
+    const arc=passive('arcane');if(arc&&h.atkCount%arc===0){const md=Math.floor(dmg*.9);addLog('  🔮 Arcane Surge! +'+md,'laxiom');dealToEnemyFromHero(target,md);}
+    const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog('  🌀 GINNUNGA-STRIKE! '+vd+'!','laxiom');dealToEnemyFromHero(target,vd);fxEnemyImpact(target.id,{big:true});if(target.dead)return {hit:true,crit:false,actual:0,killed:true};}
   }
 
   if(crit)dmg=Math.floor(dmg*es.critDmg*rmult('critDmg'));
+  if(!isBonusHit&&passive('firstFury')&&!h._firstFuryUsedThisBattle){h._firstFuryUsedThisBattle=true;h.flags.firstFury=true;}
+  if(h.flags.firstFury){dmg=Math.floor(dmg*1.60);h.flags.firstFury=false;addLog('  💥 First Fury!','laxiom');}
+  if(h.statuses.momentum){const ms=h.statuses.momentum.stacks||0;dmg+=ms*2;delete h.statuses.momentum;addLog('  ⚡ Momentum! +'+(ms*2)+' dmg','lstatus');}
+  if(h.statuses.patience){const ps=h.statuses.patience.stacks||0;dmg=Math.floor(dmg*(1+0.08*ps));delete h.statuses.patience;addLog('  🕰 Patience! +'+Math.round(8*ps)+'% dmg','lstatus');}
+  if(target.statuses.marked){dmg=Math.floor(dmg*1.30);delete target.statuses.marked;addLog('  🎯 Marked! +30% dmg','lstatus');}
   dmg=Math.floor(dmg*dmgMult);
 
   let effDef=target.def;
@@ -2679,7 +2719,7 @@ function resolveHeroHit(target,opts={}){
   if(target.statuses.vulnerable)dmg=Math.floor(dmg*1.30);
 
   dmg=Math.max(1,dmg-effDef);
-  const actual=dealToEnemy(target,dmg);
+  const actual=dealToEnemyFromHero(target,dmg);
 
   if(crit) fxEnemyImpact(target.id,{crit:true});
   else if(actual >= Math.floor(target.maxHP * 0.18)) fxEnemyImpact(target.id,{big:true});
@@ -2719,6 +2759,7 @@ function resolveHeroHit(target,opts={}){
 function doHeroAtk(){
   const h=G.hero,alive=G.enemies.filter(e=>!e.dead);
   if(!alive.length)return;
+  h._attackedThisSecond=true;
   h.atkCount++;
 
   let target=pickHeroTarget(alive);
@@ -2746,10 +2787,12 @@ function doHeroAtk(){
 }
 
 function doEnemyAtk(enemy){
-  const h=G.hero,ev=effectiveStats().evasion;
+  const h=G.hero;
+  let ev=effectiveStats().evasion;
+  if(enemy.statuses.hexed)ev=Math.min(0.95,ev+0.30);
   const pendingDodge=enemy._tier2DodgePending||0;
   enemy._tier2DodgePending=0; // consume immediately
-  if(rng()<ev+pendingDodge){
+  if(rng()<Math.min(0.95,ev+pendingDodge)){
     addLog(`  💃 Dodged ${enemy.displayName||enemy.name}!`,'lmiss');
     trigBoon('onDodge',h,enemy);
     return;
@@ -2943,7 +2986,7 @@ function tickStatuses(unit,isHero){
       }
       if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));}
       if(isHero)heroDmg(d,null,'dot');
-      else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
+      else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}if(G.waveFlags&&G.waveFlags.echoWounds){const pct=G.waveFlags.echoWoundsPct||0.25;const rd=Math.floor(d*pct);if(rd>0)heroDmg(rd,null,'dot');}}
     }
     if(k==='poison'){
       let d=Math.floor((2+s.stacks+vk)*pm);
@@ -2952,7 +2995,7 @@ function tickStatuses(unit,isHero){
       }
       if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));}
       if(isHero)heroDmg(d,null,'dot');
-      else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}}
+      else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}if(G.waveFlags&&G.waveFlags.echoWounds){const pct=G.waveFlags.echoWoundsPct||0.25;const rd=Math.floor(d*pct);if(rd>0)heroDmg(rd,null,'dot');}}
     }
     if(k==='regen'&&isHero){
       const baseHeal=s.value||3;
