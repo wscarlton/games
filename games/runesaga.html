@@ -1581,6 +1581,8 @@ let META={
   ragnarökActive:0,
   eliteRoster:{},
   relics:0,
+  scarTokens:{},
+  lineageScarPool:[],
   hasSeenOpening:false,
   houseName:null,
   codexUnlocked:['weaver','minni','yggdrasil','allfather','valhalla','saga','rune','norns'],
@@ -2046,10 +2048,17 @@ function checkRagnarökUnlock() {
 
 
 function startFirstHero(seedVal){
+  normalizeMeta();
   const rec=mkHeroRecord(genName(0,null,null),0,[],emptyEVs(),[]);
+  let inheritedScar=null;
+  if((rec.traits||[]).length===0 && META.lineageScarPool.length && rng()<LINEAGE_SCAR_INHERIT_CHANCE){
+    inheritedScar=rpick(META.lineageScarPool);
+    if(inheritedScar)rec.traits=[inheritedScar];
+  }
   META.family[rec.id]=rec;
   saveMeta();
   initGame(seedVal||null,emptyEVs(),[],rec);
+  if(inheritedScar)addLog(`Lineage Memory: inherited scar — ${GTRAITS[inheritedScar]?.name||inheritedScar}.`,'laxiom');
 }
 
 // ═══ WAVE GENERATION ═══
@@ -2476,6 +2485,10 @@ function shieldBreak(attacker){
 function healHero(amt,src){
   const h=G.hero;
   const over=Math.max(0,(h.hp+amt)-h.maxHP);
+  let mod=1;
+  if(hasTrait&&hasTrait('shallow_breath'))mod*=0.80;
+  if(hasTrait&&hasTrait('thin_margin')&&h.hp<h.maxHP*0.30)mod*=0.65;
+  amt=Math.max(0,Math.floor(amt*mod));
   h.hp=Math.min(h.maxHP,h.hp+amt);
   if(over>0&&hasP('overhealShield')){addShieldToUnit(h,over);addLog(`  💎 Overheal → ${over} Shield!`,'laxiom');}
   if(amt>0&&src!=='ls'&&src!=='regen')addLog(`  💚 Healed ${amt} HP`,'lheal');
@@ -2532,7 +2545,11 @@ function applyBattleStartBoons(){
     if(ef.t==='onBattleStart'&&ef.ef==='status')applyStatus(G.hero,ef.st,ef.sk||1,ef.dur,ef.mx);
   }
   if(hasTrait('aegis'))addShieldToUnit(G.hero,Math.floor(8*rmult('battleStartShield')));
-  if(hasTrait('frayed_nerves'))applyStatus(G.hero,'vulnerable',1,3);
+  if(hasTrait('frayed_nerves'))applyStatus(G.hero,'vulnerable',1,1.5);
+  if(hasTrait('death_oath'))applyStatus(G.hero,'weak',1,2);
+  if(hasTrait('eitr_cough'))applyStatus(G.hero,'weak',1,2);
+  if(hasTrait('panic_surge')){applyStatus(G.hero,'momentum',2,9999,99);G.hero.flags.panicFirstAccPenalty=true;}
+  if(hasTrait('shattered_guard')&&heroHasShieldEquipped())addShieldToUnit(G.hero,Math.floor(18*rmult('battleStartShield')));
   if(G.hero.gear){
     Object.values(G.hero.gear).forEach(item=>{
       if(!item)return;
@@ -2697,6 +2714,8 @@ function resolveHeroHit(target,opts={}){
   }
 
   if(crit)dmg=Math.floor(dmg*es.critDmg*rmult('critDmg'));
+  if(crit&&hasTrait('brittle_edge')&&!target.dead)applyStatus(target,'marked',1,2);
+  if(!isBonusHit&&hasTrait('death_oath')&&!h.flags.deathOathUsed){h.flags.deathOathUsed=true;applyStatus(target,'marked',1,3);}
   if(!isBonusHit&&passive('firstFury')&&!h._firstFuryUsedThisBattle){h._firstFuryUsedThisBattle=true;h.flags.firstFury=true;}
   if(h.flags.firstFury){dmg=Math.floor(dmg*1.60);h.flags.firstFury=false;addLog('  💥 First Fury!','laxiom');}
   if(h.statuses.momentum){const ms=h.statuses.momentum.stacks||0;dmg+=ms*2;delete h.statuses.momentum;addLog('  ⚡ Momentum! +'+(ms*2)+' dmg','lstatus');}
@@ -2743,8 +2762,11 @@ function resolveHeroHit(target,opts={}){
     NarrationEngine.onCrit();
   } else addLog('  ⚔ '+(target.displayName||target.name)+' ← '+actual,'lhit');
 
-  const ls=Math.floor(actual*(es.lifesteal||0)*rmult('lifesteal'));if(ls>0)healHero(ls,'ls');
+  let ls=Math.floor(actual*(es.lifesteal||0)*rmult('lifesteal'));
+  if(hasTrait('bitter_blood'))ls=Math.floor(ls*0.50);
+  if(ls>0)healHero(ls,'ls');
   if(hasTrait('serrated')&&rng()<.22&&!target.dead)applyStatus(target,'bleed',1,2);
+  if(hasTrait('eitr_cough')&&rng()<0.15&&!target.dead)applyStatus(target,'poison',1,3);
 
   trigBoon('onHit',h,target,{actualDamage:actual,isBonusHit:!allowOnHitSplash||isBonusHit,source:isBonusHit?'bonus':'primary'});
   const sh=passive('shred');if(sh && !target.dead){const before=target.def;target.def=Math.max(0,target.def-sh);if(target.def!==before)addLog('  🪨 Sunder! '+(target.displayName||target.name)+' DEF -'+(before-target.def),'lstatus');}
@@ -2847,6 +2869,7 @@ function doEnemyAtk(enemy){
   }
 
   if(crit)dmg=Math.floor(dmg*(enemy.cd||1.5));
+  if(crit&&hasTrait('iron_reflex')){const bonus=Math.max(0,dmg-enemy.atk);dmg=enemy.atk+Math.floor(bonus*0.5);}
 
   const heroDef=(enemy.archId==='archer'&&enemy._pierce)?Math.floor(h.def*0.2):h.def;
   const reduced=Math.max(1,Math.floor(dmg)-heroDef);
@@ -2972,6 +2995,7 @@ function tickStatuses(unit,isHero){
   const pm=isHero?1.0:Math.max(1,passive('poisonMult')||1);
   const vk=isHero?0:(hasTrait('venomkiss')?1:0);
 
+  if(isHero&&hasTrait('open_wound')&&unit.statuses.bleed){heroDmg(1,null,'dot');}
   for(const [k,s] of Object.entries(unit.statuses)){
     if(!s)continue;
     if(k==='shield')continue;
@@ -3020,7 +3044,8 @@ function checkEnd(){
     clearInterval(G.interval);
     const baseGoldRaw=15+G.wave*3+(G.waveGold||0);
     const roadsideGoldMult=(G.roadside?.goldMult||1);
-    const baseGold=Math.floor(baseGoldRaw*(G.waveGoldMult||1)*roadsideGoldMult);
+    let baseGold=Math.floor(baseGoldRaw*(G.waveGoldMult||1)*roadsideGoldMult);
+    if(hasTrait('coin_scar'))baseGold=Math.floor(baseGold*1.15);
     G.gold+=baseGold;
     const xpEarned=20+G.wave*9;G.xp+=xpEarned;
     addLog(`🏆 Trial ${G.wave} complete! +${baseGold}ᛋ${(G.roadside?.goldMult||1)>1?` (x${(G.roadside.goldMult).toFixed(2)})`:''} +${xpEarned}XP`,'lwave');
@@ -3288,8 +3313,9 @@ function pickBoon(id){
 }
 
 function doReroll(){
-  if(G.gold<G.rerollCost)return;
-  G.gold-=G.rerollCost;
+  const rerollCost=G.rerollCost + (hasTrait&&hasTrait('coin_scar')?5:0);
+  if(G.gold<rerollCost)return;
+  G.gold-=rerollCost;
   const increase=(G.tierFlags&&G.tierFlags.rerollCostIncreaseOverride)||6;
   G.rerollCost+=increase;
   genDraft();
@@ -4721,10 +4747,22 @@ window.onload=()=>{
 // --- Add SCAR traits (risk/reward) ---
 (function(){
   const SCARS = {
-    frayed_nerves:{name:'Frayed Nerves',icon:'⚡',desc:'+12 SPD, start battle Vulnerable (3s).',color:'#c080ff'},
-    cold_iron:{name:'Cold Iron',icon:'🧊',desc:'+6 DEF, −4% Crit Chance.',color:'#80a8ff'},
-    brittle_edge:{name:'Brittle Edge',icon:'🩶',desc:'+10% Crit Chance, −20 Max HP.',color:'#e8c048'},
-    grave_salt:{name:'Grave Salt',icon:'🜃',desc:'+8 ATK, take +10% damage.',color:'#ff7070'},
+    frayed_nerves:{name:'Frayed Nerves',icon:'⚡',desc:'+12 SPD; start battle Vulnerable (1.5s).',color:'#c080ff'},
+    panic_surge:{name:'Panic Surge',icon:'💢',desc:'Start battle +2 Momentum; first attack −15% accuracy.',color:'#b090ff'},
+    silent_step:{name:'Silent Step',icon:'🩰',desc:'+10% Evasion; −4% Crit Chance.',color:'#9bb0ff'},
+    shallow_breath:{name:'Shallow Breath',icon:'🫁',desc:'+8 SPD; healing received −20%.',color:'#9f88cc'},
+    cold_iron:{name:'Cold Iron',icon:'🧊',desc:'+8 DEF; −4% Crit Chance.',color:'#80a8ff'},
+    scarred_plate:{name:'Scarred Plate',icon:'🧱',desc:'+10 DEF; −10 SPD.',color:'#8fa2c6'},
+    iron_reflex:{name:'Iron Reflex',icon:'🛡️',desc:'Enemy crit bonus damage vs you −50%; −10 Max HP.',color:'#96b4d8'},
+    shattered_guard:{name:'Shattered Guard',icon:'🧷',desc:'Start battle +18 Shield (shield offhand only); −4 DEF.',color:'#7fa0ff'},
+    brittle_edge:{name:'Brittle Edge',icon:'🩶',desc:'+8% Crit; crits apply Marked (2s); −20 Max HP.',color:'#e8c048'},
+    grave_salt:{name:'Grave Salt',icon:'🜃',desc:'+8 ATK; −12 Max HP.',color:'#ff7070'},
+    death_oath:{name:'Death Oath',icon:'☠️',desc:'First hit applies Marked (3s); start battle Weak (2s).',color:'#ff8a70'},
+    thin_margin:{name:'Thin Margin',icon:'🩸',desc:'+15% dmg vs <30% HP enemies; below 30% HP, healing received −35%.',color:'#ff9660'},
+    bitter_blood:{name:'Bitter Blood',icon:'☣️',desc:'Poison damage +25%; lifesteal effectiveness −50%.',color:'#79cf7e'},
+    eitr_cough:{name:'Eitr Cough',icon:'🤢',desc:'On hit 15%: +1 Poison (3s); start battle Weak (2s).',color:'#70d870'},
+    open_wound:{name:'Open Wound',icon:'🩹',desc:'Bleed damage +25%; if Bleeding, lose 1 HP/sec.',color:'#ff6a6a'},
+    coin_scar:{name:'Coin Scar',icon:'🪙',desc:'Marks gained +15%; rerolls cost +5.',color:'#d9b45a'},
   };
   Object.assign(GTRAITS, SCARS);
   for(const k of Object.keys(SCARS)){
@@ -4752,7 +4790,7 @@ const TRAIT_ASPECT = {
   aegis:'Steel', ironblood:'Steel', tenacious:'Steel', spite:'Steel', resilient:'Steel',
   swift_born:'Gale', skirmisher:'Gale',
   lucky:'Execution', gambler:'Execution', predatory:'Execution', executioner_b:'Execution', vampiric_b:'Venom',
-  frayed_nerves:'Gale', cold_iron:'Steel', brittle_edge:'Execution', grave_salt:'Execution',
+  frayed_nerves:'Gale', panic_surge:'Gale', silent_step:'Gale', shallow_breath:'Gale', cold_iron:'Steel', scarred_plate:'Steel', iron_reflex:'Steel', shattered_guard:'Steel', brittle_edge:'Execution', grave_salt:'Execution', death_oath:'Execution', thin_margin:'Execution', bitter_blood:'Venom', eitr_cough:'Venom', open_wound:'Venom', coin_scar:'Axiom',
 };
 
 function aspectRankFromXp(xp){
@@ -4938,6 +4976,7 @@ function normalizeMeta(){
   if(!META.eliteRoster || typeof META.eliteRoster !== 'object') META.eliteRoster = {};
   if(typeof META.hasSeenOpening !== 'boolean') META.hasSeenOpening = false;
   if(!META.scarTokens || typeof META.scarTokens !== 'object') META.scarTokens = {};
+  if(!Array.isArray(META.lineageScarPool)) META.lineageScarPool = [];
   if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
   for(const k of Object.keys(META.scarTokens)){
     META.scarTokens[k] = Math.max(0, Math.floor(META.scarTokens[k]||0));
@@ -4946,6 +4985,8 @@ function normalizeMeta(){
 }
 
 // --- Scar/Relic inventory helpers ---
+const LINEAGE_SCAR_INHERIT_CHANCE = 0.20;
+
 function totalScarTokens(){
   normalizeMeta();
   return Object.values(META.scarTokens||{}).reduce((a,b)=>a+(b||0),0);
@@ -4965,84 +5006,89 @@ function addScarToken(k, n){
   const _applyPatternTraitStats = applyPatternTraitStats;
   applyPatternTraitStats = function(h){
     _applyPatternTraitStats(h);
-    // Scars
     if(!h || !h.traits) return;
     if(h.traits.includes('frayed_nerves')) h.spd += 12;
-    if(h.traits.includes('cold_iron')){ h.def += 6; h.critChance = Math.max(0, Math.min(0.9, h.critChance - 0.04)); }
-    if(h.traits.includes('brittle_edge')){ h.critChance = Math.min(0.9, h.critChance + 0.10); h.maxHP = Math.max(30, h.maxHP - 20); h.hp = Math.min(h.hp, h.maxHP); }
-    if(h.traits.includes('grave_salt')) h.atk += 8;
-  };
-})();
+    if(h.traits.includes('panic_surge')) h.spd += 6;
+    if(h.traits.includes('silent_step')){h.evasion=Math.min(0.6,h.evasion+0.10);h.critChance=Math.max(0,h.critChance-0.04);} 
+    if(h.traits.includes('shallow_breath')) h.spd += 8;
 
-// --- Birth gifts (one-time at hero creation) ---
-function applyBirthGift(hero, rec){
-  if(!hero || !rec) return;
-  const a = rec.birthAspect || 'Steel';
-  const r = getAspectRank(a);
-  if(a==='Steel'){
-    hero.def += 1 + r;
-    hero.maxHP += 10 + r*4; hero.hp = Math.min(hero.maxHP, hero.hp + 10 + r*4);
-  }else if(a==='Gale'){
-    hero.spd += 6 + r*2;
-    hero.evasion = Math.min(0.6, hero.evasion + 0.02 + r*0.005);
-  }else if(a==='Venom'){
-    hero.atk += 2 + r;
-    hero.lifesteal = Math.min(0.4, hero.lifesteal + 0.01 + r*0.004);
-  }else if(a==='Execution'){
-    hero.critChance = Math.min(0.9, hero.critChance + 0.03 + r*0.01);
-  }else if(a==='Axiom'){
-    hero.critChance = Math.min(0.9, hero.critChance + 0.02 + r*0.008);
-    hero.spd += 3 + r;
-  }
-}
+    if(h.traits.includes('cold_iron')){ h.def += 8; h.critChance = Math.max(0, Math.min(0.9, h.critChance - 0.04)); }
+    if(h.traits.includes('scarred_plate')){ h.def += 10; h.spd = Math.max(5,h.spd-10); }
+    if(h.traits.includes('iron_reflex')){ h.maxHP = Math.max(30, h.maxHP - 10); h.hp = Math.min(h.hp, h.maxHP); }
+    if(h.traits.includes('shattered_guard')) h.def = Math.max(0,h.def-4);
 
-// Wrap newHero to apply birth gift
-(function(){
-  const _newHero = newHero;
-  newHero = function(evs, traits, record){
-    const h = _newHero(evs, traits, record);
-    try{ if(record) applyBirthGift(h, record); }catch(e){}
-    return h;
-  };
-})();
+    if(h.traits.includes('brittle_edge')){ h.critChance = Math.min(0.9, h.critChance + 0.08); h.maxHP = Math.max(30, h.maxHP - 20); h.hp = Math.min(h.hp, h.maxHP); }
+    if(h.traits.includes('grave_salt')){ h.atk += 8; h.maxHP=Math.max(30,h.maxHP-12); h.hp=Math.min(h.hp,h.maxHP);} 
+    if(h.traits.includes('thin_margin')) h.flags.thinMargin=true;
 
-// --- Damage hook for grave_salt (+10% damage taken) ---
-(function(){
-  const _heroDmg = heroDmg;
-  heroDmg = function(rawDmg, attacker, src){
-    if(G && G.hero && hasTrait && hasTrait('grave_salt') && rawDmg>0) rawDmg = Math.floor(rawDmg * 1.10);
-    return _heroDmg(rawDmg, attacker, src);
+    if(h.traits.includes('bitter_blood')) h.flags.bitterBlood=true;
   };
 })();
 
 // --- Fallen scar/relic choice systems ---
-const SCAR_KEYS = ['frayed_nerves','cold_iron','brittle_edge','grave_salt'];
+const SCAR_KEYS = ['frayed_nerves','panic_surge','silent_step','shallow_breath','cold_iron','scarred_plate','iron_reflex','shattered_guard','brittle_edge','grave_salt','death_oath','thin_margin','bitter_blood','eitr_cough','open_wound','coin_scar'];
+
+const SCAR_DEF={
+  frayed_nerves:{aspect:'Gale',flavorReason:'The pressure never let up.'},
+  panic_surge:{aspect:'Gale',flavorReason:'Every opening move came from panic.'},
+  silent_step:{aspect:'Gale',flavorReason:'You learned to live between strikes.'},
+  shallow_breath:{aspect:'Gale',flavorReason:'Breathing became measured and thin.'},
+  cold_iron:{aspect:'Steel',flavorReason:'The cold found the gaps.'},
+  scarred_plate:{aspect:'Steel',flavorReason:'Armor thickened, movement slowed.'},
+  iron_reflex:{aspect:'Steel',flavorReason:'You flinched before the killing blow.'},
+  shattered_guard:{aspect:'Steel',flavorReason:'A shield memory remained, cracked but stubborn.'},
+  brittle_edge:{aspect:'Execution',flavorReason:'Striking harder was never the answer.'},
+  grave_salt:{aspect:'Execution',flavorReason:'Aggression left no room for defense.'},
+  death_oath:{aspect:'Execution',flavorReason:'The first cut became a vow.'},
+  thin_margin:{aspect:'Execution',flavorReason:'You only trusted the edge of defeat.'},
+  bitter_blood:{aspect:'Venom',flavorReason:'Mercy tasted like poison.'},
+  eitr_cough:{aspect:'Venom',flavorReason:'Each breath carried eitr.'},
+  open_wound:{aspect:'Venom',flavorReason:'Old wounds refused to close.'},
+  coin_scar:{aspect:'neutral',flavorReason:'The Order always takes its cut.'},
+};
 
 function deriveScarCandidates(){
   const all=[...SCAR_KEYS];
-  const weights={frayed_nerves:1,cold_iron:1,brittle_edge:1,grave_salt:1};
+  const aspect=(G&&G.hero&&G.hero.record&&G.hero.record.birthAspect)||'Steel';
+  const byAspect=all.filter(k=>(SCAR_DEF[k]?.aspect||'neutral')===aspect);
+  const aspectPick=(byAspect.length?rpick(byAspect):rpick(all));
+
   const es=(G&&Array.isArray(G.enemies))?G.enemies:[];
+  const w={}; all.forEach(k=>w[k]=1);
+  if(es.some(e=>e.archId==='frost'||e.realmTier==='niflheim')){w.cold_iron+=3;w.scarred_plate+=2;}
+  if(es.some(e=>e.archId==='assassin'||e.beh==='burst')){w.iron_reflex+=3;w.thin_margin+=2;}
+  if(es.some(e=>e.archId==='shaman'||e.archId==='bombardier')){w.eitr_cough+=2;w.bitter_blood+=2;}
+  if(G&&G.waveFlags&&G.waveFlags.toxicAir){w.open_wound+=2;w.bitter_blood+=2;}
+  const causePool=all.filter(k=>k!==aspectPick);
+  const causePick=rwgt(causePool,k=>w[k]||1);
 
-  if(es.some(e=>e.archId==='frost'||e.realmTier==='niflheim')){weights.cold_iron+=3;weights.frayed_nerves+=1;}
-  if(G&&G.hero&&G.hero.critChance>0.20)weights.brittle_edge+=2;
-  if(G&&G._narratedNearDeath)weights.frayed_nerves+=2;
-  if(es.some(e=>e.elite))weights.grave_salt+=2;
+  const strayPool=all.filter(k=>k!==aspectPick&&k!==causePick);
+  const strayPick=strayPool.length?rpick(strayPool):rpick(all);
 
-  const candidates=[];
-  const pool=[...all];
-  while(candidates.length<3&&pool.length>0){
-    const pick=rwgt(pool,k=>weights[k]||1);
-    candidates.push(pick);
-    pool.splice(pool.indexOf(pick),1);
-  }
-  return candidates;
+  return [
+    {key:aspectPick,label:'Aspect Memory'},
+    {key:causePick,label:'Cause of Death'},
+    {key:strayPick,label:'Stray Memory'},
+  ];
 }
 
 const SCAR_REASON_TEXT={
-  frayed_nerves:'The pressure never let up.',
-  cold_iron:'The cold found the gaps.',
-  brittle_edge:'Striking harder was never the answer.',
-  grave_salt:'Aggression left no room for defense.',
+  frayed_nerves:SCAR_DEF.frayed_nerves.flavorReason,
+  panic_surge:SCAR_DEF.panic_surge.flavorReason,
+  silent_step:SCAR_DEF.silent_step.flavorReason,
+  shallow_breath:SCAR_DEF.shallow_breath.flavorReason,
+  cold_iron:SCAR_DEF.cold_iron.flavorReason,
+  scarred_plate:SCAR_DEF.scarred_plate.flavorReason,
+  iron_reflex:SCAR_DEF.iron_reflex.flavorReason,
+  shattered_guard:SCAR_DEF.shattered_guard.flavorReason,
+  brittle_edge:SCAR_DEF.brittle_edge.flavorReason,
+  grave_salt:SCAR_DEF.grave_salt.flavorReason,
+  death_oath:SCAR_DEF.death_oath.flavorReason,
+  thin_margin:SCAR_DEF.thin_margin.flavorReason,
+  bitter_blood:SCAR_DEF.bitter_blood.flavorReason,
+  eitr_cough:SCAR_DEF.eitr_cough.flavorReason,
+  open_wound:SCAR_DEF.open_wound.flavorReason,
+  coin_scar:SCAR_DEF.coin_scar.flavorReason,
 };
 
 function showFallenScarChoice(heroId,salvageEarned){
@@ -5064,10 +5110,11 @@ function showFallenScarChoice(heroId,salvageEarned){
       What did this saga teach the blood?
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-      ${candidates.map(scarKey=>{
+      ${candidates.map((c)=>{const scarKey=c.key;const lbl=c.label;
         const gt=GTRAITS[scarKey];
         return `
           <div class="imprint-card" onclick="acceptScar('${heroId}','${scarKey}')">
+            <div style="font-size:9px;color:var(--txt3);letter-spacing:1px;margin-bottom:3px">${lbl}</div>
             <div style="display:flex;justify-content:space-between;align-items:center">
               <div style="font-weight:800;color:#d090ff">${gt?.icon||'🩹'} ${gt?.name||scarKey}</div>
               <div style="font-size:9px;color:var(--salvage)">SCAR TOKEN +1</div>
@@ -5092,6 +5139,7 @@ function acceptScar(heroId,scarKey){
   if(!rec)return;
   normalizeMeta();
   addScarToken(scarKey,1);
+  if(!META.lineageScarPool.includes(scarKey))META.lineageScarPool.push(scarKey);
   try{META.unlockedTraits.add(scarKey);}catch(e){}
   if(rec.runResult)rec.runResult.harvest='scar:'+scarKey;
   META.family[heroId]=rec;
@@ -5408,6 +5456,7 @@ function breedHeroes(idA, idB, opts){
       spliceScar = true;
       const sk = opts.scarKey;
       if(!childTraits.includes(sk)) childTraits.push(sk);
+      if(!META.lineageScarPool.includes(sk))META.lineageScarPool.push(sk);
     }
   }
 
@@ -5856,9 +5905,15 @@ function startFirstHero(){
   const founder=mkHeroRecord(genName(0,'Steel',null,null),0,[],emptyEVs(),[]);
   founder.birthAspect='Steel';
   founder.birthFlags={};
+  let inheritedScar=null;
+  if((founder.traits||[]).length===0 && META.lineageScarPool.length && rng()<LINEAGE_SCAR_INHERIT_CHANCE){
+    inheritedScar=rpick(META.lineageScarPool);
+    if(inheritedScar)founder.traits=[inheritedScar];
+  }
   META.family[founder.id]=founder;
   saveMeta();
   initGame(null,emptyEVs(),[],founder);
+  if(inheritedScar)addLog(`Lineage Memory: inherited scar — ${GTRAITS[inheritedScar]?.name||inheritedScar}.`,'laxiom');
 }
 
 // --- Award aspect XP on retire/victory/fallen, and show fallen harvest ---
