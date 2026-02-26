@@ -1285,7 +1285,8 @@ function reinforcementArchetypeForWave(wave){
 
 
 
-function tfFlag(G,k){G.tierFlags[k]=true;}
+function tfSetBool(G,k,val=true){G.tierFlags[k]=!!val;}
+function tfFlag(G,k){tfSetBool(G,k,true);}
 function tfAdd(G,k,v){G.tierFlags[k]=(G.tierFlags[k]||0)+v;}
 function tfMul(G,k,m){G.tierFlags[k]=(typeof G.tierFlags[k]==='number'?G.tierFlags[k]:1)*m;}
 function tfMax(G,k,v){G.tierFlags[k]=Math.max((G.tierFlags[k]||0),v);}
@@ -1293,20 +1294,20 @@ function tfMin(G,k,v){G.tierFlags[k]=Math.min((typeof G.tierFlags[k]==='number'?
 
 const RAGNARÖK_TIERS = [
   {tier:1,name:'Fimbulwinter Begins',omen:'The first winter without summer settles over every road.',revealStage:'fimbulwinter',apply(G){tfAdd(G,'heroPermanentSPDPenalty',5);tfMul(G,'enemyHPMult',1.10);}},
-  {tier:2,name:'Fimbulwinter Deepens',omen:'Oaths crack in the cold; rage and panic come sooner.',revealStage:'none',apply(G){tfFlag(G,'allowAggroTraitsInBlock1');}},
-  {tier:3,name:'Third Winter / Fenrir’s Chain Weakens',omen:'Gleipnir strains. The old constraints no longer hold.',revealStage:'fenrir',apply(G){tfFlag(G,'archetypeBehaviors');}},
-  {tier:4,name:'Fenrir Breaks Free',omen:'The wolf runs. The dead rise before they cool.',revealStage:'fenrir',apply(G){tfMax(G,'draugrEchoChance',0.15);tfFlag(G,'eliteSecondPhase');}},
-  {tier:5,name:'Jörmungandr Rises',omen:'Venom rides the wind as the serpent coils around the world.',revealStage:'eitr',apply(G){tfMax(G,'toxicAirFromWave',5);tfMax(G,'toxicAirDmg',1);tfMax(G,'dotDamageBonus',0.10);tfFlag(G,'bossSignatureAbility');}},
-  {tier:6,name:'Naglfar Sets Sail',omen:'The corpse-ship reaches shore; every wave brings more bodies.',revealStage:'indirect',apply(G){tfAdd(G,'enemyMaxSlotsBonus',1);tfAdd(G,'enemyBodyCapBonus',1);tfFlag(G,'allowHordeCall');}},
-  {tier:7,name:'Loki Breaks Free',omen:'Bargains turn barbed. Every choice has a hook.',revealStage:'indirect',apply(G){tfFlag(G,'cursedBargainInShop');tfMax(G,'rerollCostIncreaseOverride',4);}},
+  {tier:2,name:'Fimbulwinter Deepens',omen:'Oaths crack in the cold; rage and panic come sooner.',revealStage:'none',apply(G){tfSetBool(G,'allowAggroTraitsInBlock1');}},
+  {tier:3,name:'Third Winter / Fenrir’s Chain Weakens',omen:'Gleipnir strains. The old constraints no longer hold.',revealStage:'fenrir',apply(G){tfSetBool(G,'archetypeBehaviors');}},
+  {tier:4,name:'Fenrir Breaks Free',omen:'The wolf runs. The dead rise before they cool.',revealStage:'fenrir',apply(G){tfMax(G,'draugrEchoChance',0.15);tfSetBool(G,'eliteSecondPhase');}},
+  {tier:5,name:'Jörmungandr Rises',omen:'Venom rides the wind as the serpent coils around the world.',revealStage:'eitr',apply(G){tfMax(G,'toxicAirFromWave',5);tfMax(G,'toxicAirDmg',1);tfMax(G,'dotDamageBonus',0.10);tfSetBool(G,'bossSignatureAbility');}},
+  {tier:6,name:'Naglfar Sets Sail',omen:'The corpse-ship reaches shore; every wave brings more bodies.',revealStage:'indirect',apply(G){tfAdd(G,'enemyMaxSlotsBonus',1);tfAdd(G,'enemyBodyCapBonus',1);tfSetBool(G,'allowHordeCall');}},
+  {tier:7,name:'Loki Breaks Free',omen:'Bargains turn barbed. Every choice has a hook.',revealStage:'indirect',apply(G){tfSetBool(G,'cursedBargainInShop');tfMax(G,'rerollCostIncreaseOverride',4);}},
   {tier:8,name:'Surtr Marches / Bifröst Shatters',omen:'Fire crosses broken bridges. Even the first step burns.',revealStage:'surtr',apply(G){tfMax(G,'muspelheimTagFromWave',1);tfMax(G,'emberSparkChance',0.20);tfAdd(G,'startingGoldReduction',8);}},
-  {tier:9,name:'Gods Summon the Einherjar',omen:'Gjallarhorn sounds. The remembered dead answer.',revealStage:'indirect',apply(G){tfFlag(G,'namedElitesActive');tfMax(G,'killDropsMark',1);}},
-  {tier:10,name:'Vígríðr: Plain of Battle',omen:'All roads lead to open war. Nothing waits its turn.',revealStage:'indirect',apply(G){tfFlag(G,'elitesOnAnyWave');tfAdd(G,'heroSPDBonus',8);tfMul(G,'enemySPDMult',1.05);}},
-  {tier:11,name:'The Gods Fall',omen:'No guardians remain. Endurance must come from within.',revealStage:'indirect',apply(G){tfAdd(G,'heroPermanentSPDPenalty',8);tfFlag(G,'allWavesNiflheimTag');tfMax(G,'regenBoonBonus',0.40);tfMax(G,'lifestealBoonBonus',0.15);}},
+  {tier:9,name:'Gods Summon the Einherjar',omen:'Gjallarhorn sounds. The remembered dead answer.',revealStage:'indirect',apply(G){tfSetBool(G,'namedElitesActive');tfMax(G,'killDropsMark',1);}},
+  {tier:10,name:'Vígríðr: Plain of Battle',omen:'All roads lead to open war. Nothing waits its turn.',revealStage:'indirect',apply(G){tfSetBool(G,'elitesOnAnyWave');tfAdd(G,'heroSPDBonus',8);tfMul(G,'enemySPDMult',1.05);}},
+  {tier:11,name:'The Gods Fall',omen:'No guardians remain. Endurance must come from within.',revealStage:'indirect',apply(G){tfAdd(G,'heroPermanentSPDPenalty',8);tfSetBool(G,'allWavesNiflheimTag');tfMax(G,'regenBoonBonus',0.40);tfMax(G,'lifestealBoonBonus',0.15);}},
   {tier:12,name:'Surtr Burns the Nine Realms',omen:'Ash and venom mix. Corruption descends in sheets.',revealStage:'surtr',apply(G){tfMax(G,'rootTouchedEnemyChance',0.45);tfMax(G,'enemyWaveScaleBonus',1);tfAdd(G,'startingGoldReduction',5);tfMax(G,'toxicAirDmg',2);tfMax(G,'dotDamageBonus',0.20);}},
-  {tier:13,name:'Níðhöggr Ascends',omen:'The Gnawer rises from below; rot is now the atmosphere.',revealStage:'nidhoggr',apply(G){tfMax(G,'toxicAirFromWave',1);tfMax(G,'toxicAirDmg',2);tfMax(G,'dotDamageBonus',0.30);tfMax(G,'rootTouchedEnemyChance',0.60);tfMax(G,'rootTouchedStatMult',1.20);tfFlag(G,'guaranteeNamedEliteReturns');}},
+  {tier:13,name:'Níðhöggr Ascends',omen:'The Gnawer rises from below; rot is now the atmosphere.',revealStage:'nidhoggr',apply(G){tfMax(G,'toxicAirFromWave',1);tfMax(G,'toxicAirDmg',2);tfMax(G,'dotDamageBonus',0.30);tfMax(G,'rootTouchedEnemyChance',0.60);tfMax(G,'rootTouchedStatMult',1.20);tfSetBool(G,'guaranteeNamedEliteReturns');}},
   {tier:14,name:'The Binding',omen:'Victory is not clean now. You bind collapse into pattern.',revealStage:'indirect',apply(G){tfMul(G,'enemySPDMult',1.20);tfAdd(G,'heroSPDBonus',10);tfAdd(G,'startingGoldReduction',3);}},
-  {tier:15,name:'The Rune of What May Be',omen:'At the deepest root, possibility is carved into law.',revealStage:'nidhoggr',apply(G){tfMax(G,'enemyWaveScaleBonus',2);tfFlag(G,'allFatherLastGift');}},
+  {tier:15,name:'The Rune of What May Be',omen:'At the deepest root, possibility is carved into law.',revealStage:'nidhoggr',apply(G){tfMax(G,'enemyWaveScaleBonus',2);tfSetBool(G,'allFatherLastGift');}},
 ];
 
 
