@@ -725,6 +725,34 @@ body.embers-off::after{ opacity:0 !important; }
   *{ animation:none !important; transition:none !important; }
   body::after{ display:none; }
 }
+
+
+/* Balance Review (Codex subview) */
+.br-codex-wrap{display:flex;flex-direction:column;gap:10px;}
+.br-codex-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+.br-codex-title{font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--gold);}
+.br-toggle{display:flex;gap:6px;flex-wrap:wrap;}
+.br-tbtn{padding:5px 10px;border-radius:4px;border:1px solid var(--border2);background:var(--bg2);color:var(--txt2);font-size:11px;cursor:pointer;}
+.br-tbtn.active{color:var(--gold);border-color:rgba(212,160,23,.55);box-shadow:0 0 10px rgba(212,160,23,.12) inset;}
+.br-panel{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:10px;}
+.br-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.br-search{flex:1;min-width:220px;background:var(--bg);border:1px solid var(--border2);color:var(--txt);padding:6px 8px;border-radius:4px;font-size:11px;}
+.br-toc{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px;}
+.br-toc a{font-size:10px;color:var(--cyan);text-decoration:none;border:1px solid var(--border2);padding:3px 7px;border-radius:999px;background:rgba(0,0,0,.18);}
+.br-section{border:1px solid var(--border2);border-radius:6px;background:rgba(0,0,0,.12);padding:0 10px;margin-bottom:8px;}
+.br-section summary{cursor:pointer;padding:8px 0;color:var(--txt);font-weight:700;}
+.br-note{font-size:11px;color:var(--txt3);margin:0 0 8px;line-height:1.5;}
+.br-body{padding:0 0 10px;}
+.br-h{font-family:'Orbitron',sans-serif;letter-spacing:.3px;}
+table.br-table{width:100%;border-collapse:collapse;font-size:10px;}
+.br-table th,.br-table td{border:1px solid var(--border2);padding:6px 7px;text-align:left;vertical-align:top;}
+.br-table th{background:rgba(0,0,0,.32);color:var(--txt2);font-size:9px;letter-spacing:.6px;text-transform:uppercase;}
+.br-chip{display:inline-block;margin:1px 3px 1px 0;padding:1px 6px;border-radius:999px;background:rgba(96,160,255,.12);border:1px solid rgba(96,160,255,.32);color:var(--txt2);font-size:9px;}
+.br-rar{display:inline-block;padding:1px 6px;border-radius:999px;border:1px solid var(--border2);font-size:9px;text-transform:uppercase;}
+.br-rar.rar-common{color:#cdd6e3}.br-rar.rar-uncommon{color:#7fd4a9}.br-rar.rar-rare{color:#77b7ff}.br-rar.rar-epic{color:#d3a4ff}.br-rar.rar-legendary{color:#f0c36d}.br-rar.rar-axiom{color:#ff7ad8}
+.br-new-row td{border-left:3px solid rgba(100,255,220,.55)!important;}
+.br-changed-row td{border-left:3px solid rgba(255,196,110,.65)!important;}
+
 </style>
 </head>
 <body>
@@ -1586,6 +1614,7 @@ let META={
   hasSeenOpening:false,
   houseName:null,
   codexUnlocked:['weaver','minni','yggdrasil','allfather','valhalla','saga','rune','norns'],
+  codexView:'lore',
 };
 
 function saveMeta(){
@@ -1605,6 +1634,7 @@ function loadMeta(){
     if(typeof META.relics!=='number')META.relics=0;
     if(typeof META.hasSeenOpening!=='boolean')META.hasSeenOpening=false;
     if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
+    if(META.codexView!=='balance')META.codexView='lore';
   }catch(e){}
 }
 function exportSave(){
@@ -4362,31 +4392,134 @@ function checkCodexUnlocks(){
   if(META.family&&Object.keys(META.family).some(id=>{const r=META.family[id];return r&&r.parentIds&&r.parentIds.length>0;}))unlockCodexEntry('wyrd');
 }
 
-function codexHTML(){
-  checkCodexUnlocks();
+function brEsc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function brChip(t){return `<span class="br-chip">${brEsc(t)}</span>`;}
+function brRarityBadge(r){return `<span class="br-rar rar-${brEsc(r)}">${brEsc(r)}</span>`;}
+function brTable({id,columns,rows,rowClass,rowSearchText}){
+  const head=`<thead><tr>${columns.map(c=>`<th>${brEsc(c.label)}</th>`).join('')}</tr></thead>`;
+  const body=(rows||[]).map((row,i)=>{
+    const cls=rowClass?rowClass(row,i):'';
+    const search=rowSearchText?rowSearchText(row,i):Object.values(row||{}).join(' ');
+    return `<tr data-br-row data-br="${brEsc(id||'tbl')}" data-br-search="${brEsc(search)}" class="${cls||''}">${columns.map(c=>`<td>${c.render?c.render(row,i):brEsc(row[c.key])}</td>`).join('')}</tr>`;
+  }).join('');
+  return `<table class="br-table">${head}<tbody>${body||`<tr><td colspan="${columns.length}">No entries.</td></tr>`}</tbody></table>`;
+}
+function brSection({id,title,noteHTML,bodyHTML,open=true}){
+  return `<details class="br-section" id="${brEsc(id)}" ${open?'open':''}><summary><span class="br-h">${brEsc(title)}</span></summary>${noteHTML?`<div class="br-note">${noteHTML}</div>`:''}<div class="br-body">${bodyHTML||''}</div></details>`;
+}
+function brApplySearch(q){
+  q=(q||'').trim().toLowerCase();
+  document.querySelectorAll('[data-br-row]').forEach(tr=>{
+    const hay=(tr.getAttribute('data-br-search')||'').toLowerCase();
+    tr.style.display=(!q||hay.includes(q))?'':'none';
+  });
+}
+function brSetAll(open){document.querySelectorAll('.br-section').forEach(d=>d.open=!!open);}
+function brStringify(v){if(v==null)return '';if(typeof v==='string')return v; if(typeof v==='number'||typeof v==='boolean')return String(v); if(Array.isArray(v))return v.map(brStringify).join(', '); try{return JSON.stringify(v);}catch(e){return String(v);}}
+function brFlagClass(group,id){const f=BR_FLAGS[group]?.[id]; if(!f) return ''; return f.isNew?'br-new-row':(f.changed?'br-changed-row':'');}
+function brFlagNote(group,id){const f=BR_FLAGS[group]?.[id]; return f&&f.note?` <em style="color:var(--txt3)">${brEsc(f.note)}</em>`:'';}
+function brFmtNum(n){return (typeof n==='number'&&Number.isFinite(n))?String(Math.round(n*100)/100):'—';}
+function brExplainRagnarokTier(t){
+  const tmp={tierFlags:{},hero:{},waveFlags:{}};
+  try{ if(t&&typeof t.apply==='function')t.apply(tmp); }catch(e){ return 'Effect: (see apply())'; }
+  const out=Object.entries(tmp.tierFlags||{}).map(([k,v])=>`${k}=${typeof v==='number'?brFmtNum(v):String(v)}`);
+  return out.length?out.join('; '):'No direct tierFlags diff';
+}
+
+const BR_FLAGS={
+  boons:{
+    vanguard:{changed:true,note:'Now triggers only on HP damage and grants less Shield.'},
+    eternal_hunger:{changed:true,note:'Lifesteal reduced and overheal conversion capped per battle.'},
+    ax_harvest:{changed:true,note:'Kill heal reduced.'},
+    ax_fortress:{changed:true,note:'Higher shield threshold and internal cooldown.'},
+  }
+};
+
+function codexLoreHTML(){
   const unlocked=new Set(META.codexUnlocked||[]);
   const visible=CODEX_ENTRIES.filter(e=>unlocked.has(e.id));
   const locked=CODEX_ENTRIES.filter(e=>!unlocked.has(e.id));
   let h=`<div style="padding:10px 0"><div style="font-size:10px;color:var(--txt3);margin-bottom:12px;font-style:italic">Terms revealed as your Minni lattice discovers them. ${locked.length>0?`${locked.length} entry${locked.length>1?'s':''} yet to be found.`:'All entries revealed.'}</div><div style="display:flex;flex-direction:column;gap:10px">`;
-  visible.forEach(entry=>{
-    h+=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px"><div style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;color:var(--violet)">${entry.term}</div><div style="font-size:9px;color:var(--txt3);font-style:italic">${entry.subtitle}</div></div><div style="font-size:11px;color:var(--txt2);line-height:1.7;margin-top:6px">${entry.body}</div></div>`;
-  });
-  if(locked.length>0){
-    h+=`<div style="border:1px dashed var(--border);border-radius:5px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--txt3);font-style:italic">${locked.length} entry${locked.length>1?'s':''} locked. Continue the saga to discover them.</div><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center">${locked.map(e=>`<div style="font-size:10px;color:var(--border2);background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:3px 8px">???</div>`).join('')}</div></div>`;
-  }
+  visible.forEach(entry=>{ h+=`<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px"><div style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;color:var(--violet)">${entry.term}</div><div style="font-size:9px;color:var(--txt3);font-style:italic">${entry.subtitle}</div></div><div style="font-size:11px;color:var(--txt2);line-height:1.7;margin-top:6px">${entry.body}</div></div>`; });
+  if(locked.length>0){ h+=`<div style="border:1px dashed var(--border);border-radius:5px;padding:12px;text-align:center"><div style="font-size:11px;color:var(--txt3);font-style:italic">${locked.length} entry${locked.length>1?'s':''} locked. Continue the saga to discover them.</div><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center">${locked.map(e=>`<div style="font-size:10px;color:var(--border2);background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:3px 8px">???</div>`).join('')}</div></div>`; }
   h+=`</div></div>`;
   return h;
 }
 
+function codexBalanceHTML(){
+  const boonsByR=['common','uncommon','rare','epic','legendary','axiom'].map(r=>{
+    const rs=BOONS.filter(b=>b.rarity===r);
+    const table=brTable({id:`boons-${r}`,rows:rs,rowClass:r=>brFlagClass('boons',r.id),rowSearchText:r=>`${r.id} ${r.name} ${r.rarity} ${(r.tags||[]).join(' ')} ${r.desc}`,
+      columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>`${brRarityBadge(r.rarity)} ${brEsc((r.icon||'')+' '+r.name)}`},{label:'Tags',render:r=>(r.tags||[]).map(brChip).join(' ')},{label:'Description / Effect',render:r=>`${brEsc(r.desc||'')}${brFlagNote('boons',r.id)}`}]});
+    return `<div style="margin:0 0 8px"><div style="font-size:11px;color:var(--txt3);margin:0 0 4px">${r.toUpperCase()} (${rs.length})</div>${table}</div>`;
+  }).join('');
+
+  const gearRows=Object.entries(GEAR_TEMPLATES||{}).map(([id,g])=>({id,slot:g.slot,baseName:g.baseName,rarity:g.rarity,affixesText:(g.affixes||[]).map(a=>a.label||`${a.stat}:${a.value}`).join('; '),costBase:gearCost({rarity:g.rarity,notches:0}),loreNote:g.loreNote||'',flavor:g.flavor||''}));
+  const archRows=(ARCHETYPES||[]).map(a=>({
+    id:a.id,name:`${a.displayName||a.name||a.id}${a.norseName?` / ${a.norseName}`:''}`,realm:a.realm||'—',
+    base:`HP ${a.base?.hp??'—'} ATK ${a.base?.atk??'—'} DEF ${a.base?.def??'—'} SPD ${a.base?.spd??'—'} Crit ${a.base?.cc??'—'} / ${a.base?.cd??'—'}`,
+    scaling:`HP ${a.scale?.hp??'—'} ATK ${a.scale?.atk??'—'} DEF ${a.scale?.def??'—'} SPD ${a.scale?.spd??'—'}`,
+    trait:`${a.trait||'—'}${a.td?` — ${a.td}`:''}`,
+    behavior:a.behavior||'—'
+  }));
+  const trialRows=Object.entries(TRIAL_CONFIG||{}).map(([k,v])=>({trial:k,...v,notes:Object.entries(v||{}).filter(([kk])=>!['slotsMin','slotsMax','bodyCap','minorTraitsMin','minorTraitsMax','majorTraitsMax','allowEliteTrait'].includes(kk)).map(([kk,vv])=>`${kk}:${brStringify(vv)}`).join('; ')}));
+  const sigRows=Object.entries(BOSS_SIGNATURES||{}).map(([k,v])=>({key:k,name:v.name,desc:v.desc}));
+  const traitRows=Object.entries(GTRAITS||{}).filter(([k])=>!(k in (SCARS||{}))).map(([id,v])=>({id,name:v.name,desc:v.desc}));
+  const scarRows=Object.entries(SCARS||{}).map(([id,v])=>({id,name:v.name,desc:v.desc}));
+  const aspectRows=(ASPECTS||[]).map(a=>({aspect:a,icon:ASPECT_ICON[a]||'✦',thresholds:(ASPECT_THRESH||[]).join(' / ')}));
+  const mapRows=Object.entries(TAG_ASPECT||{}).map(([tag,aspect])=>({tag,aspect}));
+  const ragRows=(RAGNARÖK_TIERS||[]).map(t=>({tier:t.tier,name:t.name,omen:t.omen,effect:brExplainRagnarokTier(t)}));
+
+  const toc=[['br-combat','Combat'],['br-ev','Base/EV'],['br-boons','Boons'],['br-gear','Gear'],['br-arch','Archetypes'],['br-wave','Wave Traits'],['br-trial','Trial Config'],['br-boss','Boss Signatures'],['br-bargain','Cursed Bargains'],['br-traits','Traits'],['br-scars','Scars'],['br-tactics','Tactics'],['br-relics','Resolve Relics'],['br-debts','Debts'],['br-runesmith','Runesmith'],['br-aspects','Aspects'],['br-rag','Ragnarök'],['br-status','Status']];
+
+  return `<div class="br-panel"><div class="br-toolbar"><input class="br-search" placeholder="Search balance tables..." oninput="brApplySearch(this.value)"><button class="btn btn-sm btn-ghost" onclick="brSetAll(true)">Expand All</button><button class="btn btn-sm btn-ghost" onclick="brSetAll(false)">Collapse All</button></div><div class="br-toc">${toc.map(([id,n])=>`<a href="#${id}">${n}</a>`).join('')}</div>
+  ${brSection({id:'br-combat',title:'Combat System Overview',noteHTML:'RuneSaga combat mixes deterministic stats with proc hooks (boons, traits, statuses, gear and tier flags). This panel is generated from active data objects so tuning changes immediately appear here.',bodyHTML:''})}
+  ${brSection({id:'br-ev',title:'Base Stats & EV System',noteHTML:`Current EV cap: <strong>${evCap()}</strong>. EV gains scale by trial progress, hero level, generation and active Ragnarök tier.`,bodyHTML:''})}
+  ${brSection({id:'br-boons',title:'Boons',bodyHTML:boonsByR})}
+  ${brSection({id:'br-gear',title:'Gear Templates',bodyHTML:brTable({id:'gear',rows:gearRows,rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Slot',render:r=>brEsc(r.slot)},{label:'Base Name',render:r=>`${brRarityBadge(r.rarity)} ${brEsc(r.baseName)}`},{label:'Affixes',render:r=>brEsc(r.affixesText)},{label:'Base Cost',render:r=>`ᛋ${brEsc(r.costBase)}`},{label:'Lore/Flavor',render:r=>brEsc([r.loreNote,r.flavor].filter(Boolean).join(' · '))}]})})}
+  ${brSection({id:'br-arch',title:'Enemy Archetypes',bodyHTML:brTable({id:'arch',rows:archRows,rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(r.name)},{label:'Realm',render:r=>brEsc(r.realm)},{label:'Base Stats',render:r=>brEsc(r.base)},{label:'Scaling',render:r=>brEsc(r.scaling)},{label:'Trait',render:r=>brEsc(r.trait)},{label:'Behavior',render:r=>brEsc(r.behavior)}]})})}
+  ${brSection({id:'br-wave',title:'Wave Traits',bodyHTML:brTable({id:'wtraits',rows:WAVE_TRAITS||[],rowSearchText:r=>`${r.id} ${r.name} ${r.desc}`,columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(r.name)},{label:'Description',render:r=>brEsc(r.desc)}]})})}
+  ${brSection({id:'br-trial',title:'Trial Configuration',bodyHTML:brTable({id:'trialcfg',rows:trialRows,rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'Trial #',render:r=>brEsc(r.trial)},{label:'slotsMin-max',render:r=>`${brEsc(r.slotsMin)}-${brEsc(r.slotsMax)}`},{label:'bodyCap',render:r=>brEsc(r.bodyCap)},{label:'minorTraitsMin-max',render:r=>`${brEsc(r.minorTraitsMin)}-${brEsc(r.minorTraitsMax)}`},{label:'majorTraitsMax',render:r=>brEsc(r.majorTraitsMax)},{label:'allowEliteTrait',render:r=>brEsc(r.allowEliteTrait)},{label:'notes',render:r=>brEsc(r.notes||'—')}]})})}
+  ${brSection({id:'br-boss',title:'Boss Signatures',bodyHTML:brTable({id:'bosssig',rows:sigRows,rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'Key',render:r=>`<code>${brEsc(r.key)}</code>`},{label:'Name',render:r=>brEsc(r.name)},{label:'Description',render:r=>brEsc(r.desc)}]})})}
+  ${brSection({id:'br-bargain',title:'Cursed Bargains',bodyHTML:brTable({id:'cb',rows:CURSED_BARGAINS||[],rowSearchText:r=>`${r.id} ${r.name} ${r.desc}`,columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(`${r.icon||''} ${r.name}`)},{label:'Cost',render:r=>`ᛋ${brEsc(r.cost)}${r.isFree?' (free)':''}`},{label:'Description',render:r=>brEsc(r.desc)},{label:'Notes',render:r=>brEsc(r.isFree?'isFree=true':'—')}]})})}
+  ${brSection({id:'br-traits',title:'Genetic Traits',bodyHTML:brTable({id:'traits',rows:traitRows,rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(r.name)},{label:'Description',render:r=>brEsc(r.desc)}]})})}
+  ${brSection({id:'br-scars',title:'Scars',bodyHTML:brTable({id:'scars',rows:scarRows,rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(r.name)},{label:'Description',render:r=>brEsc(r.desc)}]})})}
+  ${brSection({id:'br-tactics',title:'Tactics',bodyHTML:brTable({id:'tactics',rows:TACTICS||[],rowSearchText:r=>`${r.id} ${r.name} ${r.desc} ${r.kind}`,columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(`${r.icon||''} ${r.name}`)},{label:'Cost',render:r=>`ᛋ${brEsc(r.cost)}`},{label:'Kind',render:r=>brEsc(r.kind)},{label:'Description',render:r=>brEsc(r.desc)}]})})}
+  ${brSection({id:'br-relics',title:'Resolve Relics',bodyHTML:brTable({id:'relics',rows:RESOLVE_RELICS||[],rowSearchText:r=>`${r.id} ${r.name} ${r.desc} ${brStringify(r.mults)}`,columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(`${r.icon||''} ${r.name}`)},{label:'Description',render:r=>brEsc(r.desc)},{label:'Multipliers',render:r=>brEsc(Object.entries(r.mults||{}).map(([k,v])=>`${k}:${v}`).join('; '))}]})})}
+  ${brSection({id:'br-debts',title:'Debts',bodyHTML:brTable({id:'debts',rows:DEBTS||[],rowSearchText:r=>`${r.id} ${r.name} ${r.desc} ${brStringify(r.battleStart)}`,columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(`${r.icon||''} ${r.name}`)},{label:'Description',render:r=>brEsc(r.desc)},{label:'Battle Start',render:r=>brEsc((r.battleStart||[]).map(b=>`${b.st}×${b.sk||1} ${b.dur||''}s`).join('; ')||'—')},{label:'Apply note',render:r=>brEsc(typeof r.apply==='function' ? 'has apply()' : '—')}]})})}
+  ${brSection({id:'br-runesmith',title:'Runesmith Upgrades',bodyHTML:brTable({id:'runesmith',rows:RUNESMITH_UPGRADES||[],rowSearchText:r=>`${r.id} ${r.name} ${r.baseDesc}`,columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(`${r.icon||''} ${r.name}`)},{label:'Cost',render:r=>`ᚱ${brEsc(r.cost)}`},{label:'Description',render:r=>brEsc(typeof r.describe==='function'?r.describe():r.baseDesc)}]})})}
+  ${brSection({id:'br-aspects',title:'Aspects',bodyHTML:brTable({id:'aspects',rows:aspectRows,rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'Aspect',render:r=>brEsc(`${r.icon} ${r.aspect}`)},{label:'Thresholds (ranks)',render:r=>brEsc(r.thresholds)}]})+`<div style="height:8px"></div>`+brTable({id:'tagAspect',rows:mapRows,rowSearchText:r=>`${r.tag} ${r.aspect}`,columns:[{label:'Tag',render:r=>brChip(r.tag)},{label:'Aspect',render:r=>brEsc(`${ASPECT_ICON[r.aspect]||'✦'} ${r.aspect}`)}]})})}
+  ${brSection({id:'br-rag',title:'Ragnarök Tiers',bodyHTML:brTable({id:'rag',rows:ragRows,rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'Tier',render:r=>brEsc(r.tier)},{label:'Name',render:r=>brEsc(r.name)},{label:'Omen',render:r=>brEsc(r.omen)},{label:'Effect',render:r=>brEsc(r.effect)}]})})}
+  ${brSection({id:'br-status',title:'Status Effects',bodyHTML:brTable({id:'status',rows:Object.entries(STATUS||{}).map(([id,s])=>({id,name:s.name,desc:s.desc})),rowSearchText:r=>Object.values(r).join(' '),columns:[{label:'ID',render:r=>`<code>${brEsc(r.id)}</code>`},{label:'Name',render:r=>brEsc(r.name)},{label:'Description',render:r=>brEsc(r.desc)}]})})}
+  </div>`;
+}
+
+function setCodexView(v){
+  META.codexView=(v==='balance')?'balance':'lore';
+  saveMeta();
+  setLegacyTab('codex');
+}
+
+function codexHTML(){
+  checkCodexUnlocks();
+  const view=(META.codexView||'lore');
+  const loreActive=view==='lore';
+  const balActive=view==='balance';
+  return `<div class="br-codex-wrap"><div class="br-codex-top"><div class="br-codex-title">📖 Codex</div><div class="br-toggle"><button class="br-tbtn ${loreActive?'active':''}" onclick="setCodexView('lore')">Lore</button><button class="br-tbtn ${balActive?'active':''}" onclick="setCodexView('balance')">Balance Review</button></div></div>${loreActive?codexLoreHTML():codexBalanceHTML()}</div>`;
+}
+
+
+const RUNESMITH_UPGRADES=[
+  {id:'evCap',name:'Stronger Pattern',icon:'🧬',baseDesc:'Raise EV cap by +10',cost:30,describe:()=>`Raise EV cap by +10 (currently ${evCap()})`},
+  {id:'imprintChance',name:'Echo Binding Mastery',icon:'💫',baseDesc:'+15% Echo Binding success chance',cost:25,describe:()=>`+15% Echo Binding success chance (currently ${Math.round(imprintChance()*100)}%)`},
+  {id:'poolSize',name:'Wider Pool',icon:'🏛',baseDesc:'+2 retired pool slots',cost:20,describe:()=>`+2 retired pool slots (currently ${poolMax()})`},
+  {id:'mutationRate',name:'Mutation Catalyst',icon:'⚡',baseDesc:'+3% mutation chance',cost:20,describe:()=>`+3% mutation chance (currently ${Math.round(mutationRate()*100)}%)`},
+  {id:'nursery',name:'Nursery Program',icon:'👶',baseDesc:'+15% chance retired heroes have 2 memory binding uses',cost:25,describe:()=>`+15% chance retired heroes have 2 memory binding uses (currently +${Math.round((META.upgrades.nursery||0)*15)}%)`},
+];
+
 // ─── UPGRADES ─────────────────────────────────────────────────────────────────
 function renderRunesmith(){
-  const ups=[
-    {id:'evCap',name:'Stronger Pattern',icon:'🧬',desc:`Raise EV cap by +10 (currently ${evCap()})`,cost:30},
-    {id:'imprintChance',name:'Echo Binding Mastery',icon:'💫',desc:`+15% Echo Binding success chance (currently ${Math.round(imprintChance()*100)}%)`,cost:25},
-    {id:'poolSize',name:'Wider Pool',icon:'🏛',desc:`+2 retired pool slots (currently ${poolMax()})`,cost:20},
-    {id:'mutationRate',name:'Mutation Catalyst',icon:'⚡',desc:`+3% mutation chance (currently ${Math.round(mutationRate()*100)}%)`,cost:20},
-  {id:'nursery', name:'Nursery Program', icon:'👶', desc:`+15% chance retired heroes have 2 memory binding uses (currently +${Math.round((META.upgrades.nursery||0)*15)}%)`, cost:25, currency:'salvage'},
-];
+  const ups=RUNESMITH_UPGRADES.map(u=>({...u,desc:(typeof u.describe==='function'?u.describe():u.baseDesc)}));
   const unlocked=[...META.unlockedTraits];
   const locked=GTRAIT_KEYS.filter(k=>!unlocked.includes(k));
   let h=`<div>
@@ -4789,8 +4922,7 @@ window.onload=()=>{
 // ═══════════════════════════════════════════════════════════════
 
 // --- Add SCAR traits (risk/reward) ---
-(function(){
-  const SCARS = {
+const SCARS = {
     frayed_nerves:{name:'Frayed Nerves',icon:'⚡',desc:'+12 SPD; start battle Vulnerable (1.5s).',color:'#c080ff'},
     panic_surge:{name:'Panic Surge',icon:'💢',desc:'Start battle +2 Momentum; first attack −15% accuracy.',color:'#b090ff'},
     silent_step:{name:'Silent Step',icon:'🩰',desc:'+10% Evasion; −4% Crit Chance.',color:'#9bb0ff'},
@@ -4807,7 +4939,9 @@ window.onload=()=>{
     eitr_cough:{name:'Eitr Cough',icon:'🤢',desc:'On hit 15%: +1 Poison (3s); start battle Weak (2s).',color:'#70d870'},
     open_wound:{name:'Open Wound',icon:'🩹',desc:'Bleed damage +25%; if Bleeding, lose 1 HP/sec.',color:'#ff6a6a'},
     coin_scar:{name:'Coin Scar',icon:'🪙',desc:'Marks gained +15%; rerolls cost +5.',color:'#d9b45a'},
-  };
+};
+
+(function(){
   Object.assign(GTRAITS, SCARS);
   for(const k of Object.keys(SCARS)){
     if(Array.isArray(GTRAIT_KEYS) && !GTRAIT_KEYS.includes(k)) GTRAIT_KEYS.push(k);
@@ -5022,6 +5156,7 @@ function normalizeMeta(){
   if(!META.scarTokens || typeof META.scarTokens !== 'object') META.scarTokens = {};
   if(!Array.isArray(META.lineageScarPool)) META.lineageScarPool = [];
   if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
+  if(META.codexView!=='balance') META.codexView='lore';
   for(const k of Object.keys(META.scarTokens)){
     META.scarTokens[k] = Math.max(0, Math.floor(META.scarTokens[k]||0));
     if(META.scarTokens[k] <= 0) delete META.scarTokens[k];
