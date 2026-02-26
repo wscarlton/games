@@ -1977,7 +1977,7 @@ function mkEnemy(arch,wave,boss,opts){
   const ragnarökHPMult = activeTier >= 1 ? 1.10 : 1.0;
   const spdMult = (G && G.tierFlags && G.tierFlags.enemySPDMult) || 1.0;
   const baseHP = b.hp + s.hp * w;
-  const enemyTuningMult = 0.90;
+  const enemyTuningMult = 0.75;
   const hp = Math.max(1, Math.floor(baseHP * mult * ragnarökHPMult * enemyTuningMult));
   const atk = Math.max(1, Math.floor((b.atk + s.atk * w) * mult * enemyTuningMult));
   const def = Math.max(0, Math.floor((b.def + s.def * w) * mult * enemyTuningMult));
@@ -5460,6 +5460,18 @@ function showStartScreen(){
   }
 
   html+=`
+
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Difficulty (enemy stats)</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input id="start-diff" type="range" min="0" max="2" step="0.1"
+          value="${Number(UI.difficulty??1)}"
+          oninput="onDifficultyInput(this.value,'start')"
+          style="flex:1;accent-color:var(--amber)">
+        <span id="start-diff-val" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--gold)">x${Number(UI.difficulty??1).toFixed(1)}</span>
+      </div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:4px">0 = trivial · 1 = default · 2 = brutal</div>
+    </div>
     <div style="margin-bottom:14px">
       <button class="btn btn-sm btn-ghost" style="width:100%;font-size:10px"
               onclick="document.getElementById('seed-wrap').style.display=(document.getElementById('seed-wrap').style.display==='none'?'block':'none')">
