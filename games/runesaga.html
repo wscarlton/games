@@ -873,7 +873,7 @@ const STATUS={
   shield:{name:'Shield',icon:'🛡',cls:'sb-shield',desc:'Absorbs damage'},
   weak:{name:'Weak',icon:'💔',cls:'sb-weak',desc:'-25% damage dealt'},
   vulnerable:{name:'Vuln',icon:'🎯',cls:'sb-vulnerable',desc:'+30% damage taken'},
-  rage:{name:'Rage',icon:'🔥',cls:'sb-rage',desc:'+4 ATK per stack'},
+  rage:{name:'Rage',icon:'🔥',cls:'sb-rage',desc:'+3 ATK per stack'},
   slow:{name:'Slow',icon:'🐌',cls:'sb-slow',desc:'-30% Speed'},
   stun:{name:'Stun',icon:'💫',cls:'sb-stun',desc:'Cannot act'},
   tempo:{name:'Tempo',icon:'⚡',cls:'sb-tempo',desc:'+3 SPD per stack'},
@@ -889,8 +889,8 @@ const BOONS=[
   {id:'thick_blood',name:'Thick Blood',rarity:'common',tags:['Sustain'],icon:'❤',desc:'+65 Max HP.',effects:[{t:'stat',s:'maxHP',v:65},{t:'stat',s:'hp',v:65}]},
   {id:'sharp_edge',name:'Keen Edge',rarity:'common',tags:['Crit'],icon:'🗡',desc:'+9% Crit Chance.',effects:[{t:'stat',s:'critChance',v:.09}]},
   {id:'swift_strikes',name:'Stormblows',rarity:'common',tags:['Tempo'],icon:'💨',desc:'+18 Speed.',effects:[{t:'stat',s:'spd',v:18}]},
-  {id:'blood_sense',name:'Blood Sense',rarity:'common',tags:['Bleed'],icon:'🩸',desc:'Attacks apply 1 Bleed (3s).',effects:[{t:'onHit',ef:'status',st:'bleed',sk:1,dur:3}]},
-  {id:'toxic_touch',name:'Eitr-Touch',rarity:'common',tags:['Poison'],icon:'☠',desc:'Attacks apply 1 Poison (4s).',effects:[{t:'onHit',ef:'status',st:'poison',sk:1,dur:4}]},
+  {id:'blood_sense',name:'Blood Sense',rarity:'common',tags:['Bleed'],icon:'🩸',desc:'On hit: 20% chance to apply 1 Bleed (3s).',effects:[{t:'onHit',ef:'statusEnemy',st:'bleed',sk:1,dur:3,ch:0.20}]},
+  {id:'toxic_touch',name:'Eitr-Touch',rarity:'common',tags:['Poison'],icon:'☠',desc:'On hit: 20% chance to apply 1 Poison (4s).',effects:[{t:'onHit',ef:'statusEnemy',st:'poison',sk:1,dur:4,ch:0.20}]},
   {id:'vampiric',name:"Draugr's Thirst",rarity:'common',tags:['Sustain'],icon:'🩸',desc:'+8% Lifesteal.',effects:[{t:'stat',s:'lifesteal',v:.08}]},
   {id:'bulwark_start',name:'Bulwark',rarity:'common',tags:['Bulwark','Shield'],icon:'🔰',desc:'Start each battle with 35 Shield.',effects:[{t:'onBattleStart',ef:'shield',amt:35}]},
   {id:'dodge_step',name:'Skirmish-Step',rarity:'common',tags:['Tempo'],icon:'💃',desc:'+9% Evasion.',effects:[{t:'stat',s:'evasion',v:.09}]},
@@ -923,7 +923,7 @@ const BOONS=[
   {id:'berserker',name:"Berserker's Heart",rarity:'rare',tags:['Execute','Tempo'],icon:'💢',desc:'Below 30% HP: +40% ATK, +20% SPD.',effects:[{t:'passive',k:'berserk',atk:.40,spd:.20,thr:.30}]},
 
   {id:'death_mark',name:'Death Mark',rarity:'epic',tags:['Execute','Bleed'],icon:'☠',desc:'On kill, next attack deals +160% bonus dmg.',effects:[{t:'onKill',ef:'flag',f:'deathMark',v:1}]},
-  {id:'plague_lord',name:'Eitr-Lord',rarity:'epic',tags:['Poison'],icon:'☣',desc:'Applying Poison spreads 1 stack to all enemies.',effects:[{t:'passive',k:'plagueLord',v:true}]},
+  {id:'plague_lord',name:'Eitr-Lord',rarity:'epic',tags:['Poison'],icon:'☣',desc:'Applying Poison spreads 1 stack to up to 2 other enemies.',effects:[{t:'passive',k:'plagueLord',v:true}]},
   {id:'void_strike',name:'Ginnunga-Strike',rarity:'epic',tags:['Arcane'],icon:'🌀',desc:'Every 8th attack deals 3× damage (ignores DEF).',effects:[{t:'passive',k:'void',v:8}]},
   {id:'apex_predator',name:'Hunt-King',rarity:'epic',tags:['Execute'],icon:'🦁',desc:'Each kill grants permanent +6 ATK.',effects:[{t:'onKill',ef:'permStat',s:'atk',v:6}]},
   {id:'undying',name:'Undying',rarity:'epic',tags:['Sustain'],icon:'🔄',desc:'Once per battle, revive with 35% HP.',effects:[{t:'passive',k:'undying',v:true}]},
@@ -935,14 +935,14 @@ const BOONS=[
   {id:'ax_aegis',name:'RUNE: Shield Law',rarity:'axiom',tags:['Axiom','Shield','Sustain'],icon:'💎',desc:'Overhealing becomes Shield.',effects:[{t:'passive',k:'overhealShield',v:true}]},
   {id:'ax_crimson',name:'RUNE: Crimson Law',rarity:'axiom',tags:['Axiom','Bleed'],icon:'🩸',desc:'Applying Bleed also applies Weak.',effects:[{t:'passive',k:'axiomCrimson',v:true}]},
   {id:'ax_ghost',name:'RUNE: Shade-Step',rarity:'axiom',tags:['Axiom','Tempo'],icon:'👻',desc:'When you dodge, gain +2 Tempo stacks.',effects:[{t:'onDodge',ef:'status',st:'tempo',sk:2,dur:9999}]},
-  {id:'ax_echo',name:'RUNE: Echo Strike',rarity:'axiom',tags:['Axiom','Tempo'],icon:'🔁',desc:'Every 3rd attack repeats at 50% power.',effects:[{t:'passive',k:'axiomEcho',v:3}]},
-  {id:'ax_iron_law',name:'RUNE: Iron Law',rarity:'axiom',tags:['Axiom','Bulwark'],icon:'⚖',desc:'20% of your Defense adds to Attack.',effects:[{t:'passive',k:'axiomIronLaw',v:.20}]},
+  {id:'ax_echo',name:'RUNE: Echo Strike',rarity:'axiom',tags:['Axiom','Tempo'],icon:'🔁',desc:'Every 4th attack repeats at 40% power.',effects:[{t:'passive',k:'axiomEcho',v:4}]},
+  {id:'ax_iron_law',name:'RUNE: Iron Law',rarity:'axiom',tags:['Axiom','Bulwark'],icon:'⚖',desc:'20% of your Defense adds to Attack (max +12).',effects:[{t:'passive',k:'axiomIronLaw',v:.20}]},
   {id:'ax_harvest',name:'RUNE: Death Harvest',rarity:'axiom',tags:['Axiom','Sustain'],icon:'⚗',desc:'Kills restore 20% Max HP.',effects:[{t:'onKill',ef:'healPct',v:.20}]},
-  {id:'ax_wrath',name:'RUNE: Berserkr Law',rarity:'axiom',tags:['Axiom','Crit'],icon:'🔥',desc:'Crits grant Rage stacks (+4 ATK each, max 15).',effects:[{t:'onCrit',ef:'status',st:'rage',sk:1,dur:9999,mx:15}]},
-  {id:'ax_fortress',name:'RUNE: Stone Resolve',rarity:'axiom',tags:['Axiom','Bulwark','Shield'],icon:'🏯',desc:'Shield absorbs entire hits, not just damage.',effects:[{t:'passive',k:'axiomFortress',v:true}]},
+  {id:'ax_wrath',name:'RUNE: Berserkr Law',rarity:'axiom',tags:['Axiom','Crit'],icon:'🔥',desc:'Crits grant Rage stacks (+3 ATK each, max 15).',effects:[{t:'onCrit',ef:'status',st:'rage',sk:1,dur:9999,mx:15}]},
+  {id:'ax_fortress',name:'RUNE: Stone Resolve',rarity:'axiom',tags:['Axiom','Bulwark','Shield'],icon:'🏯',desc:'While Shield is high (≥20% Max HP), it absorbs entire hits (no spillover).',effects:[{t:'passive',k:'axiomFortress',v:true}]},
   {id:'ax_kinetic',name:'RUNE: Storm-Edge',rarity:'axiom',tags:['Axiom','Crit','Tempo'],icon:'💠',desc:'Every 10 SPD = +2% Crit Chance.',effects:[{t:'passive',k:'axiomKinetic',v:true}]},
   {id:'ax_plague',name:'RUNE: Eitr Thread',rarity:'axiom',tags:['Axiom','Poison','Bleed'],icon:'🦠',desc:'Status effects last 60% longer.',effects:[{t:'passive',k:'axiomPlague',v:1.6}]},
-  {id:'ax_mirror',name:'RUNE: Mirror Law',rarity:'axiom',tags:['Axiom','Thorns'],icon:'🪞',desc:'30% of damage taken is reflected as true dmg.',effects:[{t:'passive',k:'axiomMirror',v:.30}]},
+  {id:'ax_mirror',name:'RUNE: Mirror Law',rarity:'axiom',tags:['Axiom','Thorns'],icon:'🪞',desc:'22% of post-shield HP damage is reflected (max 20/hit).',effects:[{t:'passive',k:'axiomMirror',v:.22}]},
 
 {id:'precision_optics', name:'Hawk-Sight',      rarity:'common',  tags:['Crit'],                icon:'🔭',desc:'+8% Accuracy.', effects:[{t:'stat',s:'accuracy',v:.08}]},
 {id:'cleaving_arc',     name:'Cleaving Arc',          rarity:'uncommon',tags:['Execute','Tempo'],     icon:'🪓',desc:'On hit: splash 35% damage to a random other enemy.', effects:[{t:'onHit',ef:'splash',v:.35}]},
@@ -970,10 +970,13 @@ const GEAR_TEMPLATES={
   talisman_valknut:{slot:'talisman',baseName:'Valknut Amulet',rarity:'uncommon',loreNote:"Three interlocked triangles. Odin's mark.",affixes:[{stat:'critDmg',value:0.25,label:'+25% Crit Damage'},{stat:'evasion',value:0.04,label:'+4% Evasion'}]},
   talisman_yggdrasil_leaf:{slot:'talisman',baseName:'Yggdrasil Leaf',rarity:'rare',loreNote:'Fallen from a branch that no longer exists.',affixes:[{stat:'lifesteal',value:0.06,label:'+6% Lifesteal'},{stat:'regenPct',value:0.02,label:'Regen 2% HP/sec'}]},
   talisman_norns_thread:{slot:'talisman',baseName:"Norn's Thread",rarity:'epic',loreNote:'Spun from the fate of a hero who almost survived.',affixes:[{stat:'critChance',value:0.10,label:'+10% Crit Chance'},{stat:'lifesteal',value:0.08,label:'+8% Lifesteal'},{stat:'evasion',value:0.05,label:'+5% Evasion'}]},
+  talisman_wooden_shield:{slot:'talisman',baseName:'Wooden Shield',rarity:'common',isShield:true,loreNote:'Simple planks bound for first blood.',affixes:[{stat:'battleStartShield',value:10,label:'Battle start: +10 Shield'}]},
+  talisman_round_shield:{slot:'talisman',baseName:'Round Shield',rarity:'uncommon',isShield:true,loreNote:'Ringed shield with a seasoned boss.',affixes:[{stat:'battleStartShield',value:18,label:'Battle start: +18 Shield'}]},
+  talisman_runed_shield:{slot:'talisman',baseName:'Runed Shield',rarity:'rare',isShield:true,loreNote:'Runes etched to turn the first blow.',affixes:[{stat:'def',value:12,label:'+12 DEF'},{stat:'battleStartShield',value:12,label:'Battle start: +12 Shield'}]},
 };
 
 function generateGearItem(templateId,template,wave){
-  return {id:templateId+'_'+ri(10000,99999),templateId,name:template.baseName,slot:template.slot,rarity:template.rarity,flavor:template.flavor||null,loreNote:template.loreNote||null,affixes:template.affixes.map(a=>({...a})),notches:0,sundered:false,sagaHistory:[],forgedBy:null,forgedByName:null,passiveBonus:null};
+  return {id:templateId+'_'+ri(10000,99999),templateId,name:template.baseName,slot:template.slot,rarity:template.rarity,flavor:template.flavor||null,loreNote:template.loreNote||null,affixes:template.affixes.map(a=>({...a})),notches:0,sundered:false,sagaHistory:[],forgedBy:null,forgedByName:null,passiveBonus:null,isShield:!!template.isShield};
 }
 function getGearEffectiveAffixes(gear){
   if(!gear)return[];
@@ -1345,7 +1348,7 @@ const ARCHETYPES = [
     realmTier: 'midgard',
     icon: '🛡', col: '#305080',
     base: { hp:120, atk:10, def:22, spd:25, cc:.03, cd:1.5 },
-    scl:  { hp:38,  atk:3,  def:5,  spd:1  },
+    scl:  { hp:38,  atk:3,  def:3,  spd:1  },
     trait: 'Iron Will',
     td: 'First hit negated. Regains 2% HP on first attack (Tier 2+).',
     beh: 'steady',
@@ -1427,7 +1430,7 @@ const ARCHETYPES = [
     base: { hp:38, atk:22, def:3, spd:58, cc:.28, cd:2.2 },
     scl:  { hp:10, atk:8,  def:1, spd:4  },
     trait: 'Dishonored Strike',
-    td: 'First attack deals 2× damage.',
+    td: 'First attack deals 1.6× damage.',
     beh: 'burst',
     tier2Behavior: 'dodgeAfterCrit', tier2DodgeChance: 0.15,
   },
@@ -1483,14 +1486,14 @@ const TRIAL_CONFIG = {
   1:{slotsMin:2,slotsMax:2,bodyCap:2,minorTraitsMin:0,minorTraitsMax:0,majorTraitsMax:0,allowEliteTrait:false},
   2:{slotsMin:2,slotsMax:2,bodyCap:3,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false},
   3:{slotsMin:3,slotsMax:3,bodyCap:3,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false},
-  4:{slotsMin:2,slotsMax:3,bodyCap:5,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,forceGuardianEliteTank:true},
+  4:{slotsMin:2,slotsMax:3,bodyCap:5,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false},
   5:{slotsMin:3,slotsMax:3,bodyCap:4,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,maxAnchors:1,forbidWardenSwarm:true},
   6:{slotsMin:3,slotsMax:4,bodyCap:5,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:1,allowEliteTrait:false,majorChance:0.25,forbidMajorIds:['echo_atk'],maxAnchors:2,forbidAnchorSwarm:true},
   7:{slotsMin:4,slotsMax:4,bodyCap:6,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,majorChance:0.20},
   8:{slotsMin:2,slotsMax:3,bodyCap:6,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,supportOnlyTraits:true,forbidWardenSwarm:true},
   9:{slotsMin:3,slotsMax:4,bodyCap:5,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,maxAssassins:1,allowRemnantLeech:true},
   10:{slotsMin:4,slotsMax:4,bodyCap:6,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,majorChance:0.35,maxAssassins:1,maxRT:1},
-  11:{slotsMin:4,slotsMax:5,bodyCap:7,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,majorChance:0.45,maxAssassins:2,forbidEchoWithAssassin:true},
+  11:{slotsMin:4,slotsMax:5,bodyCap:7,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,majorChance:0.45,maxAssassins:1,forbidEchoWithAssassin:true},
   12:{slotsMin:3,slotsMax:3,bodyCap:7,minorTraitsMin:2,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:false,majorChance:0.30,eitherMajorOrMinors:true,rootKing:true},
 };
 
@@ -1727,13 +1730,13 @@ function updateDifficultyUI(){
 // TACTICS (pre-wave prep; cost paid when you start the trial)
 // ─────────────────────────────────────────────────────────────
 const TACTICS=[
-  {id:'t_focus_threat',  name:'Mark: Strongest',   icon:'🎯', cost:12, kind:'target', mode:'threat', desc:'Hero targets the highest ATK enemy first.'},
-  {id:'t_focus_wounded', name:'Mark: Broken',  icon:'🩸', cost:10, kind:'target', mode:'wounded', desc:'Hero targets the lowest HP% enemy first.'},
+  {id:'t_focus_threat',  name:'Mark: Strongest',   icon:'🎯', cost:9, kind:'target', mode:'threat', desc:'Hero targets the highest ATK enemy first.'},
+  {id:'t_focus_wounded', name:'Mark: Broken',  icon:'🩸', cost:12, kind:'target', mode:'wounded', desc:'Hero targets the lowest HP% enemy first.'},
   {id:'t_fortify',       name:'Fortify',         icon:'🛡', cost:11, kind:'start',  desc:'+30 Shield and Regen for 8s at battle start.'},
-  {id:'t_ambush',        name:'Ambush',          icon:'🗡', cost:14, kind:'start',  desc:'Your first attack deals double damage.'},
+  {id:'t_ambush',        name:'Ambush',          icon:'🗡', cost:11, kind:'start',  desc:'Your first attack deals double damage and ignores 30% DEF.'},
   {id:'t_sabotage',      name:'Weaken',        icon:'🧨', cost:12, kind:'start',  desc:'Enemies start with -15% Defense.'},
   {id:'t_flare',         name:'Expose',           icon:'🔥', cost:12, kind:'start',  desc:'Enemies start Vulnerable for 3s.'},
-  {id:'t_greed',         name:'Greed',           icon:'🪙', cost:8,  kind:'econ',   desc:'+30% Saga-Marks for this trial.'},
+  {id:'t_greed',         name:'Greed',           icon:'🪙', cost:5,  kind:'econ',   desc:'+20% Saga-Marks for this trial.'},
 ];
 const TACTIC_BY_ID=Object.fromEntries(TACTICS.map(t=>[t.id,t]));
 
@@ -1783,12 +1786,15 @@ const BOSS_SIGNATURES={
   },
   bombardier:{
     name:'Rune Surge',
-    desc:'Every 3rd attack also applies Vulnerable to the hero (3s).',
+    desc:'Every 3rd attack applies Vulnerable to the hero (3s) if not already active.',
     apply(enemy,h){
       enemy._sigCtr=(enemy._sigCtr||0)+1;
       if(enemy._sigCtr%3===0){
-        applyStatus(h,'vulnerable',1,3);
-        addLog(`  ⭐ ${enemy.displayName||enemy.name} — Rune Surge! Vulnerable.`,'lstatus');
+        const hasVuln=!!(h.statuses&&h.statuses.vulnerable&&h.statuses.vulnerable.dur>0);
+        if(!hasVuln){
+          applyStatus(h,'vulnerable',1,3);
+          addLog(`  ⭐ ${enemy.displayName||enemy.name} — Rune Surge! Vulnerable.`,'lstatus');
+        }
       }
     }
   },
@@ -1902,6 +1908,7 @@ function applyBattleStartTactics(){
     addLog(`  🛡 Fortify: +30 Shield, Regen (8s)`,'lstatus');
   } else if(t.id==='t_ambush'){
     h.flags.tacticAmbush=true;
+    h.flags.tacticAmbushDefPen=0.30;
     addLog(`  🗡 Ambush: first strike empowered`,'lstatus');
   } else if(t.id==='t_sabotage'){
     G.enemies.filter(e=>!e.dead).forEach(e=>{e.def=Math.max(0,Math.floor(e.def*0.85));});
@@ -1910,8 +1917,8 @@ function applyBattleStartTactics(){
     G.enemies.filter(e=>!e.dead).forEach(e=>applyStatus(e,'vulnerable',1,3));
     addLog(`  🔥 Expose: enemies Vulnerable (3s)`,'lstatus');
   } else if(t.id==='t_greed'){
-    G.waveGoldMult=1.30;
-    addLog(`  🪙 Greed: +30% Saga-Marks this trial`,'lstatus');
+    G.waveGoldMult=1.20;
+    addLog(`  🪙 Greed: +20% Saga-Marks this trial`,'lstatus');
   }
 }
 function tacticTargetMode(){
@@ -2071,6 +2078,7 @@ function buildEnemies(wave){
     const projected=picks.reduce((a,p)=>a+enemyBodiesForPick(p),0)+enemyBodiesForPick(pid);
     if(projected>pickBodyCap)return false;
     if(cfg.maxAnchors!=null&&(base==='warden'||base==='shaman')&&counts.anchors>=cfg.maxAnchors)return false;
+    if(base==='assassin'&&counts.assassin>=1)return false;
     if(cfg.maxAssassins!=null&&base==='assassin'&&counts.assassin>=cfg.maxAssassins)return false;
     if(cfg.maxRT!=null&&isRTPoolEntry(pid)&&counts.rt>=cfg.maxRT)return false;
     if((cfg.forbidAnchorSwarm||cfg.forbidWardenSwarm)&&((base==='swarm'&&counts.hasWarden)||(base==='warden'&&counts.hasSwarm)))return false;
@@ -2101,7 +2109,6 @@ function buildEnemies(wave){
     while(picks.length<slots&&a<90){
       a++;
       let pid=rpick(TRIAL_POOLS.A);
-      if(cfg.forceGuardianEliteTank&&picks.length===slots-1)pid='tank';
       if(!canPick(pid))continue;
       picks.push(pid);markPick(pid);
     }
@@ -2115,7 +2122,6 @@ function buildEnemies(wave){
   picks.forEach((pid)=>{
     const arch=ARCHETYPES.find(a=>a.id===baseArchFromPoolEntry(pid)); if(!arch)return;
     const opts={forceRootTouched:isRTPoolEntry(pid),isBoss:false};
-    if(wave===4&&cfg.forceGuardianEliteTank&&arch.id==='tank')opts.forceElite=true;
     if(forceEliteAnyWave&&!eliteSpent){opts.forceElite=true; eliteSpent=true;}
     out.push(mkEnemy(arch,wave,false,opts));
   });
@@ -2153,9 +2159,10 @@ function mkEnemy(arch,wave,boss,opts){
   const rootTouchedChance=(G&&G.tierFlags&&G.tierFlags.rootTouchedEnemyChance)||0;
   const canTierRootTouched=(wave>=9)&&!boss&&!opts.forceRootTouched&&!opts.noRootTouched;
   const rootTouched=!!(opts.forceRootTouched||(canTierRootTouched&&rng()<rootTouchedChance));
+  const cappedDef=(arch.id==='tank')?Math.min(def,55):def;
   const enemy={id:arch.id+'_'+ri(1000,9999),archId:arch.id,
     displayName:arch.displayName||arch.name||arch.id,norseName:arch.norseName||null,name:arch.displayName||arch.name||arch.id,
-    realmTier:arch.realmTier||'midgard',icon:arch.icon,col:arch.col,hp,maxHP:hp,atk,def,spd,
+    realmTier:arch.realmTier||'midgard',icon:arch.icon,col:arch.col,hp,maxHP:hp,atk,def:cappedDef,spd,
     cc:arch.id==='striker'?Math.min(.7,b.cc+.25+.003*w):b.cc,cd:b.cd,lifesteal:arch.ls||0,trait:arch.trait,td:arch.td,beh:arch.beh,
     statuses:{},actionMeter:rng()*.5,_firstAtkDone:false,_hexCtr:0,_chargeCtr:0,_tankGuard:true,_tier2Done:false,
     elite:!!(boss||opts.forceElite),dead:false,rootTouched,namedElite:false,signature:null,isBoss:!!opts.isBoss,_rootKingRevived:false,_noEcho:false};
@@ -2163,15 +2170,19 @@ function mkEnemy(arch,wave,boss,opts){
   return enemy;
 }
 
-function addShieldToUnit(unit,amt){
+function addShieldToUnit(unit,amt,opts={}){
+  let gain=Math.max(0,Math.floor(amt||0));
+  if(unit===G.hero && !opts.bypassShieldPenalty && !heroHasShieldEquipped())gain=Math.floor(gain*0.50);
+  if(gain<=0)return;
   if(!unit.statuses.shield)unit.statuses.shield={stacks:1,value:0,dur:9999};
-  unit.statuses.shield.value+=amt;
+  unit.statuses.shield.value+=gain;
 }
 function pickWaveTraitsByTrial(wave) {
   const cfg=TRIAL_CONFIG[wave]||{minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false};
   const minTraits=(G&&G.tierFlags&&G.tierFlags.minWaveTraits)||0;
   const majorChance=(typeof cfg.majorChance==='number')?cfg.majorChance:0.45;
   const bossWave=!!((G&&G.enemies||[]).some(e=>e.isBoss) || (G&&G.bossWaves&&G.bossWaves.includes(wave)));
+  const heroStartsVuln=!!((G.hero&&G.hero.traits&&G.hero.traits.includes('frayed_nerves')) || (G.roadside&&Array.isArray(G.roadside.debts)&&G.roadside.debts.some(d=>(d.battleStart||[]).some(bs=>bs.st==='vulnerable'&&(bs.dur||0)>0))));
 
   let minorPool=WAVE_TRAITS.filter(t=>MINOR_WAVE_TRAIT_IDS.includes(t.id));
   let majorPool=WAVE_TRAITS.filter(t=>MAJOR_WAVE_TRAIT_IDS.includes(t.id));
@@ -2179,13 +2190,32 @@ function pickWaveTraitsByTrial(wave) {
   if(!cfg.allowEliteTrait)majorPool=majorPool.filter(t=>t.id!=='elite_wave');
   if(cfg.forbidMajorIds)majorPool=majorPool.filter(t=>!cfg.forbidMajorIds.includes(t.id));
   if(!(G.tierFlags&&G.tierFlags.allowHordeCall)) majorPool=majorPool.filter(t=>t.id!=='reinforcements');
+  if(heroStartsVuln)majorPool=majorPool.filter(t=>t.id!=='marked_prey');
+
+  const isInvalidCombo=(ids)=>{
+    if(ids.includes('echo_atk')&&ids.includes('marked_prey'))return true;
+    if(wave>=10&&ids.includes('echo_atk')&&ids.includes('elite_wave'))return true;
+    if(heroStartsVuln&&ids.includes('marked_prey'))return true;
+    return false;
+  };
 
   const minorTarget=ri(cfg.minorTraitsMin||0,cfg.minorTraitsMax||0);
   const majorAllowed=(cfg.majorTraitsMax||0)>0;
   const majorTarget=(majorAllowed&&majorPool.length&&rng()<majorChance)?1:0;
 
   const picked=[]; const used=new Set();
-  const pickFrom=(pool)=>{const opts=pool.filter(t=>!used.has(t.id)); if(!opts.length)return null; const t=rpick(opts); used.add(t.id); picked.push(t); return t;};
+  const pickFrom=(pool)=>{
+    const opts=pool.filter(t=>!used.has(t.id));
+    if(!opts.length)return null;
+    const shuffled=[...opts];
+    for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));const tmp=shuffled[i];shuffled[i]=shuffled[j];shuffled[j]=tmp;}
+    for(const cand of shuffled){
+      const ids=[...picked.map(x=>x.id),cand.id];
+      if(isInvalidCombo(ids))continue;
+      used.add(cand.id);picked.push(cand);return cand;
+    }
+    return null;
+  };
   for(let i=0;i<minorTarget;i++)pickFrom(minorPool);
   for(let i=0;i<Math.min(cfg.majorTraitsMax||0,majorTarget);i++)pickFrom(majorPool);
 
@@ -2199,14 +2229,12 @@ function pickWaveTraitsByTrial(wave) {
   if(wave===12&&cfg.eitherMajorOrMinors){
     const isMajor=(t)=>MAJOR_WAVE_TRAIT_IDS.includes(t.id);
     const majors=picked.filter(isMajor);
-    if(majors.length){
-      return [majors[0]];
-    }
+    if(majors.length)return [majors[0]];
     return picked.filter(t=>!isMajor(t)).slice(0,2);
   }
 
   if(wave===9&&(G.enemies||[]).some(e=>e.archId==='assassin')) return picked.filter(t=>!MAJOR_WAVE_TRAIT_IDS.includes(t.id));
-  if(wave===11&&cfg.forbidEchoWithAssassin&&(G.enemies||[]).filter(e=>e.archId==='assassin').length>=2) return picked.filter(t=>t.id!=='echo_atk');
+  if(wave===11&&cfg.forbidEchoWithAssassin&&(G.enemies||[]).filter(e=>e.archId==='assassin').length>=1) return picked.filter(t=>t.id!=='echo_atk');
   if(wave===12&&picked.some(t=>t.id==='toxic_air')&&picked.some(t=>t.id==='echo_atk')) return picked.filter(t=>t.id!==(rng()<0.5?'toxic_air':'echo_atk'));
   return picked;
 }
@@ -2236,7 +2264,7 @@ function hasTrait(tk){return G.hero.traits&&G.hero.traits.includes(tk);}
 function effectiveStats(){
   const h=G.hero;
   const s={atk:h.atk+(h.permStats.atk||0),def:h.def,spd:h.spd,critChance:h.critChance,critDmg:h.critDmg,lifesteal:h.lifesteal,evasion:h.evasion,accuracy:h.accuracy};
-  const il=passive('axiomIronLaw');if(il)s.atk+=Math.floor(s.def*il);
+  const il=passive('axiomIronLaw');if(il)s.atk+=Math.min(12,Math.floor(s.def*il));
   if(hasP('axiomKinetic'))s.critChance+=h.spd*.002;
 
   h.cursedMult=1;
@@ -2278,7 +2306,7 @@ function effectiveStats(){
 function heroAtk(){
   const h=G.hero,es=effectiveStats();
   let a=es.atk+(h.tempStats.atk||0);
-  const rage=h.statuses.rage;if(rage)a+=rage.stacks*4;
+  const rage=h.statuses.rage;if(rage)a+=rage.stacks*3;
   if(h.statuses.weak)a=Math.floor(a*.75);
   const pred=passive('predator');if(pred&&h.hp<h.maxHP*.50)a=Math.floor(a*(1+pred));
   if(hasTrait('predatory')&&h.hp<h.maxHP*.50)a+=3;
@@ -2304,19 +2332,18 @@ function eSpd(e){
 // ═══ STATUS APPLICATION ═══
 function applyStatus(unit,key,stacks,dur,maxStacks){
   if(key==='slow'&&unit.archId==='bruiser')return;
-  // Ward Protocol (first debuff each battle is negated)
   if(unit===G.hero && unit.flags && unit.flags.debuffWard){
     const neg = (key==='bleed'||key==='poison'||key==='weak'||key==='vulnerable'||key==='slow'||key==='stun');
     if(neg){
       unit.flags.debuffWard=false;
-      addLog(`  🧿 Ward negates ${STATUS[key]?.name||key}!`,'laxiom');
+      addLog('  🧿 Ward negates '+(STATUS[key]?.name||key)+'!','laxiom');
       return;
     }
   }
   const plagMult=passive('axiomPlague')||1.0;
   if(dur!==9999)dur=Math.floor(dur*plagMult);
   if(!unit.statuses[key])unit.statuses[key]={stacks:0,value:0,dur:0};
-  const mx=maxStacks||99;
+  const mx=(maxStacks==null)?(key==='tempo'?12:99):maxStacks;
   unit.statuses[key].stacks=Math.min(mx,unit.statuses[key].stacks+stacks);
   unit.statuses[key].dur=Math.max(unit.statuses[key].dur,dur);
 
@@ -2327,7 +2354,9 @@ function applyStatus(unit,key,stacks,dur,maxStacks){
   if(key==='poison'&&unit!==G.hero){
     if(hasP('poisonSlow'))applyStatus(unit,'slow',1,dur);
     if(hasP('plagueLord')){
-      G.enemies.filter(e=>!e.dead&&e!==unit).forEach(e=>{
+      const others=(G.enemies||[]).filter(e=>!e.dead&&e!==unit);
+      for(let i=others.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));const tmp=others[i];others[i]=others[j];others[j]=tmp;}
+      others.slice(0,2).forEach(e=>{
         if(!e.statuses.poison)e.statuses.poison={stacks:0,value:0,dur:0};
         e.statuses.poison.stacks=Math.min(10,e.statuses.poison.stacks+1);
         e.statuses.poison.dur=Math.max(e.statuses.poison.dur,3);
@@ -2358,52 +2387,55 @@ function heroDmg(rawDmg,attacker,src){
   const hero=G.hero;
   if(rawDmg<=0)return 0;
 
-  if(hero.cursedMult&&hero.cursedMult>1.0){
-    rawDmg=Math.floor(rawDmg*hero.cursedMult);
-  }
+  let incoming=Math.floor(rawDmg);
+  if(hero.cursedMult&&hero.cursedMult>1.0)incoming=Math.floor(incoming*hero.cursedMult);
+  if(hasTrait('tenacious')&&hero.hp<hero.maxHP*.25)incoming=Math.floor(incoming*.60);
+  if(hero.statuses.vulnerable&&hero.statuses.vulnerable.dur>0)incoming=Math.floor(incoming*1.30);
 
-  if(hasTrait('tenacious')&&hero.hp<hero.maxHP*.25)rawDmg=Math.floor(rawDmg*.60);
-
-  if(src!=='mirror'&&src!=='thorns'&&src!=='dot'&&attacker&&attacker!==hero){
-    const m=passive('axiomMirror');if(m){const md=Math.floor(rawDmg*m);dealToEnemy(attacker,md);addLog(`  🪞 Mirror: ${md} reflected!`,'laxiom');}
-    const th=passive('thorns');if(th){const td=Math.floor(rawDmg*th);dealToEnemy(attacker,td);}
-    if(hasTrait('spite')&&rawDmg>0){const sp=Math.floor(rawDmg*.08);if(sp>0)dealToEnemy(attacker,sp);}
-  }
-
+  let hpDamage=0;
   const sh=hero.statuses.shield;
   if(sh&&sh.value>0){
-    if(hasP('axiomFortress')){
-      addLog(`  🏯 Stone Resolve: hit negated!`,'laxiom');
-      sh.value-=1;
+    if(hasP('axiomFortress') && sh.value>=Math.floor(hero.maxHP*0.20)){
+      addLog('  🏯 Stone Resolve: hit negated!','laxiom');
+      sh.value=Math.max(0,sh.value-incoming);
       if(sh.value<=0){delete hero.statuses.shield;shieldBreak(attacker);}
-      return 0;
+      hpDamage=0;
     }else{
-      const abs=Math.min(sh.value,rawDmg);sh.value-=abs;rawDmg-=abs;
+      const abs=Math.min(sh.value,incoming);
+      sh.value-=abs;
+      incoming-=abs;
       if(sh.value<=0){delete hero.statuses.shield;shieldBreak(attacker);}
-      if(rawDmg<=0)return abs;
+      hpDamage=Math.max(0,incoming);
     }
-  }
+  }else hpDamage=Math.max(0,incoming);
 
   const prev=hero.hp;
-  hero.hp=Math.max(0,hero.hp-rawDmg);
+  if(hpDamage>0)hero.hp=Math.max(0,hero.hp-hpDamage);
 
-  // Near-death narration (must check AFTER hp update, BEFORE undying)
-  if(hero.hp>0&&hero.hp<hero.maxHP*0.25){
-    NarrationEngine.onNearDeath();
+  if(src!=='mirror'&&src!=='thorns'&&src!=='dot'&&attacker&&attacker!==hero&&hpDamage>0){
+    const m=passive('axiomMirror');
+    if(m){
+      const md=Math.min(20,Math.floor(hpDamage*m));
+      if(md>0){dealToEnemy(attacker,md);addLog('  🪞 Mirror: '+md+' reflected!','laxiom');}
+    }
+    const th=passive('thorns');if(th){const td=Math.floor(hpDamage*th);if(td>0)dealToEnemy(attacker,td);}
+    if(hasTrait('spite')){const sp=Math.min(20,Math.floor(hpDamage*.08));if(sp>0)dealToEnemy(attacker,sp);}
   }
+
+  if(hero.hp>0&&hero.hp<hero.maxHP*0.25)NarrationEngine.onNearDeath();
   if(hero.hp<=0&&!hero.usedUndying&&hasP('undying')){
     hero.usedUndying=true;hero.hp=Math.floor(hero.maxHP*.35);
-    addLog(`  🔄 UNDYING! Hero rises with ${hero.hp} HP!`,'laxiom');
+    addLog('  🔄 UNDYING! Hero rises with '+hero.hp+' HP!','laxiom');
   }
   const sw=passive('secondWind');
   if(sw && !hero.flags.secondWindUsed && hero.hp>0 && hero.hp<hero.maxHP*0.30){
     hero.flags.secondWindUsed=true;
     const heal=Math.floor(hero.maxHP*sw);
-    addLog(`  🌬️ Second Wind! +${heal}`,'laxiom');
+    addLog('  🌬️ Second Wind! +'+heal,'laxiom');
     healHero(heal,'sw');
   }
-  trigBoon('onDmg',hero,attacker);
-  return Math.min(rawDmg,prev);
+  trigBoon('onDmg',hero,attacker,{});
+  return Math.min(hpDamage,prev);
 }
 
 function shieldBreak(attacker){
@@ -2421,23 +2453,37 @@ function healHero(amt,src){
 }
 
 // ═══ BOON EVENT SYSTEM ═══
-function trigBoon(evType,hero,target){
+function trigBoon(evType,hero,target,ctx={}){
   for(const b of G.boons)for(const ef of b.effects){
     if(ef.t!==evType)continue;
-    if(ef.ef==='status'){const sk=(ef.st==='tempo')?Math.max(1,Math.floor((ef.sk||1)*rmult('tempoStacks'))):(ef.sk||1);applyStatus(hero,ef.st,sk,ef.dur,ef.mx);}
-    else if(ef.ef==='statusEnemy'){if(target&&target!==hero&&!target.dead){let sk=ef.sk||1;if(ef.st==='bleed')sk=Math.max(1,Math.floor(sk*rmult('bleedStacks')));if(ef.st==='poison')sk=Math.max(1,Math.floor(sk*rmult('poisonStacks')));applyStatus(target,ef.st,sk,ef.dur);}}
+    if(typeof ef.ch==='number'&&rng()>ef.ch)continue;
+    if(ef.ef==='status'){
+      const sk=(ef.st==='tempo')?Math.max(1,Math.floor((ef.sk||1)*rmult('tempoStacks'))):(ef.sk||1);
+      applyStatus(hero,ef.st,sk,ef.dur,ef.mx);
+    }
+    else if(ef.ef==='statusEnemy'){
+      if(target&&target!==hero&&!target.dead){
+        let sk=ef.sk||1;
+        if(ef.st==='bleed')sk=Math.max(1,Math.floor(sk*rmult('bleedStacks')));
+        if(ef.st==='poison')sk=Math.max(1,Math.floor(sk*rmult('poisonStacks')));
+        applyStatus(target,ef.st,sk,ef.dur);
+      }
+    }
     else if(ef.ef==='shield')addShieldToUnit(hero,Math.floor((ef.amt||0)*rmult('shieldGain')));
     else if(ef.ef==='tempStat')hero.tempStats[ef.s]=(hero.tempStats[ef.s]||0)+ef.v;
-    else if(ef.ef==='permStat'){hero.permStats[ef.s]=(hero.permStats[ef.s]||0)+ef.v;addLog(`  ⭐ ${b.name}: perm +${ef.v} ATK!`,'laxiom');}
+    else if(ef.ef==='permStat'){hero.permStats[ef.s]=(hero.permStats[ef.s]||0)+ef.v;addLog('  ⭐ '+b.name+': perm +'+ef.v+' ATK!','laxiom');}
     else if(ef.ef==='healPct')healHero(Math.floor(hero.maxHP*ef.v),'kill');
     else if(ef.ef==='flag')hero.flags[ef.f]=(hero.flags[ef.f]||0)+ef.v;
     else if(ef.ef==='splash'){
+      if(ctx.isBonusHit)continue;
+      const base=Math.max(0,Math.floor(ctx.actualDamage||0));
+      if(base<=0)continue;
       const others=G.enemies.filter(e=>!e.dead&&e!==target);
       if(others.length){
         const t2=rpick(others);
-        const sd=Math.floor(heroAtk()*ef.v);
+        const sd=Math.max(1,Math.floor(base*ef.v));
         dealToEnemy(t2,sd);
-        addLog(`  ⚡ Thor's Lash → ${t2.name} for ${sd}!`,'laxiom');
+        addLog("  ⚡ Thor's Lash → "+t2.name+" for "+sd+"!",'laxiom');
       }
     }
   }
@@ -2457,11 +2503,12 @@ function applyBattleStartBoons(){
     if(ef.t==='onBattleStart'&&ef.ef==='status')applyStatus(G.hero,ef.st,ef.sk||1,ef.dur,ef.mx);
   }
   if(hasTrait('aegis'))addShieldToUnit(G.hero,Math.floor(8*rmult('battleStartShield')));
+  if(hasTrait('frayed_nerves'))applyStatus(G.hero,'vulnerable',1,3);
   if(G.hero.gear){
     Object.values(G.hero.gear).forEach(item=>{
       if(!item)return;
       getGearEffectiveAffixes(item).forEach(affix=>{
-        if(affix.stat==='shieldOnBattleStart'&&typeof affix.effectiveValue==='number')addShieldToUnit(G.hero,Math.floor(affix.effectiveValue*rmult('battleStartShield')));
+        if((affix.stat==='shieldOnBattleStart'||affix.stat==='battleStartShield')&&typeof affix.effectiveValue==='number')addShieldToUnit(G.hero,Math.floor(affix.effectiveValue*rmult('battleStartShield')));
       });
     });
   }
@@ -2497,12 +2544,14 @@ function applyEnemyStartTraits(){
 function startBattle(){
   const h=G.hero;
   if(!commitPendingTactic()){renderAll();return;}
+  const carryShield=h.statuses?.shield?.value||0;
   h.statuses={};h.actionMeter=0;h.atkCount=0;h.tempStats={};h.flags={};h.usedUndying=false;
   if(hasP('axiomOpen'))h.flags.openStrike=true;
   if(hasP('wardDebuff'))h.flags.debuffWard=true;
   h.flags.secondWindUsed=false;
   applyWaveTraitsToEnemies();
   applyBattleStartBoons();
+  if(heroHasShieldEquipped()&&carryShield>0)addShieldToUnit(h,carryShield,{bypassShieldPenalty:true});
 
   if(G.tierFlags&&G.tierFlags.allFatherLastGift&&G.wave===1&&!G._allFatherGiftOffered){
     G._allFatherGiftOffered=true;
@@ -2515,20 +2564,18 @@ function startBattle(){
 
   applyEnemyStartTraits();
   applyBattleStartTactics();
-  if(G.waveFlags.heroStartVuln){applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);addLog(`  🎯 Marked Prey: Vulnerable (${G.waveFlags.heroStartVuln}s)`,'lstatus');}
+  if(G.waveFlags.heroStartVuln){applyStatus(G.hero,'vulnerable',1,G.waveFlags.heroStartVuln);addLog('  🎯 Marked Prey: Vulnerable ('+G.waveFlags.heroStartVuln+'s)','lstatus');}
   G.phase='BATTLE';G.tick=0;G.statusTick=0;G._critLandedThisWave=false;G._narratedNearDeath=false;
-  addLog(`⚔ Trial ${G.wave} — ${G.enemies.length} enemies!`,'lwave');
+  addLog('⚔ Trial '+G.wave+' — '+G.enemies.length+' enemies!','lwave');
 
-  // Narration: wave start line
   NarrationEngine.reset();
   const waveStartLine=MYTH_LINES.waveStart[G.wave];
   if(waveStartLine) NarrationEngine.fire('waveStart',waveStartLine,'lstatus');
   if(G.wave===4) addLog('  The dead should not walk here.','lstatus');
   if(G.wave===5) addLog('  The root turns downward. The air grows thin.','lstatus');
   if(G.wave===9) addLog('  Mist rises. The cold has teeth.','lstatus');
+  if(G.wave===12) addLog('  He is not a king. He is an argument.','lstatus');
 
-  G.enemies.forEach(e=>addLog(`  ${e.icon} ${e.displayName||e.name} HP:${e.hp} ATK:${e.atk} DEF:${e.def}`,'lstatus'));
-  renderAll();
   if(G.interval)clearInterval(G.interval);
   G.interval=setInterval(combatTick,100/G.speed);
 }
@@ -2583,31 +2630,47 @@ function combatTick(){
   if(G.tick%2===0)renderBattleUI();
 }
 
-function doHeroAtk(){
-  const h=G.hero,alive=G.enemies.filter(e=>!e.dead);
-  if(!alive.length)return;
-  h.atkCount++;
-  const target=pickHeroTarget(alive);
+function heroHasShieldEquipped(){
+  return !!(G&&G.hero&&G.hero.gear&&G.hero.gear.talisman&&G.hero.gear.talisman.isShield);
+}
+
+function resolveHeroHit(target,opts={}){
+  const h=G.hero;
+  if(!target||target.dead)return {hit:false,crit:false,actual:0,killed:false};
   const es=effectiveStats();
+  const isBonusHit=!!opts.isBonusHit;
+  const canCrit=(opts.canCrit!==false);
+  const triggerOnCrit=(opts.triggerOnCrit!==false);
+  const allowOnHitSplash=(opts.allowOnHitSplash!==false);
+  const dmgMult=(typeof opts.damageMult==='number')?opts.damageMult:1.0;
 
-  if(rng()>es.accuracy-(target.evasion||0)){addLog(`  ↩ Miss!`,'lmiss');return;}
+  if(!isBonusHit && rng()>es.accuracy-(target.evasion||0)){
+    addLog('  ↩ Miss!','lmiss');
+    return {hit:false,crit:false,actual:0,killed:false};
+  }
 
-  let crit=h.flags.openStrike?(h.flags.openStrike=false,true):(rng()<es.critChance);
+  let crit=false;
+  if(canCrit)crit=h.flags.openStrike?(h.flags.openStrike=false,true):(rng()<es.critChance);
+
   let dmg=heroAtk();
-  if(h.flags.tacticAmbush){dmg=Math.floor(dmg*2);h.flags.tacticAmbush=false;addLog(`  🗡 Ambush!`,'laxiom');}
+  if(!isBonusHit){
+    if(h.flags.tacticAmbush){dmg=Math.floor(dmg*2);addLog('  🗡 Ambush!','laxiom');}
+    if(h.flags.deathMark){dmg=Math.floor(dmg*2.6);h.flags.deathMark=0;addLog('  ☠ Death Mark!','laxiom');}
+    const tr=passive('trance');if(tr&&h.atkCount%tr===0){dmg=Math.floor(dmg*1.9);addLog('  🔁 Battle Trance!','laxiom');}
+    const arc=passive('arcane');if(arc&&h.atkCount%arc===0){const md=Math.floor(dmg*.9);addLog('  🔮 Arcane Surge! +'+md,'laxiom');dealToEnemy(target,md);}
+    const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog('  🌀 GINNUNGA-STRIKE! '+vd+'!','laxiom');dealToEnemy(target,vd);fxEnemyImpact(target.id,{big:true});if(target.dead)return {hit:true,crit:false,actual:0,killed:true};}
+  }
 
-  if(h.flags.deathMark){dmg=Math.floor(dmg*2.6);h.flags.deathMark=0;addLog(`  ☠ Death Mark!`,'laxiom');}
-  const tr=passive('trance');if(tr&&h.atkCount%tr===0){dmg=Math.floor(dmg*1.9);addLog(`  🔁 Battle Trance!`,'laxiom');}
-  const arc=passive('arcane');if(arc&&h.atkCount%arc===0){const md=Math.floor(dmg*.9);addLog(`  🔮 Arcane Surge! +${md}`,'laxiom');dealToEnemy(target,md);}
-  const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog(`  🌀 GINNUNGA-STRIKE! ${vd}!`,'laxiom');dealToEnemy(target,vd);fxEnemyImpact(target.id,{big:true});if(target.dead)return;}
-
-  const doEcho=hasP('axiomEcho')&&(h.atkCount%passive('axiomEcho')===0);
   if(crit)dmg=Math.floor(dmg*es.critDmg*rmult('critDmg'));
+  dmg=Math.floor(dmg*dmgMult);
 
   let effDef=target.def;
   if(hasP('necroticPoison')&&target.statuses.poison)effDef=Math.max(0,effDef-target.statuses.poison.stacks*passive('necroticPoison'));
-  const dp=passive('defpen');if(dp)effDef=Math.floor(effDef*(1-dp));
-  const gearDp=es._gearDefPen||0;if(gearDp>0)effDef=Math.floor(effDef*(1-gearDp));
+  let dp=passive('defpen')||0;
+  const gearDp=es._gearDefPen||0;
+  dp = 1-((1-dp)*(1-gearDp));
+  if(!isBonusHit&&h.flags.tacticAmbush&&h.flags.tacticAmbushDefPen)dp = 1-((1-dp)*(1-h.flags.tacticAmbushDefPen));
+  if(dp>0)effDef=Math.floor(effDef*(1-dp));
   if(crit){const cdp=passive('critDefpen');if(cdp)effDef=Math.floor(effDef*(1-cdp));}
 
   const exec=passive('executioner');if(exec&&target.hp<target.maxHP*.30)dmg=Math.floor(dmg*(1+exec));
@@ -2628,7 +2691,7 @@ function doHeroAtk(){
         if(affix.stat==='onCritBleedChance'&&crit&&!target.dead){if(rng()<affix.effectiveValue)applyStatus(target,'bleed',1,3);}
         if(affix.stat==='permAtkOnKill'&&target.dead){
           G.hero.permStats.atk=(G.hero.permStats.atk||0)+Math.floor(affix.effectiveValue);
-          addLog(`  ⚔ Tyrfing feeds. +${Math.floor(affix.effectiveValue)} permanent ATK.`,'laxiom');
+          addLog('  ⚔ Tyrfing feeds. +'+Math.floor(affix.effectiveValue)+' permanent ATK.','laxiom');
         }
       });
     });
@@ -2636,33 +2699,49 @@ function doHeroAtk(){
 
   if(crit){
     G._critLandedThisWave=true;
-    addLog(`  ⚔ CRIT! ${target.displayName||target.name} ← ${actual}`,'lcrit');
+    addLog('  ⚔ CRIT! '+(target.displayName||target.name)+' ← '+actual,'lcrit');
     NarrationEngine.onCrit();
-  } else addLog(`  ⚔ ${target.displayName||target.name} ← ${actual}`,'lhit');
+  } else addLog('  ⚔ '+(target.displayName||target.name)+' ← '+actual,'lhit');
 
   const ls=Math.floor(actual*(es.lifesteal||0)*rmult('lifesteal'));if(ls>0)healHero(ls,'ls');
   if(hasTrait('serrated')&&rng()<.22&&!target.dead)applyStatus(target,'bleed',1,2);
 
-  trigBoon('onHit',h,target);
-  const sh=passive('shred');if(sh && !target.dead){const before=target.def;target.def=Math.max(0,target.def-sh);if(target.def!==before)addLog(`  🪨 Sunder! ${target.displayName||target.name} DEF -${before-target.def}`,'lstatus');}
+  trigBoon('onHit',h,target,{actualDamage:actual,isBonusHit:!allowOnHitSplash||isBonusHit,source:isBonusHit?'bonus':'primary'});
+  const sh=passive('shred');if(sh && !target.dead){const before=target.def;target.def=Math.max(0,target.def-sh);if(target.def!==before)addLog('  🪨 Sunder! '+(target.displayName||target.name)+' DEF -'+(before-target.def),'lstatus');}
 
-  if(crit)trigBoon('onCrit',h,target);
-  const sc=passive('stunCrit');if(crit&&sc&&rng()<sc&&!target.dead){applyStatus(target,'stun',1,1);addLog(`  💫 Stun!`,'lstatus');}
+  if(triggerOnCrit&&crit)trigBoon('onCrit',h,target,{actualDamage:actual,isBonusHit:false,source:'crit'});
+  const sc=passive('stunCrit');if(crit&&sc&&rng()<sc&&!target.dead){applyStatus(target,'stun',1,1);addLog('  💫 Stun!','lstatus');}
 
+  if(!isBonusHit&&h.flags.tacticAmbush){h.flags.tacticAmbush=false;h.flags.tacticAmbushDefPen=0;}
+  return {hit:true,crit:crit,actual:actual,killed:!!target.dead};
+}
+
+function doHeroAtk(){
+  const h=G.hero,alive=G.enemies.filter(e=>!e.dead);
+  if(!alive.length)return;
+  h.atkCount++;
+
+  let target=pickHeroTarget(alive);
+  const echoPeriod=passive('axiomEcho');
+  const doEcho=!!(echoPeriod && h.atkCount%echoPeriod===0);
+
+  const primary=resolveHeroHit(target,{damageMult:1,canCrit:true,triggerOnCrit:true,isBonusHit:false,allowOnHitSplash:true});
+  if(!primary.hit)return;
+
+  let target2=target;
+  if(target2.dead){
+    const alive2=G.enemies.filter(e=>!e.dead);
+    target2=alive2.length?pickHeroTarget(alive2):null;
+  }
+  if(!target2||target2.dead)return;
 
   const tw=passive('twin');
   if(tw&&rng()<tw){
-    const t2=G.enemies.find(e=>!e.dead);
-    if(t2){
-      const td2=Math.max(1,Math.floor(heroAtk())-t2.def);
-      dealToEnemy(t2,td2);
-      addLog(`  ⚔⚔ Twin! ${t2.displayName||t2.name} ← ${td2}`,'lhit');
-    }
-  }
-  if(doEcho&&!target.dead){
-    const ed=Math.max(1,Math.floor(heroAtk()*.5)-effDef);
-    dealToEnemy(target,ed);
-    addLog(`  🔁 Echo! ${target.displayName||target.name} ← ${ed}`,'laxiom');
+    const r=resolveHeroHit(target2,{damageMult:1.0,canCrit:false,triggerOnCrit:false,isBonusHit:true,allowOnHitSplash:false});
+    if(r.hit)addLog('  ⚔⚔ Twin! '+(target2.displayName||target2.name)+' ← '+r.actual,'lhit');
+  }else if(doEcho){
+    const r=resolveHeroHit(target2,{damageMult:0.40,canCrit:false,triggerOnCrit:false,isBonusHit:true,allowOnHitSplash:false});
+    if(r.hit)addLog('  🔁 Echo! '+(target2.displayName||target2.name)+' ← '+r.actual,'laxiom');
   }
 }
 
@@ -2712,7 +2791,7 @@ function doEnemyAtk(enemy){
     if(enemy._bannerCtr%4===0){applyStatus(h,'weak',1,3);addLog(`  🧿 Suppressed! Weak`,'lstatus');}
   }
 
-  if(enemy.beh==='burst'&&!enemy._firstAtkDone){enemy._firstAtkDone=true;dmg*=2;addLog(`  🗡 AMBUSH! ${enemy.displayName||enemy.name}!`,'lcrit');}
+  if(enemy.beh==='burst'&&!enemy._firstAtkDone){enemy._firstAtkDone=true;dmg=Math.floor(dmg*1.6);addLog(`  🗡 AMBUSH! ${enemy.displayName||enemy.name}!`,'lcrit');}
   if(enemy.archId==='bombardier'){enemy._chargeCtr++;if(enemy._chargeCtr%3===0){dmg*=2;addLog(`  💣 OVERCHARGE! ${enemy.displayName||enemy.name}!`,'lcrit');}}
   if(enemy.archId==='shaman'){enemy._hexCtr++;if(enemy._hexCtr%3===0){applyStatus(h,'weak',1,4);addLog(`  🔮 Hex! Weak on hero`,'lstatus');}}
 
@@ -3246,6 +3325,7 @@ function renderHero(){
   <div style="margin-top:6px">
     <div class="srow"><span class="sl">⚔ ATK</span><span class="sv">${atkStr}</span></div>
     <div class="srow"><span class="sl">🛡 DEF</span><span class="sv">${Math.round(h.def)}</span></div>
+    <div class="srow"><span class="sl">ℹ Shield</span><span class="sv" style="font-size:10px">Shield carryover requires a Shield offhand.</span></div>
     <div class="srow"><span class="sl">⚡ SPD</span><span class="sv">${Math.round(h.spd)}</span></div>
     <div class="srow"><span class="sl">🎯 Crit</span><span class="sv">${Math.round(es.critChance*100)}% / ${Math.round(es.critDmg*100)}%</span></div>
     <div class="srow"><span class="sl">💃 Eva</span><span class="sv">${Math.round(h.evasion*100)}%</span></div>
@@ -4598,7 +4678,7 @@ window.onload=()=>{
 // --- Add SCAR traits (risk/reward) ---
 (function(){
   const SCARS = {
-    frayed_nerves:{name:'Frayed Nerves',icon:'⚡',desc:'+12 SPD, start battle Vulnerable (2s).',color:'#c080ff'},
+    frayed_nerves:{name:'Frayed Nerves',icon:'⚡',desc:'+12 SPD, start battle Vulnerable (3s).',color:'#c080ff'},
     cold_iron:{name:'Cold Iron',icon:'🧊',desc:'+6 DEF, −4% Crit Chance.',color:'#80a8ff'},
     brittle_edge:{name:'Brittle Edge',icon:'🩶',desc:'+10% Crit Chance, −20 Max HP.',color:'#e8c048'},
     grave_salt:{name:'Grave Salt',icon:'🜃',desc:'+8 ATK, take +10% damage.',color:'#ff7070'},
