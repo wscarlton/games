@@ -13,7 +13,7 @@ title: Playtests
 
 
 ## Devlog
-- [Read devlog](/blog/)
+- [Read devlog](/games/blog/)
 
 ## Feedback
-- [Submit feedback](/submit/)
+- [Submit feedback](/games/submit/)
