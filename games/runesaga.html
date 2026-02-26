@@ -1247,14 +1247,14 @@ const TRIAL_CONFIG = {
   2:{slotsMin:2,slotsMax:2,bodyCap:3,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false},
   3:{slotsMin:3,slotsMax:3,bodyCap:3,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false},
   4:{slotsMin:2,slotsMax:3,bodyCap:5,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,forceGuardianEliteTank:true},
-  5:{slotsMin:3,slotsMax:3,bodyCap:4,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,maxAnchors:1},
-  6:{slotsMin:3,slotsMax:4,bodyCap:5,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:1,allowEliteTrait:false,forbidMajorIds:['echo_atk'],maxAnchors:2,forbidAnchorSwarm:true},
-  7:{slotsMin:4,slotsMax:4,bodyCap:6,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true},
+  5:{slotsMin:3,slotsMax:3,bodyCap:4,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,maxAnchors:1,forbidWardenSwarm:true},
+  6:{slotsMin:3,slotsMax:4,bodyCap:5,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:1,allowEliteTrait:false,majorChance:0.25,forbidMajorIds:['echo_atk'],maxAnchors:2,forbidAnchorSwarm:true},
+  7:{slotsMin:4,slotsMax:4,bodyCap:6,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,majorChance:0.20},
   8:{slotsMin:2,slotsMax:3,bodyCap:6,minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,supportOnlyTraits:true,forbidWardenSwarm:true},
   9:{slotsMin:3,slotsMax:4,bodyCap:5,minorTraitsMin:1,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false,maxAssassins:1,allowRemnantLeech:true},
-  10:{slotsMin:4,slotsMax:4,bodyCap:6,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,maxAssassins:1,maxRT:1},
-  11:{slotsMin:4,slotsMax:5,bodyCap:7,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,maxAssassins:2,forbidEchoWithAssassin:true},
-  12:{slotsMin:3,slotsMax:3,bodyCap:7,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,rootKing:true},
+  10:{slotsMin:4,slotsMax:4,bodyCap:6,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,majorChance:0.35,maxAssassins:1,maxRT:1},
+  11:{slotsMin:4,slotsMax:5,bodyCap:7,minorTraitsMin:1,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:true,majorChance:0.45,maxAssassins:2,forbidEchoWithAssassin:true},
+  12:{slotsMin:3,slotsMax:3,bodyCap:7,minorTraitsMin:2,minorTraitsMax:2,majorTraitsMax:1,allowEliteTrait:false,majorChance:0.30,eitherMajorOrMinors:true,rootKing:true},
 };
 
 const TRIAL_POOLS = {
@@ -1885,6 +1885,7 @@ function genWave(){
 function buildEnemies(wave){
   const cfg=TRIAL_CONFIG[wave]||{slotsMin:3,slotsMax:4,bodyCap:8};
   const bodyCap=cfg.bodyCap||8;
+  const pickBodyCap=Math.max(0, bodyCap - (bossWave ? 1 : 0));
   const out=[]; const picks=[];
   const counts={anchors:0,assassin:0,rt:0,hasWarden:false,hasSwarm:false};
   const bossWave=(wave===8||wave===12);
@@ -1900,7 +1901,7 @@ function buildEnemies(wave){
   const canPick=(pid)=>{
     const base=baseArchFromPoolEntry(pid);
     const projected=picks.reduce((a,p)=>a+enemyBodiesForPick(p),0)+enemyBodiesForPick(pid);
-    if(projected>bodyCap)return false;
+    if(projected>pickBodyCap)return false;
     if(cfg.maxAnchors!=null&&(base==='warden'||base==='shaman')&&counts.anchors>=cfg.maxAnchors)return false;
     if(cfg.maxAssassins!=null&&base==='assassin'&&counts.assassin>=cfg.maxAssassins)return false;
     if(cfg.maxRT!=null&&isRTPoolEntry(pid)&&counts.rt>=cfg.maxRT)return false;
@@ -2002,19 +2003,39 @@ function addShieldToUnit(unit,amt){
 function pickWaveTraitsByTrial(wave) {
   const cfg=TRIAL_CONFIG[wave]||{minorTraitsMin:0,minorTraitsMax:1,majorTraitsMax:0,allowEliteTrait:false};
   const minTraits=(G&&G.tierFlags&&G.tierFlags.minWaveTraits)||0;
+  const majorChance=(typeof cfg.majorChance==='number')?cfg.majorChance:0.45;
+  const bossWave=!!((G&&G.enemies||[]).some(e=>e.isBoss) || (G&&G.bossWaves&&G.bossWaves.includes(wave)));
+
   const minorPool=WAVE_TRAITS.filter(t=>MINOR_WAVE_TRAIT_IDS.includes(t.id));
   let majorPool=WAVE_TRAITS.filter(t=>MAJOR_WAVE_TRAIT_IDS.includes(t.id));
   if(!cfg.allowEliteTrait)majorPool=majorPool.filter(t=>t.id!=='elite_wave');
   if(cfg.forbidMajorIds)majorPool=majorPool.filter(t=>!cfg.forbidMajorIds.includes(t.id));
+
   const minorTarget=ri(cfg.minorTraitsMin||0,cfg.minorTraitsMax||0);
-  const majorTarget=((cfg.majorTraitsMax||0)>0&&majorPool.length&&rng()<0.45)?1:0;
+  const majorAllowed=(cfg.majorTraitsMax||0)>0;
+  const majorTarget=(majorAllowed&&majorPool.length&&rng()<majorChance)?1:0;
+
   const picked=[]; const used=new Set();
   const pickFrom=(pool)=>{const opts=pool.filter(t=>!used.has(t.id)); if(!opts.length)return null; const t=rpick(opts); used.add(t.id); picked.push(t); return t;};
   for(let i=0;i<minorTarget;i++)pickFrom(minorPool);
   for(let i=0;i<Math.min(cfg.majorTraitsMax||0,majorTarget);i++)pickFrom(majorPool);
+
   const maxSoft=(cfg.minorTraitsMax||0)+(cfg.majorTraitsMax||0)+1;
   const floor=Math.min(maxSoft,minTraits||0);
-  while(picked.length<floor){if(!pickFrom([...minorPool,...majorPool]))break;}
+  let fillPool=[...minorPool];
+  const allowMajorInFill=majorAllowed && !bossWave && !cfg.eitherMajorOrMinors;
+  if(allowMajorInFill) fillPool=[...minorPool,...majorPool];
+  while(picked.length<floor){if(!pickFrom(fillPool))break;}
+
+  if(wave===12&&cfg.eitherMajorOrMinors){
+    const isMajor=(t)=>MAJOR_WAVE_TRAIT_IDS.includes(t.id);
+    const majors=picked.filter(isMajor);
+    if(majors.length){
+      return [majors[0]];
+    }
+    return picked.filter(t=>!isMajor(t)).slice(0,2);
+  }
+
   if(wave===9&&(G.enemies||[]).some(e=>e.archId==='assassin')) return picked.filter(t=>!MAJOR_WAVE_TRAIT_IDS.includes(t.id));
   if(wave===11&&cfg.forbidEchoWithAssassin&&(G.enemies||[]).filter(e=>e.archId==='assassin').length>=2) return picked.filter(t=>t.id!=='echo_atk');
   if(wave===12&&picked.some(t=>t.id==='toxic_air')&&picked.some(t=>t.id==='echo_atk')) return picked.filter(t=>t.id!==(rng()<0.5?'toxic_air':'echo_atk'));
@@ -2023,7 +2044,10 @@ function pickWaveTraitsByTrial(wave) {
 
 function applyWaveTraitsToEnemies(){
   G.waveFlags={};
-  const traitTargets=(G.wave===8)?G.enemies.filter(e=>!e.isBoss):G.enemies;
+  const cfg=TRIAL_CONFIG[G.wave]||{};
+  const hasBoss=(G.enemies||[]).some(e=>e.isBoss);
+  const supportOnly=!!(cfg.supportOnlyTraits||hasBoss);
+  const traitTargets=supportOnly?G.enemies.filter(e=>!e.isBoss):G.enemies;
   G.waveTraits.forEach(t=>t.apply(traitTargets,G.hero,G));
 
   if(G.tierFlags&&G.tierFlags.allWavesNiflheimTag){
