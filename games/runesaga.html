@@ -425,7 +425,7 @@ body.embers-off::after{ opacity:0 !important; }
   border-color: rgba(255,153,0,.9);
 }
 .btn-amber:hover{
-  border-color: rgba(255,153,0,1);
+  border-color: rgba(255,153,0,.01);
   text-shadow: 0 0 12px rgba(255,153,0,.9);
   box-shadow:
     0 4px 0 var(--stone-void),
@@ -4476,7 +4476,7 @@ function addLog(msg,cls=""){
 
   const div = document.createElement("div");
   div.className = cls || 'lhit';
-  div.textContent = msg;
+  div.innerHTML = msg;
   log.appendChild(div);
 
   while(log.children.length>400)log.removeChild(log.firstChild);
