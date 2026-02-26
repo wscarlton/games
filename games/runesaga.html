@@ -2174,7 +2174,7 @@ function mkEnemy(arch,wave,boss,opts){
   const enemyHPMult = (G && G.tierFlags && G.tierFlags.enemyHPMult) || 1.0;
   const spdMult = (G && G.tierFlags && G.tierFlags.enemySPDMult) || 1.0;
   const baseHP = b.hp + s.hp * w;
-  const enemyTuningMult = 0.75;
+  const enemyTuningMult = 0.85;
   const hp = Math.max(1, Math.floor(baseHP * mult * enemyHPMult * enemyTuningMult));
   const atk = Math.max(1, Math.floor((b.atk + s.atk * w) * mult * enemyTuningMult));
   const def = Math.max(0, Math.floor((b.def + s.def * w) * mult * enemyTuningMult));
