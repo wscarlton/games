@@ -359,11 +359,19 @@ body.embers-off::after{ opacity:0 !important; }
 }
 .eicon{width:38px;height:38px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
 .einfo{flex:1;min-width:0;}
+/* Enemy HP bars use molten channel bars, but slightly slimmer */
+.enemy-card .bar{
+  height: 8px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+.enemy-card .bar-boom::after{
+  inset: -5px;
+  border-radius: 7px;
+}
 .ename{font-weight:700;font-size:13px;}
 .etrait{font-size:10.5px;color:var(--txt3);margin-top:2px;font-style:italic;}
 .estats{font-size:10.5px;color:var(--txt3);margin-top:1px;font-family:'Share Tech Mono',monospace;}
-.ehpbar{height:5px;background:var(--bg3);border-radius:2px;margin-top:5px;overflow:hidden;}
-.ehpfill{height:100%;background:linear-gradient(90deg,var(--red2),var(--red));border-radius:2px;transition:width .25s;}
 
 /* Wave trait cards */
 .trait-card{
@@ -2590,7 +2598,7 @@ function doHeroAtk(){
   if(h.flags.deathMark){dmg=Math.floor(dmg*2.6);h.flags.deathMark=0;addLog(`  ☠ Death Mark!`,'laxiom');}
   const tr=passive('trance');if(tr&&h.atkCount%tr===0){dmg=Math.floor(dmg*1.9);addLog(`  🔁 Battle Trance!`,'laxiom');}
   const arc=passive('arcane');if(arc&&h.atkCount%arc===0){const md=Math.floor(dmg*.9);addLog(`  🔮 Arcane Surge! +${md}`,'laxiom');dealToEnemy(target,md);}
-  const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog(`  🌀 GINNUNGA-STRIKE! ${vd}!`,'laxiom');dealToEnemy(target,vd);if(target.dead)return;}
+  const vs=passive('void');if(vs&&h.atkCount%vs===0){const vd=Math.floor(dmg*3);addLog(`  🌀 GINNUNGA-STRIKE! ${vd}!`,'laxiom');dealToEnemy(target,vd);fxEnemyImpact(target.id,{big:true});if(target.dead)return;}
 
   const doEcho=hasP('axiomEcho')&&(h.atkCount%passive('axiomEcho')===0);
   if(crit)dmg=Math.floor(dmg*es.critDmg*rmult('critDmg'));
@@ -2608,6 +2616,9 @@ function doHeroAtk(){
 
   dmg=Math.max(1,dmg-effDef);
   const actual=dealToEnemy(target,dmg);
+
+  if(crit) fxEnemyImpact(target.id,{crit:true});
+  else if(actual >= Math.floor(target.maxHP * 0.18)) fxEnemyImpact(target.id,{big:true});
 
   if(G.hero.gear){
     Object.values(G.hero.gear).forEach(item=>{
@@ -3442,9 +3453,9 @@ function renderBattle(){
           <div class="ename" style="color:${e.elite?'var(--amber)':'var(--txt)'}">${e.displayName||e.name}</div>
           <div style="font-size:10px;color:var(--txt3);font-family:'Share Tech Mono',monospace">${e.hp}/${e.maxHP}${shv?' 🛡'+shv.value:''}</div>
         </div>
-        <div class="ehpbar" style="position:relative">
-          <div class="ehpfill" style="width:${hp}%"></div>
-          ${shv?`<div style="position:absolute;top:0;left:${hp}%;width:${shpct}%;height:100%;background:rgba(72,120,240,.5)"></div>`:''}
+        <div id="enemy-hp-bar-${e.id}" class="bar bar-hp enemy-hp-bar">
+          <div class="bar-fill" style="width:${hp}%"></div>
+          ${shv ? `<div class="bar-shield-ovl" style="left:${hp}%;width:${shpct}%"></div>` : ``}
         </div>
         ${sbs.length?`<div style="margin-top:3px">${sbs.map(([k,s])=>{const sd=STATUS[k];return sd?`<span class="sbadge ${sd.cls}" style="font-size:9px;padding:1px 4px">${sd.icon}${s.stacks>1?' ×'+s.stacks:''}</span>`:''}).join('')}</div>`:''}
       </div>
@@ -4463,6 +4474,14 @@ function confirmReset(){
 // ═══ LOG ═══
 function fxHpImpact({crit=false,big=false}={}){
   const el = document.getElementById('hero-hp-bar');
+  if(!el) return;
+  el.classList.remove('hp-crit','bar-boom');
+  void el.offsetWidth;
+  if(crit || big) el.classList.add('hp-crit','bar-boom');
+}
+
+function fxEnemyImpact(enemyId,{crit=false,big=false}={}){
+  const el = document.getElementById('enemy-hp-bar-'+enemyId);
   if(!el) return;
   el.classList.remove('hp-crit','bar-boom');
   void el.offsetWidth;
