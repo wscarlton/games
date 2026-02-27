@@ -2002,6 +2002,7 @@ function newHero(evs,traits,record){
   if(record&&record.inheritedGear)Object.assign(h.gear,record.inheritedGear);
   applyPatternTraitStats(h);
   applyAllGearMaxHP(h);
+  applyHouseBlessingsToHero(h);
   return h;
 }
 function applyPatternTraitStats(h){
@@ -2476,8 +2477,10 @@ function heroDmg(rawDmg,attacker,src){
   if(hasTrait('tenacious')&&hero.hp<hero.maxHP*.25)incoming=Math.floor(incoming*.60);
   if(hero.statuses.vulnerable&&hero.statuses.vulnerable.dur>0)incoming=Math.floor(incoming*1.30);
 
-  const gen = (hero?.record?.gen || 1);
-  const miti = Math.min(0.20, Math.max(0, (gen - 1)) * 0.03);
+  const gen = (hero?.record?.gen ?? 0);
+  const mitiPerGen = 0.025;
+  const mitiCap = 0.22;
+  const miti = Math.max(0, Math.min(mitiCap, gen * mitiPerGen));
   hero.ancestralMitigation = miti;
   if (miti > 0) incoming = Math.max(1, Math.floor(incoming * (1 - miti)));
 
@@ -3081,7 +3084,7 @@ function tickStatuses(unit,isHero){
       if(!isHero&&G.tierFlags&&G.tierFlags.dotDamageBonus){
         d=Math.floor(d*(1+G.tierFlags.dotDamageBonus));
       }
-      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));}
+      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));const bm=(unit.dotResistMul_fromBlessings||1);if(bm&&bm!==1)d=Math.floor(d*bm);}
       if(isHero)heroDmg(d,null,'dot');
       else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}if(G.waveFlags&&G.waveFlags.echoWounds){const pct=G.waveFlags.echoWoundsPct||0.25;const rd=Math.floor(d*pct);if(rd>0)heroDmg(rd,null,'dot');}}
     }
@@ -3090,7 +3093,7 @@ function tickStatuses(unit,isHero){
       if(!isHero&&G.tierFlags&&G.tierFlags.dotDamageBonus){
         d=Math.floor(d*(1+G.tierFlags.dotDamageBonus));
       }
-      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));}
+      if(isHero){const dr=passive('dotResist');if(dr)d=Math.floor(d*dr);const gdr=(effectiveStats()._gearDotResist||0);if(gdr)d=Math.floor(d*(1-gdr));const bm=(unit.dotResistMul_fromBlessings||1);if(bm&&bm!==1)d=Math.floor(d*bm);}
       if(isHero)heroDmg(d,null,'dot');
       else{unit.hp=Math.max(0,unit.hp-d);if(unit.hp<=0&&!unit.dead){unit.dead=true;onKill(unit);}if(G.waveFlags&&G.waveFlags.echoWounds){const pct=G.waveFlags.echoWoundsPct||0.25;const rd=Math.floor(d*pct);if(rd>0)heroDmg(rd,null,'dot');}}
     }
@@ -3481,6 +3484,7 @@ function renderHero(){
     <div class="srow"><span class="sl">🛡 DEF</span><span class="sv">${Math.round(h.def)}</span></div>
     <div class="srow"><span class="sl">ℹ Shield</span><span class="sv" style="font-size:10px">Shield carryover requires a Shield offhand.</span></div>
     ${h.ancestralMitigation?`<div class="srow"><span class="sl">🧬 Ancestral Mitigation</span><span class="sv">${Math.round(h.ancestralMitigation*100)}%</span></div>`:''}
+    ${h.houseBlessings?`<div class="srow" title="${houseBlessingsTooltip(h.houseBlessings)}"><span class="sl">🏛 Blessings</span><span class="sv" style="font-size:10px">${formatHouseBlessingsSummary(h.houseBlessings)}</span></div>`:''}
     <div class="srow"><span class="sl">⚡ SPD</span><span class="sv">${Math.round(h.spd)}</span></div>
     <div class="srow"><span class="sl">🎯 Crit</span><span class="sv">${Math.round(es.critChance*100)}% / ${Math.round(es.critDmg*100)}%</span></div>
     <div class="srow"><span class="sl">💃 Eva</span><span class="sv">${Math.round(h.evasion*100)}%</span></div>
@@ -5040,6 +5044,72 @@ function getAspectState(aspect){
 function getAspectRank(aspect){
   return getAspectState(aspect).rank|0;
 }
+
+
+const ASPECT_BLESSINGS={
+  Steel:{hpPctPerRank:0.03,defPerRank:2},
+  Gale:{spdPerRank:2,evasionPerRank:0.02},
+  Venom:{lifestealPerRank:0.0075,dotTickTakenReductionPerRank:0.07},
+  Execution:{critChancePerRank:0.02,critDmgPerRank:0.08},
+  Axiom:{accuracyPerRank:0.02,critDmgPerRank:0.04},
+};
+
+function computeHouseBlessings(){
+  const steelR=getAspectRank('Steel'), galeR=getAspectRank('Gale'), venomR=getAspectRank('Venom'), executionR=getAspectRank('Execution'), axiomR=getAspectRank('Axiom');
+  const Steel={rank:steelR,hpPct:steelR*ASPECT_BLESSINGS.Steel.hpPctPerRank,defAdd:steelR*ASPECT_BLESSINGS.Steel.defPerRank};
+  const Gale={rank:galeR,spdAdd:galeR*ASPECT_BLESSINGS.Gale.spdPerRank,evasionAdd:galeR*ASPECT_BLESSINGS.Gale.evasionPerRank};
+  const Venom={rank:venomR,lifestealAdd:venomR*ASPECT_BLESSINGS.Venom.lifestealPerRank,dotTakenMul:Math.max(0.65,1-(venomR*ASPECT_BLESSINGS.Venom.dotTickTakenReductionPerRank))};
+  const Execution={rank:executionR,critChanceAdd:executionR*ASPECT_BLESSINGS.Execution.critChancePerRank,critDmgAdd:executionR*ASPECT_BLESSINGS.Execution.critDmgPerRank};
+  const Axiom={rank:axiomR,accuracyAdd:axiomR*ASPECT_BLESSINGS.Axiom.accuracyPerRank,critDmgAdd:axiomR*ASPECT_BLESSINGS.Axiom.critDmgPerRank};
+  const totals={
+    hpPct:Steel.hpPct,
+    defAdd:Steel.defAdd,
+    spdAdd:Gale.spdAdd,
+    evasionAdd:Gale.evasionAdd,
+    lifestealAdd:Venom.lifestealAdd,
+    dotTakenMul:Venom.dotTakenMul,
+    critChanceAdd:Execution.critChanceAdd,
+    critDmgAdd:Execution.critDmgAdd + Axiom.critDmgAdd,
+    accuracyAdd:Axiom.accuracyAdd,
+  };
+  return {Steel,Gale,Venom,Execution,Axiom,totals};
+}
+
+function formatHouseBlessingsSummary(bless){
+  const t=(bless&&bless.totals)?bless.totals:computeHouseBlessings().totals;
+  return `HP+${Math.round(t.hpPct*100)}% DEF+${Math.round(t.defAdd)} SPD+${Math.round(t.spdAdd)} EVA+${Math.round(t.evasionAdd*100)}% LS+${(t.lifestealAdd*100).toFixed(2)}% Crit+${Math.round(t.critChanceAdd*100)}% CD+${Math.round(t.critDmgAdd*100)}% Acc+${Math.round(t.accuracyAdd*100)}% DoT×${t.dotTakenMul.toFixed(2)}`;
+}
+
+function houseBlessingsTooltip(bless){
+  const b=bless||computeHouseBlessings();
+  return [
+    `Steel R${b.Steel.rank}: +${Math.round(b.Steel.hpPct*100)}% HP, +${Math.round(b.Steel.defAdd)} DEF`,
+    `Gale R${b.Gale.rank}: +${Math.round(b.Gale.spdAdd)} SPD, +${Math.round(b.Gale.evasionAdd*100)}% EVA`,
+    `Venom R${b.Venom.rank}: +${(b.Venom.lifestealAdd*100).toFixed(2)}% LS, DoT×${b.Venom.dotTakenMul.toFixed(2)}`,
+    `Execution R${b.Execution.rank}: +${Math.round(b.Execution.critChanceAdd*100)}% Crit, +${Math.round(b.Execution.critDmgAdd*100)}% Crit Dmg`,
+    `Axiom R${b.Axiom.rank}: +${Math.round(b.Axiom.accuracyAdd*100)}% Accuracy, +${Math.round(b.Axiom.critDmgAdd*100)}% Crit Dmg`,
+  ].join(' | ');
+}
+
+function applyHouseBlessingsToHero(hero){
+  if(!hero)return;
+  const bless=computeHouseBlessings();
+  const t=bless.totals;
+  const oldMax=Math.max(1,Math.floor(hero.maxHP||1));
+  const oldHp=Math.max(0,Math.floor(hero.hp||oldMax));
+  hero.maxHP=Math.max(1,Math.floor(oldMax*(1+t.hpPct)));
+  const delta=hero.maxHP-oldMax;
+  hero.hp=Math.max(1,Math.min(hero.maxHP,oldHp+delta));
+  hero.def=(hero.def||0)+t.defAdd;
+  hero.spd=(hero.spd||0)+t.spdAdd;
+  hero.evasion=(hero.evasion||0)+t.evasionAdd;
+  hero.lifesteal=(hero.lifesteal||0)+t.lifestealAdd;
+  hero.critChance=(hero.critChance||0)+t.critChanceAdd;
+  hero.critDmg=(hero.critDmg||0)+t.critDmgAdd;
+  hero.accuracy=(hero.accuracy||0)+t.accuracyAdd;
+  hero.houseBlessings=bless;
+  hero.dotResistMul_fromBlessings=t.dotTakenMul;
+}
 function addAspectXP(aspect, amount){
   normalizeMeta();
   if(!ASPECTS.includes(aspect)) aspect = 'Steel';
@@ -5174,7 +5244,7 @@ function mkHeroRecord(name,gen,parentIds,evs,traits){
   return {
     id: mkHeroId(),
     name,
-    gen,
+    gen: (typeof gen==='number'?gen:0),
     parentIds: parentIds || [],
     evs: {...(evs||emptyEVs())},
     traits: [...(traits||[])],
@@ -5651,10 +5721,13 @@ function breedHeroes(idA, idB, opts){
   else if(action==='catalyze'){ VAR = 8; mutMult = 1.75; inheritAdd = -0.05; mutBoostChance = 0.18; }
 
   const cap = evCap();
+  const childGen = Math.max(recA.gen||0, recB.gen||0) + 1;
+  const accelPct = Math.max(0, Math.min(0.18, 0.02 * Math.min(childGen, 8)));
   const childEVs = {};
   EV_KEYS.forEach(k=>{
     let val = Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2 + LR.lri(-VAR, VAR));
     if(LR.lrng() < mutBoostChance) val += LR.lri(5, 12);
+    val = Math.round(val + (cap - val) * accelPct);
     childEVs[k] = Math.min(cap, Math.max(0, val));
   });
 
@@ -5725,11 +5798,12 @@ function breedHeroes(idA, idB, opts){
   let birthAspect = evAspectMap[topEvK] || 'Steel';
   if(finalTraits.some(t=>TRAIT_ASPECT[t]==='Axiom')) birthAspect = 'Axiom';
 
-  const genNum = Math.max(recA.gen||0, recB.gen||0) + 1;
+  const genNum = childGen;
   const childName = genName(genNum, birthAspect, [recA.name, recB.name], {mutated, spliceRelic, spliceScar});
   const childRec = mkHeroRecord(childName, genNum, [recA.id, recB.id], childEVs, finalTraits);
   childRec.birthAspect = birthAspect;
   childRec.birthFlags = {catalyzed: action==='catalyze', mutated, spliceRelic, spliceScar};
+  childRec.evAccelPct = accelPct;
 
   META.family[childRec.id] = childRec;
   saveMeta();
@@ -5863,6 +5937,17 @@ function aspectsHTML(){
     </div>
     <div class="sec-title" style="margin-top:0">Lineage Aspects</div>
     ${rows}
+    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+      <div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:4px">Aspect Blessings (Always Active)</div>
+      <div style="font-size:10px;color:var(--txt3);line-height:1.5">
+        🛡 Steel: +3% Max HP / rank, +2 DEF / rank<br>
+        🌪 Gale: +2 SPD / rank, +2% Evasion / rank<br>
+        🐍 Venom: +0.75% Lifesteal / rank, -7% Bleed/Poison tick damage taken / rank<br>
+        🐺 Execution: +2% Crit Chance / rank, +8% Crit Damage / rank<br>
+        ᚱ Axiom: +2% Accuracy / rank, +4% Crit Damage / rank
+      </div>
+      <div style="font-size:10px;color:var(--txt2);margin-top:6px"><strong>Current Blessings:</strong> ${formatHouseBlessingsSummary(computeHouseBlessings())}</div>
+    </div>
     <div style="font-size:10px;color:var(--txt3);margin-top:8px">Earn Aspect XP by retiring or winning. Each family develops a distinct identity over generations. (Venom aspect lore: Venom (Eitr))</div>
   </div>`;
 }
