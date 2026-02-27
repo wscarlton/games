@@ -541,6 +541,7 @@ body.embers-off::after{ opacity:0 !important; }
 .tree-node.tn-spent{border-color:rgba(120,120,160,.35);opacity:.85;}
 .tree-node.tn-dead{border-color:rgba(200,40,40,.3);opacity:.7;}
 .tree-node.tn-selected{border-color:var(--gold);box-shadow:0 0 12px rgba(212,160,23,.3);z-index:6;}
+.tree-badge{position:absolute;top:6px;right:8px;font-size:10px;padding:2px 6px;border-radius:999px;background:rgba(200,40,40,.12);border:1px solid rgba(200,40,40,.35);color:var(--red);}
 
 /* Memory Binding preview */
 .child-preview{background:linear-gradient(135deg,#0a0820,#120a30);border:1px solid rgba(144,80,232,.4);border-radius:6px;padding:14px;}
@@ -817,7 +818,7 @@ table.br-table{width:100%;border-collapse:collapse;font-size:10px;}
     <span style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:var(--gold);letter-spacing:2px;text-shadow:0 0 12px rgba(212,160,23,.4)">ᛟ MINNI-HÖLL</span>
     <div style="width:1px;height:20px;background:var(--border2)"></div>
     <div class="legacy-tabs">
-      <div class="ltab active" id="ltab-pool" onclick="setLegacyTab('pool')">Memory Stones</div>
+      <div class="ltab active" id="ltab-pool" onclick="setLegacyTab('pool')">Active Stones</div>
       <div class="ltab" id="ltab-breed" onclick="setLegacyTab('breed')">BIND</div>
       <div class="ltab" id="ltab-fallen" onclick="setLegacyTab('fallen')">SCARRED RUNES</div>
       <div class="ltab" id="ltab-tree" onclick="setLegacyTab('tree')">Family Tree</div>
@@ -851,6 +852,15 @@ function ri(mn,mx){return Math.floor(rng()*(mx-mn+1))+mn;}
 function rpick(a){return a[Math.floor(rng()*a.length)];}
 function rshuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
 function rwgt(items,wfn){const ws=items.map(wfn),t=ws.reduce((a,b)=>a+b,0);let r=rng()*t;for(let i=0;i<items.length;i++){r-=ws[i];if(r<=0)return items[i];}return items[items.length-1];}
+function mkLocalRng(seed){
+  let x=(typeof seed==='string'?hashStr(seed):(+seed||1))>>>0||1;
+  const next=()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return (x>>>0)/4294967296;};
+  return {
+    lrng:()=>next(),
+    lri:(mn,mx)=>Math.floor(next()*(mx-mn+1))+mn,
+    lrpick:(arr)=>arr[Math.floor(next()*arr.length)],
+  };
+}
 
 const LEX={trial:'Trial',trials:'Trials',saga:'Saga',runeGift:'Rune-Gift',runeGifts:'Rune-Gifts',sagaMarks:'Saga-Marks',runeShards:'Rune-Shards',allfatherBlessing:"Minni",seekOmen:'Seek Another Omen',draftTitle:'Rune-Gift Draft',omens:'Omens',offerings:'Offerings'};
 function trialStr(n){return `${LEX.trial} ${n}`;}
@@ -1615,6 +1625,7 @@ let META={
   houseName:null,
   codexUnlocked:['weaver','minni','yggdrasil','allfather','valhalla','saga','rune','norns'],
   codexView:'lore',
+  bindingCounter:0,
 };
 
 function saveMeta(){
@@ -1635,6 +1646,7 @@ function loadMeta(){
     if(typeof META.hasSeenOpening!=='boolean')META.hasSeenOpening=false;
     if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
     if(META.codexView!=='balance')META.codexView='lore';
+    if(typeof META.bindingCounter!=='number')META.bindingCounter=0;
   }catch(e){}
 }
 function exportSave(){
@@ -3289,7 +3301,7 @@ function breedHeroes(idA,idB){
   const childEVs={};
   EV_KEYS.forEach(k=>{
     let val=Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2+ri(-VAR,VAR));
-    if(Math.random()<.08)val+=ri(5,12);
+    if(rng()<.08)val+=ri(5,12);
     childEVs[k]=Math.min(cap,Math.max(0,val));
   });
   const allParentTraits=[...new Set([...recA.traits,...recB.traits])];
@@ -3297,9 +3309,9 @@ function breedHeroes(idA,idB){
   const childTraits=[];
   for(const t of allParentTraits){
     const baseChance=sharedTraits.includes(t)?.75:.45;
-    if(Math.random()<baseChance)childTraits.push(t);
+    if(rng()<baseChance)childTraits.push(t);
   }
-  if(Math.random()<mutationRate()){
+  if(rng()<mutationRate()){
     const unlocked=[...META.unlockedTraits];
     const available=unlocked.filter(t=>!childTraits.includes(t));
     if(available.length){
@@ -3834,6 +3846,9 @@ function renderFooter(){
 
 // ═══ LEGACY SCREEN ═══
 let currentLegacyTab='pool';
+let TREE_VIEW={mode:'legacy',showClosed:false};
+function setTreeMode(mode){TREE_VIEW.mode=(mode==='all')?'all':'legacy';renderFamilyTree();}
+function toggleTreeClosed(){TREE_VIEW.showClosed=!TREE_VIEW.showClosed;renderFamilyTree();}
 function showLegacy(){
   closeDrawers();
   document.getElementById('legacy-screen').style.display='flex';
@@ -3882,8 +3897,9 @@ function renderRetiredPool(){
   let h=`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--gold)">Memory Stones</div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${heroes.length}/${poolMax()} memory stones · Select two strands to bind</div>
+        <div style="font-size:16px;font-weight:700;color:var(--gold)">Active Memory Stones</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${heroes.length}/${poolMax()} active stones · Select two strands to bind</div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:6px">Shows stones with binds remaining. Spent stones remain visible in the Family Tree as ☆ Spent.</div>
       </div>
       <button class="btn btn-green btn-sm" onclick="setLegacyTab('breed')">⚗ Bind →</button>
     </div>
@@ -3928,7 +3944,7 @@ function renderBreeding(){
     return `<div style="text-align:center;padding:40px;color:var(--txt3)">
       <div style="font-size:32px;margin-bottom:12px">⚗</div>
       <div style="font-size:13px">Select two memory stones first.</div>
-      <button class="btn btn-gold btn-sm" style="margin-top:14px" onclick="setLegacyTab('pool')">← Memory Stones</button>
+      <button class="btn btn-gold btn-sm" style="margin-top:14px" onclick="setLegacyTab('pool')">← Active Stones</button>
     </div>`;
   }
   const recA=META.family[BREED_SELECTED[0]],recB=META.family[BREED_SELECTED[1]];
@@ -4071,11 +4087,12 @@ function startWithChild(heroId){
 // ─── FALLEN LEDGER ────────────────────────────────────────────────────────────
 function renderFallenLedger(){
   const fallen=META.fallenLedger.map(id=>META.family[id]).filter(Boolean).reverse();
+  const totalRecovered=fallen.reduce((sum,rec)=>sum+((rec.runResult?.salvageEarned)||0),0);
   let h=`<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
         <div style="font-size:16px;font-weight:700;color:var(--red)">ᚱ SCARRED RUNES</div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${fallen.length} fallen heroes · ᚱ${META.salvage} Rune-Shards available</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${fallen.length} fallen heroes · ᚱ${META.salvage} Rune-Shards available · Total recovered from closed sagas: ᚱ${totalRecovered}</div>
       </div>
     </div>`;
   if(!fallen.length){
@@ -4156,60 +4173,93 @@ function checkForNamedEliteReturn(archId,wave,force){
 // ─── FAMILY TREE ──────────────────────────────────────────────────────────────
 function renderFamilyTree(){
   const lc=document.getElementById('legacy-content');
-  const allHeroes=Object.values(META.family);
-  if(!allHeroes.length){
+  const family=META.family||{};
+  const all=Object.values(family);
+  if(!all.length){
     lc.innerHTML=`<div style="text-align:center;padding:40px;color:var(--txt3)"><div style="font-size:32px;margin-bottom:12px">🌳</div><div>No heroes in the lineage yet.</div></div>`;
     return;
   }
+
+  const fallenSet=new Set(META.fallenLedger||[]);
+  const retiredSet=new Set(META.retiredPool||[]);
+  const childrenOf={};
+  all.forEach(h=>{(h.parentIds||[]).forEach(pid=>{(childrenOf[pid]||(childrenOf[pid]=[])).push(h.id);});});
+
+  const retiredRoots=all.filter(h=>{const out=h.runResult?.outcome; return retiredSet.has(h.id)||out==='retired'||out==='victory';}).map(h=>h.id);
+  const scopeSet=new Set();
+  if(TREE_VIEW.mode==='legacy'){
+    const stack=[...retiredRoots];
+    while(stack.length){
+      const id=stack.pop();
+      if(scopeSet.has(id))continue;
+      scopeSet.add(id);
+      (childrenOf[id]||[]).forEach(cid=>stack.push(cid));
+    }
+  }else{ all.forEach(h=>scopeSet.add(h.id)); }
+
+  const inScope=all.filter(h=>scopeSet.has(h.id));
+  const visible=(TREE_VIEW.showClosed?inScope:inScope.filter(h=>!fallenSet.has(h.id)));
+  const hiddenClosedTotal=inScope.length-visible.length;
+
+  const memoHidden={};
+  function hiddenDesc(id){
+    if(memoHidden[id]!=null)return memoHidden[id];
+    let n=0;
+    for(const cid of (childrenOf[id]||[])){
+      if(!scopeSet.has(cid))continue;
+      if(!TREE_VIEW.showClosed && fallenSet.has(cid)) n++;
+      n+=hiddenDesc(cid);
+    }
+    memoHidden[id]=n;
+    return n;
+  }
+
   const byGen={};
-  allHeroes.forEach(h=>{const g=h.gen||0;(byGen[g]||(byGen[g]=[])).push(h);});
-  const maxGen=Math.max(...Object.keys(byGen).map(Number));
+  visible.forEach(h=>{const g=h.gen||0;(byGen[g]||(byGen[g]=[])).push(h);});
+  Object.keys(byGen).forEach(g=>byGen[g].sort((a,b)=>String(a.id||a.name).localeCompare(String(b.id||b.name))));
+  const maxGen=Math.max(0,...visible.map(h=>h.gen||0));
   const NODE_W=130,NODE_H=80,GAP_X=160,GAP_Y=100,PAD=20;
   const pos={};
-  for(let g=0;g<=maxGen;g++){
-    const heroes=byGen[g]||[];
-    heroes.forEach((h,i)=>{pos[h.id]={x:PAD+g*GAP_X,y:PAD+i*GAP_Y};});
-  }
+  for(let g=0;g<=maxGen;g++)(byGen[g]||[]).forEach((h,i)=>{pos[h.id]={x:PAD+g*GAP_X,y:PAD+i*GAP_Y};});
+
+  const maxCol=Math.max(1,...Object.values(byGen).map(a=>a.length));
   const canvasW=PAD*2+(maxGen)*GAP_X+NODE_W;
-  const canvasH=PAD*2+Math.max(...Object.values(byGen).map(a=>a.length))*GAP_Y+NODE_H;
+  const canvasH=PAD*2+maxCol*GAP_Y+NODE_H;
   let svgLines='';
-  allHeroes.forEach(h=>{
-    if(h.parentIds){
-      h.parentIds.forEach(pid=>{
-        const pp=pos[pid],cp=pos[h.id];
-        if(pp&&cp){
-          const x1=pp.x+NODE_W/2,y1=pp.y+NODE_H/2;
-          const x2=cp.x+NODE_W/2,y2=cp.y+NODE_H/2;
-          svgLines+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(144,80,232,.35)" stroke-width="1.5" stroke-dasharray="4,3"/>`;
-        }
-      });
-    }
-  });
+  visible.forEach(h=>{(h.parentIds||[]).forEach(pid=>{const pp=pos[pid],cp=pos[h.id];if(pp&&cp){const x1=pp.x+NODE_W/2,y1=pp.y+NODE_H/2,x2=cp.x+NODE_W/2,y2=cp.y+NODE_H/2;svgLines+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(144,80,232,.35)" stroke-width="1.5" stroke-dasharray="4,3"/>`;}});});
+
   let nodes='';
-  allHeroes.forEach(h=>{
+  visible.forEach(h=>{
     const p=pos[h.id];if(!p)return;
-    const isInPool=META.retiredPool.includes(h.id);
+    const isInPool=retiredSet.has(h.id);
     const isRetiredLike=!!(h.runResult && (h.runResult.outcome==='retired' || h.runResult.outcome==='victory'));
     const isSpentRetired=(isRetiredLike && !isInPool);
-    const isRetired=isInPool;
-    const isFallen=META.fallenLedger.includes(h.id);
-    const cls=isRetired?'tn-retired':(isSpentRetired?'tn-spent':(isFallen?'tn-dead':''));
-    const statusColor=isRetired?'var(--gold)':(isSpentRetired?'var(--txt2)':(isFallen?'var(--red)':'var(--txt3)'));
+    const isFallen=fallenSet.has(h.id);
+    const cls=isInPool?'tn-retired':(isSpentRetired?'tn-spent':(isFallen?'tn-dead':''));
+    const statusColor=isInPool?'var(--gold)':(isSpentRetired?'var(--txt2)':(isFallen?'var(--red)':'var(--txt3)'));
     const derived=evDerived(h.evs);
-    nodes+=`<div class="tree-node ${cls}" style="left:${p.x}px;top:${p.y}px;width:${NODE_W}px" onclick="showHeroDetail('${h.id}')">
-      <div style="font-size:9px;color:${statusColor};letter-spacing:1px">
-        G${h.gen} ${isRetired ? '★ Sealed' : (isSpentRetired ? '☆ Spent' : (isFallen ? '☠ Closed' : ''))}
-      </div>
+    const hidden=hiddenDesc(h.id);
+    nodes+=`<div class="tree-node ${cls}" style="left:${p.x}px;top:${p.y}px;width:${NODE_W}px" onclick="showHeroDetail('${h.id}')">${hidden>0?`<span class="tree-badge">☠+${hidden}</span>`:''}
+      <div style="font-size:9px;color:${statusColor};letter-spacing:1px">G${h.gen} ${isInPool ? '★ Sealed' : (isSpentRetired ? '☆ Spent' : (isFallen ? '☠ Closed' : ''))}</div>
       <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.name}</div>
       <div style="font-size:9px;color:var(--txt3);margin-top:2px">ATK:${Math.round(derived.atk)} DEF:${Math.round(derived.def)}</div>
       ${h.traits.length?`<div style="margin-top:3px">${h.traits.slice(0,2).map(tk=>{const gt=GTRAITS[tk];return gt?`<span style="font-size:10px">${gt.icon}</span>`:''}).join('')}</div>`:''}
     </div>`;
   });
+
   lc.innerHTML=`<div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:14px">
       <div>
         <div style="font-size:16px;font-weight:700;color:var(--gold)">🌳 Family Tree</div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:2px">${allHeroes.length} heroes across ${maxGen+1} generations</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">Showing ${visible.length} heroes (${hiddenClosedTotal} Closed hidden) across ${maxGen+1} generations</div>
+        ${TREE_VIEW.mode==='legacy'?`<div style="font-size:10px;color:var(--txt3);margin-top:2px">Legacy View: retired lines + descendants</div>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="display:flex;border:1px solid var(--border2);border-radius:999px;overflow:hidden">
+          <button class="btn btn-sm ${TREE_VIEW.mode==='legacy'?'btn-gold':'btn-ghost'}" onclick="setTreeMode('legacy')" style="border:none;border-radius:0">Legacy</button>
+          <button class="btn btn-sm ${TREE_VIEW.mode==='all'?'btn-gold':'btn-ghost'}" onclick="setTreeMode('all')" style="border:none;border-radius:0">All</button>
+        </div>
+        <button class="btn btn-sm ${TREE_VIEW.showClosed?'btn-danger':'btn-ghost'}" onclick="toggleTreeClosed()">${TREE_VIEW.showClosed?'Hide Closed':'Show Closed'}</button>
       </div>
       <div style="font-size:10px;color:var(--txt3)"><span style="color:var(--gold)">★</span> Sealed &nbsp; <span style="color:var(--txt2)">☆</span> Spent &nbsp; <span style="color:var(--red)">☠</span> Closed &nbsp; Click node for details</div>
     </div>
@@ -4285,7 +4335,8 @@ function showHeroDetail(id){
   const sagaPage=generateSagaPage(rec);
   const isRetired=META.retiredPool.includes(id);
   const isFallen=META.fallenLedger.includes(id);
-  const status=isRetired?'Retired ★':isFallen?'Fallen ☠':'Active';
+  const isRetiredLike=!!(rec.runResult && (rec.runResult.outcome==='retired' || rec.runResult.outcome==='victory'));
+  const status=isRetired?'Sealed ★':isFallen?'Closed ☠':isRetiredLike?'Spent ☆':'Active';
   const statusColor=isRetired?'var(--gold)':isFallen?'var(--red)':'var(--cyan)';
   const gearItems=rec.equippedGear?Object.entries(rec.equippedGear).filter(([s,item])=>item):[];
   document.getElementById('hero-detail-panel').innerHTML=`<div class="slide-in" style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:16px">
@@ -5157,6 +5208,7 @@ function normalizeMeta(){
   if(!Array.isArray(META.lineageScarPool)) META.lineageScarPool = [];
   if(!META.codexUnlocked||!Array.isArray(META.codexUnlocked))META.codexUnlocked=['yggdrasil','allfather','valhalla','saga','rune','norns'];
   if(META.codexView!=='balance') META.codexView='lore';
+  if(typeof META.bindingCounter!=='number') META.bindingCounter=0;
   for(const k of Object.keys(META.scarTokens)){
     META.scarTokens[k] = Math.max(0, Math.floor(META.scarTokens[k]||0));
     if(META.scarTokens[k] <= 0) delete META.scarTokens[k];
@@ -5586,6 +5638,10 @@ function breedHeroes(idA, idB, opts){
   const action = (opts && opts.mode) ? opts.mode : 'none';
   const spliceKind = opts ? opts.spliceKind : null;
 
+  META.bindingCounter = Math.max(0, Math.floor((META.bindingCounter||0)+1));
+  const rngSeed = `${META.houseName||'House'}|${META.bindingCounter}|${idA}|${idB}|${action}|${spliceKind||''}|${opts?.traitKey||''}|${opts?.scarKey||''}`;
+  const LR = mkLocalRng(rngSeed);
+
   let VAR = 5;
   let mutMult = 1.0;
   let inheritAdd = 0.0;
@@ -5597,8 +5653,8 @@ function breedHeroes(idA, idB, opts){
   const cap = evCap();
   const childEVs = {};
   EV_KEYS.forEach(k=>{
-    let val = Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2 + ri(-VAR, VAR));
-    if(Math.random() < mutBoostChance) val += ri(5, 12);
+    let val = Math.round(((recA.evs[k]||0)+(recB.evs[k]||0))/2 + LR.lri(-VAR, VAR));
+    if(LR.lrng() < mutBoostChance) val += LR.lri(5, 12);
     childEVs[k] = Math.min(cap, Math.max(0, val));
   });
 
@@ -5607,30 +5663,28 @@ function breedHeroes(idA, idB, opts){
   const childTraits = [];
   for(const t of allParentTraits){
     const baseChance = (sharedTraits.includes(t) ? 0.75 : 0.45) + inheritAdd + traitInheritBonus(t);
-    if(Math.random() < Math.min(0.95, Math.max(0.05, baseChance))) childTraits.push(t);
+    if(LR.lrng() < Math.min(0.95, Math.max(0.05, baseChance))) childTraits.push(t);
   }
 
   let mutated = false;
-  if(Math.random() < (mutationRate() * mutMult)){
+  if(LR.lrng() < (mutationRate() * mutMult)){
     const unlocked = [...META.unlockedTraits];
     const available = unlocked.filter(t=>!childTraits.includes(t));
     if(available.length){
-      const mut = rpick(available);
+      const mut = LR.lrpick(available);
       childTraits.push(mut);
       mutated = true;
       try{ addLog(`🧬 MUTATION! New trait emerged: ${GTRAITS[mut]?.name||mut}!`,'laxiom'); }catch(e){}
     }
   }
 
-  // Splice effects
   let spliceRelic = false, spliceScar = false;
   if(action==='splice' && opts){
     if(spliceKind==='relic' && opts.traitKey){
       spliceRelic = true;
       const t = opts.traitKey;
-      // High chance to include locked parent trait
-      if(allParentTraits.includes(t) && Math.random() < 0.90 && !childTraits.includes(t)) childTraits.push(t);
-      if(allParentTraits.includes(t) && Math.random() < 0.25 && !childTraits.includes(t)) childTraits.push(t); // small second roll if missed
+      if(allParentTraits.includes(t) && LR.lrng() < 0.90 && !childTraits.includes(t)) childTraits.push(t);
+      if(allParentTraits.includes(t) && LR.lrng() < 0.25 && !childTraits.includes(t)) childTraits.push(t);
     }else if(spliceKind==='scar' && opts.scarKey){
       spliceScar = true;
       const sk = opts.scarKey;
@@ -5639,15 +5693,12 @@ function breedHeroes(idA, idB, opts){
     }
   }
 
-  // Enforce max traits: scars should be kept if present
   const maxTraits = TRAIT_MAX_BASE;
   let finalTraits = [...new Set(childTraits)];
   if(finalTraits.length > maxTraits){
-    // Prefer to keep spliced scar if any
     const keep = [];
     if(spliceScar && opts && opts.scarKey) keep.push(opts.scarKey);
     if(spliceRelic && opts && opts.traitKey) keep.push(opts.traitKey);
-    // Build final list
     const out = [];
     for(const k of keep){ if(k && finalTraits.includes(k) && !out.includes(k)) out.push(k); }
     for(const k of finalTraits){ if(out.length>=maxTraits) break; if(!out.includes(k)) out.push(k); }
@@ -5669,11 +5720,9 @@ function breedHeroes(idA, idB, opts){
     }
   }
 
-  // Determine child aspect (from EV + traits)
   const topEvK = EV_KEYS.reduce((a,b)=> (childEVs[a]||0) > (childEVs[b]||0) ? a : b);
   const evAspectMap = {hp:'Steel',def:'Steel',ls:'Venom',atk:'Execution',crit:'Execution',spd:'Gale',eva:'Gale',acc:'Execution'};
   let birthAspect = evAspectMap[topEvK] || 'Steel';
-  // If child has an Axiom boon later, that will shift; for birth we keep patterns.
   if(finalTraits.some(t=>TRAIT_ASPECT[t]==='Axiom')) birthAspect = 'Axiom';
 
   const genNum = Math.max(recA.gen||0, recB.gen||0) + 1;
