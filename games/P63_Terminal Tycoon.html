@@ -185,7 +185,10 @@ const TICK_MS = 400;
 const UPTIME_TICKS = 90;
 const START_CASH = 1200;
 const BASE_TRAFFIC = 16;
-const BASE_OVERHEAD = 20;
+const BASE_OVERHEAD = 100;
+const CAP_SCALE = 0.65;
+const PROMO_UPKEEP_RATE = 0.6;
+const MAX_PROFIT_MULT = 1.9;
 const SHOP_SIZE = 5;
 const MAX_HEAT = 100;
 const SEASON_DAYS = 21;
@@ -499,16 +502,22 @@ function getEffMod(s) {
 }
 
 function getRevMod(s) {
-  let m = 1.0;
-  s.activePromos.forEach(pid => { const p = PROMO_DEFS.find(x=>x.id===pid); if(p) m *= p.profitMod; });
-  if (s.ownedItems.includes("velvet_rope")) m *= 1.1;
-  if (s.ownedItems.includes("high_table")) m *= 1.2;
-  if (s.ownedItems.includes("black_chip")) m *= 1.35;
-  if (s.ownedItems.includes("mirror_room")) m *= 1.3;
-  if (s.ownedItems.includes("vip_suite")) m *= 1.15;
-  // Day mods
-  if (s.dayMods && s.dayMods.profitMult) m *= (1 + s.dayMods.profitMult);
-  return m;
+  let bonus = 0;
+  s.activePromos.forEach(pid => {
+    const p = PROMO_DEFS.find(x=>x.id===pid);
+    if (p) bonus += (p.profitMod - 1);
+  });
+  if (s.ownedItems.includes("velvet_rope")) bonus += 0.1;
+  if (s.ownedItems.includes("high_table")) bonus += 0.2;
+  if (s.ownedItems.includes("black_chip")) bonus += 0.35;
+  if (s.ownedItems.includes("mirror_room")) bonus += 0.3;
+  if (s.ownedItems.includes("vip_suite")) bonus += 0.15;
+  if (s.dayMods && s.dayMods.profitMult) bonus += s.dayMods.profitMult;
+
+  if (bonus >= 0) {
+    return 1 + (1 - Math.exp(-bonus)) * (MAX_PROFIT_MULT - 1);
+  }
+  return Math.max(0.5, 1 + bonus);
 }
 
 function getHeatPerDay(s) {
@@ -524,14 +533,24 @@ function getHeatPerDay(s) {
 }
 
 function calcDailyCosts(s) {
-  let wages = 0, overhead = BASE_OVERHEAD, maint = 0;
+  let wages = 0, maint = 0;
+  const tableCount = s.zones.flatMap(z=>z.tables).length;
+  const unlockedZones = s.zones.filter(z=>!z.locked).length;
+  let overhead = BASE_OVERHEAD + tableCount * 12 + unlockedZones * 40 + s.day * 6;
+  let promoUpkeep = 0;
   s.staff.forEach(st => { const r = STAFF_ROLES.find(x=>x.id===st.role); wages += r ? r.wage : 18; });
   s.zones.flatMap(z=>z.tables).forEach(tid => { const t = TABLE_DEFS.find(x=>x.id===tid); if(t) maint += t.maint; });
+  maint *= 3.2;
+  maint *= (1 + s.heat / 120);
+  s.activePromos.forEach(pid => {
+    const p = PROMO_DEFS.find(x=>x.id===pid);
+    if (p) promoUpkeep += p.cost * PROMO_UPKEEP_RATE;
+  });
   if (s.ownedItems.includes("cheap_chips")) maint *= 0.9;
   if (s.ownedItems.includes("ledger_ghost")) overhead *= 0.5;
   if (s.staff.some(st=>st.role==="tech")) maint *= (1 - 0.2 * s.staff.filter(st=>st.role==="tech").length);
-  const w = Math.round(wages), o = Math.round(overhead), mn = Math.round(Math.max(0, maint));
-  return { wages:w, overhead:o, maint:mn, total:w+o+mn };
+  const w = Math.round(wages), o = Math.round(overhead), mn = Math.round(Math.max(0, maint)), pu = Math.round(promoUpkeep);
+  return { wages:w, overhead:o, maint:mn, promoUpkeep:pu, total:w+o+mn+pu };
 }
 
 function generateDailyObjectives(gs) {
@@ -763,9 +782,24 @@ function doTick() {
   const placedTables = gs.zones.flatMap(z=>z.tables);
   const effMod = getEffMod(gs);
   const revMod = getRevMod(gs);
+  const customersPerTick = gs.footTraffic / UPTIME_TICKS;
   let tickRev = 0, tickPay = 0;
   const newEarns = {};
   let globalIdx = 0;
+  let rawCapacity = 0;
+
+  gs.zones.forEach(z => {
+    if (z.locked) return;
+    z.tables.forEach((tid,idx) => {
+      const t = TABLE_DEFS.find(x=>x.id===tid);
+      const key = `${z.id}-${idx}`;
+      const cond = gs.tableConditions[key];
+      if (!t || (cond && cond.broken)) return;
+      rawCapacity += t.speed;
+    });
+  });
+  const capacityPerTick = rawCapacity * effMod * CAP_SCALE;
+  const served = Math.min(customersPerTick, capacityPerTick);
 
   gs.zones.forEach(z => {
     if (z.locked) return;
@@ -776,9 +810,12 @@ function doTick() {
       const cond = gs.tableConditions[key];
       if (cond && cond.broken) { globalIdx++; return; }
       const condMod = cond ? cond.condition / 100 : 1;
-      const base = t.avgSpend * t.speed * effMod * condMod;
-      const rev = base * (0.85 + Math.random()*0.3) * revMod;
-      const pay = base * t.payoutVol * (0.3 + Math.random()*0.5);
+      const share = rawCapacity > 0 ? (t.speed / rawCapacity) : 0;
+      const customersServed = served * share;
+      const gross = customersServed * t.avgSpend * condMod * revMod * (0.9 + Math.random()*0.2);
+      const payoutRate = (0.3 + t.payoutVol * 0.35);
+      const pay = gross * payoutRate * (0.85 + Math.random()*0.3);
+      const rev = gross;
       tickRev += rev;
       tickPay += pay;
       newEarns[`t${globalIdx}`] = Math.round(rev - pay);
@@ -830,6 +867,15 @@ function closeDay() {
   gs.uptimeRunning = false;
   stopTicking();
 
+  if (gs.pendingIncident) {
+    const unresolvedHeat = 5 + gs.pendingIncident.severity * 2;
+    const unresolvedCash = -20 - gs.pendingIncident.severity * 12;
+    gs.heat = clamp(gs.heat + unresolvedHeat, 0, MAX_HEAT);
+    gs.cash += unresolvedCash;
+    gs.dailyIncidents.push(`${gs.pendingIncident.name} (Unresolved)`);
+    gs.eventLog.push(`Day ${gs.day}: ${gs.pendingIncident.name} unresolved at close [default penalty]`);
+  }
+
   const costs = calcDailyCosts(gs);
   const net = gs.accRevenue - gs.accPayouts - costs.total;
   gs.cash += net;
@@ -849,7 +895,7 @@ function closeDay() {
   // Ledger
   gs.ledgerHistory.push({
     day:gs.day, revenue:Math.round(gs.accRevenue), payouts:Math.round(gs.accPayouts),
-    wages:costs.wages, overhead:costs.overhead, maint:costs.maint,
+    wages:costs.wages, overhead:costs.overhead, maint:costs.maint, promoUpkeep:costs.promoUpkeep,
     totalCost:costs.total, net:Math.round(net), heatGen:hMod, traffic:gs.footTraffic,
   });
 
@@ -1520,7 +1566,7 @@ function renderDashboard() {
         <div><div class="dim">Revenue</div><div style="color:var(--green);font-weight:bold">${fmt(l.revenue)}</div></div>
         <div><div class="dim">Payouts</div><div style="color:var(--red)">${fmt(l.payouts)}</div></div>
         <div><div class="dim">Wages</div><div style="color:var(--yellow)">${fmt(l.wages)}</div></div>
-        <div><div class="dim">OH+Maint</div><div style="color:var(--yellow)">${fmt(l.overhead+l.maint)}</div></div>
+        <div><div class="dim">OH+Maint+Promo</div><div style="color:var(--yellow)">${fmt(l.overhead+l.maint+(l.promoUpkeep||0))}</div></div>
         <div><div class="dim">Net</div><div style="color:${l.net>=0?'var(--green)':'var(--red)'};font-weight:bold;font-size:16px">${fmt(l.net)}</div></div>
       </div></div>`;
   }
@@ -1592,7 +1638,7 @@ function renderFloor() {
       const condColor = cond > 70 ? 'var(--green)' : cond > 40 ? 'var(--yellow)' : 'var(--red)';
       h += `<div class="flex-row gap-4 mb-8"><span class="dim" style="font-size:9px">COND</span><div class="prog-bar" style="flex:1;height:4px"><div class="prog-fill" style="width:${cond}%;background:${condColor}"></div></div><span style="font-size:9px;color:${condColor}">${cond}%</span></div>`;
 
-      h += `<div style="font-size:10px;color:var(--text-dim)">Rev: $${t?.avgSpend}\u00D7${t?.speed}/tick | Vol: ${Math.round((t?.payoutVol||0)*100)}%</div>`;
+      h += `<div style="font-size:10px;color:var(--text-dim)">Spend: $${t?.avgSpend}/guest | Throughput: ${t?.speed} | Vol: ${Math.round((t?.payoutVol||0)*100)}%</div>`;
 
       // NPCs
       if (isUp && npcs.length > 0 && !broken) {
@@ -1800,7 +1846,7 @@ function renderLedger() {
   } else {
     h += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
       <thead><tr style="border-bottom:1px solid var(--border)">`;
-    ["Day","Revenue","Payouts","Wages","OH","Maint","Net"].forEach(hd => {
+    ["Day","Revenue","Payouts","Wages","OH","Maint","Promo","Net"].forEach(hd => {
       h += `<th style="text-align:right;padding:6px 8px;color:var(--text-dim);font-weight:normal;text-transform:uppercase;font-size:9px;letter-spacing:1px">${hd}</th>`;
     });
     h += `</tr></thead><tbody>`;
@@ -1812,6 +1858,7 @@ function renderLedger() {
         <td style="padding:5px 8px;text-align:right;color:var(--yellow)">${fmt(l.wages)}</td>
         <td style="padding:5px 8px;text-align:right;color:var(--yellow)">${fmt(l.overhead)}</td>
         <td style="padding:5px 8px;text-align:right;color:var(--yellow)">${fmt(l.maint)}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--yellow)">${fmt(l.promoUpkeep||0)}</td>
         <td style="padding:5px 8px;text-align:right;font-weight:bold;color:${l.net>=0?'var(--green)':'var(--red)'}">${fmt(l.net)}</td>
       </tr>`;
     });
