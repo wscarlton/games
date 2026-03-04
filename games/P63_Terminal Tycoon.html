@@ -1,0 +1,2215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal Tycoon</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg-deep: #05080e;
+  --bg-base: #080d18;
+  --bg-raised: #0c1221;
+  --bg-card: #0a1020;
+  --border: #1a2744;
+  --border-lit: #2a3a5a;
+  --text: #c8d6e5;
+  --text-dim: #6b7d94;
+  --text-dark: #4a5a6a;
+  --amber: #f0c040;
+  --green: #4ade80;
+  --blue: #60a5fa;
+  --red: #f43f5e;
+  --purple: #c084fc;
+  --yellow: #fbbf24;
+  --cyan: #22d3ee;
+  --font: 'JetBrains Mono', 'Courier New', monospace;
+  --font-display: 'Share Tech Mono', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: var(--font); background: var(--bg-deep); color: var(--text); font-size:13px; line-height:1.5; overflow:hidden; height:100vh; }
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
+button { font-family: var(--font); cursor:pointer; }
+button:hover:not(:disabled) { filter:brightness(1.3); }
+button:disabled { cursor: not-allowed; opacity:0.5; }
+
+.scanline { position:fixed; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.015) 2px,rgba(0,0,0,0.015) 4px); z-index:9999; }
+
+/* Layout */
+#app { display:flex; flex-direction:column; height:100vh; }
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:8px 16px; background:var(--bg-base); border-bottom:1px solid var(--border); flex-wrap:wrap; gap:8px; min-height:48px; z-index:10; }
+.body-wrap { display:flex; flex:1; overflow:hidden; }
+.nav { width:155px; min-width:130px; background:var(--bg-base); border-right:1px solid var(--border); padding:8px 0; display:flex; flex-direction:column; gap:2px; overflow-y:auto; flex-shrink:0; }
+.main { flex:1; padding:16px 20px; overflow-y:auto; max-height:calc(100vh - 50px); }
+.details { width:280px; min-width:240px; background:var(--bg-base); border-left:1px solid var(--border); padding:12px; overflow-y:auto; display:none; }
+.details.open { display:block; }
+
+/* Top Bar */
+.logo { font-family:var(--font-display); font-size:15px; font-weight:bold; color:var(--amber); letter-spacing:2px; text-transform:uppercase; }
+.clock { font-family:var(--font-display); font-size:20px; font-weight:bold; color:var(--amber); letter-spacing:2px; text-shadow:0 0 12px rgba(240,192,64,0.4); }
+.kpi-row { display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+.kpi { display:flex; flex-direction:column; align-items:center; min-width:55px; }
+.kpi-label { font-size:9px; text-transform:uppercase; letter-spacing:1px; opacity:0.6; }
+.kpi-val { font-size:16px; font-weight:bold; }
+
+/* Nav */
+.nav-btn { padding:8px 12px; border:none; background:transparent; color:var(--text-dim); text-align:left; font-size:12px; border-left:2px solid transparent; transition:all 0.15s; display:flex; align-items:center; gap:6px; position:relative; }
+.nav-btn.active { background:var(--bg-raised); color:var(--amber); border-left-color:var(--amber); }
+.nav-btn .new-dot { width:6px; height:6px; border-radius:50%; background:var(--red); display:inline-block; animation:blink 1.5s infinite; }
+
+/* Panel */
+.panel { background:var(--bg-raised); border:1px solid var(--border); border-radius:6px; padding:14px; margin-bottom:12px; }
+.panel-title { font-size:13px; font-weight:bold; color:var(--amber); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px; }
+
+/* Buttons */
+.btn { padding:6px 14px; border:1px solid var(--amber); background:transparent; color:var(--amber); font-size:11px; border-radius:3px; transition:all 0.15s; }
+.btn-sm { padding:3px 8px; font-size:10px; border-radius:2px; border:1px solid var(--amber); background:transparent; color:var(--amber); }
+.btn-green { border-color:var(--green); color:var(--green); }
+.btn-red { border-color:var(--red); color:var(--red); }
+.btn-purple { border-color:var(--purple); color:var(--purple); }
+.btn-blue { border-color:var(--blue); color:var(--blue); }
+.btn-filled { background:var(--amber); color:var(--bg-deep); font-weight:600; }
+.btn-filled:hover { background:#f5d060; }
+
+/* Cards & Grid */
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:8px; }
+.card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:10px; position:relative; overflow:hidden; transition:border-color 0.2s; }
+.card:hover { border-color:var(--border-lit); }
+.card.selected { border-color:var(--amber); box-shadow:0 0 8px rgba(240,192,64,0.15); }
+
+/* Badge */
+.badge { display:inline-block; padding:1px 6px; font-size:9px; border-radius:2px; font-weight:bold; letter-spacing:0.5px; }
+.dim { color:var(--text-dim); font-size:11px; }
+.tag { font-size:9px; padding:1px 5px; border-radius:2px; border:1px solid; }
+
+/* Heat bar */
+.heat-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; width:80px; }
+.heat-fill { height:100%; border-radius:3px; transition:width 0.3s; }
+
+/* Progress bar */
+.prog-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+.prog-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+
+/* Incident */
+.incident-panel { background:#1a0a0a; border:1px solid var(--red); border-radius:6px; padding:14px; margin-bottom:12px; animation:pulse 1.5s infinite; }
+
+/* Modal */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px); }
+.modal { background:var(--bg-raised); border:1px solid var(--border); border-radius:8px; padding:24px; max-width:550px; width:90%; max-height:80vh; overflow-y:auto; }
+.modal-title { font-size:16px; font-weight:bold; color:var(--amber); margin-bottom:12px; letter-spacing:1px; }
+
+/* Skill check bar */
+.skill-bar-track { position:relative; height:40px; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin:16px 0; }
+.skill-bar-zone { position:absolute; top:0; height:100%; }
+.skill-bar-cursor { position:absolute; top:0; width:3px; height:100%; background:white; z-index:5; transition:none; }
+
+/* Brief columns */
+.brief-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+.brief-col { display:flex; flex-direction:column; gap:6px; }
+.brief-opt { padding:8px 10px; border:1px solid var(--border); border-radius:4px; background:var(--bg-card); cursor:pointer; transition:all 0.2s; font-size:11px; }
+.brief-opt:hover { border-color:var(--border-lit); }
+.brief-opt.picked { border-color:var(--amber); background:rgba(240,192,64,0.08); }
+.brief-opt .opt-name { font-weight:600; color:var(--text); margin-bottom:4px; }
+.brief-opt .opt-desc { color:var(--text-dim); font-size:10px; line-height:1.4; }
+
+/* Objectives */
+.obj-card { display:flex; align-items:center; gap:10px; padding:8px 10px; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; margin-bottom:6px; }
+.obj-card.complete { border-color:var(--green); background:rgba(74,222,128,0.05); }
+.obj-prog { flex:1; }
+.obj-reward { font-size:10px; padding:2px 6px; border-radius:2px; white-space:nowrap; }
+
+/* Black Book */
+.bb-sidebar { width:140px; min-width:120px; border-right:1px solid var(--border); padding:8px 0; }
+.bb-cat { padding:6px 10px; font-size:11px; cursor:pointer; border-left:2px solid transparent; }
+.bb-cat.active { background:var(--bg-raised); color:var(--amber); border-left-color:var(--amber); }
+.bb-entry { padding:8px 10px; border-bottom:1px solid rgba(26,39,68,0.5); cursor:pointer; transition:background 0.15s; }
+.bb-entry:hover { background:var(--bg-card); }
+.bb-entry.locked { opacity:0.4; }
+
+/* Condition badge */
+.cond-badge { font-size:9px; padding:1px 5px; border-radius:2px; text-transform:uppercase; font-weight:bold; }
+
+/* Chip badges for brief picks */
+.chip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; font-size:9px; border-radius:10px; background:rgba(240,192,64,0.12); color:var(--amber); border:1px solid rgba(240,192,64,0.3); }
+
+/* Dossier */
+.dossier-tell { font-style:italic; color:var(--purple); font-size:11px; padding:6px 8px; background:rgba(192,132,252,0.06); border-left:2px solid var(--purple); margin:8px 0; }
+.dossier-note { font-size:11px; color:var(--text-dim); padding:4px 0; border-bottom:1px solid rgba(26,39,68,0.3); }
+
+/* Request card */
+.request-card { background:var(--bg-card); border:1px solid var(--yellow); border-radius:6px; padding:12px; margin-bottom:8px; }
+.request-from { font-size:11px; color:var(--yellow); font-weight:600; margin-bottom:4px; }
+.request-body { font-size:12px; color:var(--text); margin-bottom:8px; font-style:italic; }
+
+/* Flex helpers */
+.flex-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.flex-col { display:flex; flex-direction:column; }
+.flex-between { display:flex; justify-content:space-between; align-items:center; }
+.gap-4 { gap:4px; }
+.gap-8 { gap:8px; }
+.gap-12 { gap:12px; }
+.mt-8 { margin-top:8px; }
+.mt-12 { margin-top:12px; }
+.mb-8 { margin-bottom:8px; }
+.mb-12 { margin-bottom:12px; }
+.text-center { text-align:center; }
+
+/* Endgame */
+.endgame { display:flex; justify-content:center; align-items:center; height:100vh; padding:40px; }
+.endgame-box { text-align:center; max-width:500px; }
+
+/* Animations */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+@keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-28px)} }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes slideIn { 0%{opacity:0;transform:translateY(-6px)} 100%{opacity:1;transform:translateY(0)} }
+@keyframes revPulse { 0%{box-shadow:inset 0 0 0 1px rgba(74,222,128,0.2)} 50%{box-shadow:inset 0 0 8px 1px rgba(74,222,128,0.13)} 100%{box-shadow:inset 0 0 0 1px rgba(74,222,128,0.2)} }
+@keyframes cursorBounce { 0%{left:0%} 50%{left:97%} 100%{left:0%} }
+@keyframes fadeIn { 0%{opacity:0} 100%{opacity:1} }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// TERMINAL TYCOON — Full HTML Rewrite v3
+// ═══════════════════════════════════════════════════════════════
+
+const TICK_MS = 400;
+const UPTIME_TICKS = 90;
+const START_CASH = 1200;
+const BASE_TRAFFIC = 16;
+const BASE_OVERHEAD = 20;
+const SHOP_SIZE = 5;
+const MAX_HEAT = 100;
+const SEASON_DAYS = 21;
+const OPEN_HOUR = 10;
+const TOTAL_MINUTES = 16 * 60;
+const SAVE_VERSION = "ttycoon_v3";
+
+// ── Utilities ──
+const rng = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const uid = () => Math.random().toString(36).slice(2, 8);
+const pct = (n) => Math.random() * 100 < n;
+const fmt = (n) => {
+  if (Math.abs(n) >= 10000) return `$${(n/1000).toFixed(1)}k`;
+  if (Math.abs(n) >= 1000) return `$${(n/1000).toFixed(2)}k`;
+  return `$${Math.round(n)}`;
+};
+function tickToTime(tick) {
+  const me = Math.floor((tick / UPTIME_TICKS) * TOTAL_MINUTES);
+  const tm = OPEN_HOUR * 60 + me;
+  const h = Math.floor(tm / 60) % 24, m = tm % 60;
+  const ap = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2,'0')} ${ap}`;
+}
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Name pools ──
+const FIRST=["Alex","Sam","Jordan","Morgan","Casey","Riley","Quinn","Avery","Blake","Drew","Frankie","Harper","Kai","Lou","Noel","Pat","Reese","Sage","Toni","Val","Wren","Ash","Brook","Dale","Ellis","Finn","Gray","Hollis","Ivory","Jude","Kit","Lane","Mack","Nico","Onyx","Penn","Ray","Shaw","Tate","Uri","Carmen","Dex","Emery","Greer","Haze","Ira","Jules","Koda","Lux","Misha","Neve"];
+const LAST=["Voss","Crane","Delgado","Okonkwo","Petrov","Tanaka","Byrne","Salazar","Kim","Rhodes","Ashworth","Malik","Novak","Strand","Capra","Zhao","Elin","Frost","Hale","Jepsen","Kiel","Lund","Morse","Nash","Orel","Pike","Quade","Raine","Silk","Thorne","Volkov","Webb","Yun","Zima"];
+const NICKNAMES=["Lucky","Ghost","Double-Down","Ace","Chip","Seven","Snake-Eyes","Flush","The Whale","Drifter","Jinx","Smoke","Velvet","Zero","Neon","Bones","Razor","Queenie","Slick","Fox"];
+const NPC_FIRST=["Marcus","Lena","Diego","Yuki","Priya","Omar","Suki","Andre","Nina","Ravi","Cleo","Felix","Marta","Joss","Tomas","Zara","Eli","Rosa","Chen","Vera","Dmitri","Ava","Karl","Bea","Hugo","Iris","Soren","May","Paco","Della","Rico","Faye","Nash","Opal","Vince","Tess","Liam","Nora","Seth","Jade"];
+
+const TELLS = [
+  "Orders the same drink every time. Never tips.",
+  "Watches the dealers' hands more than the cards.",
+  "Always sits with their back to the wall.",
+  "Talks too much when losing. Goes silent when winning.",
+  "Carries a lucky coin. Rubs it between rounds.",
+  "Comes in alone. Leaves with strangers.",
+  "Eyes the cameras. Knows where they all are.",
+  "Laughs too loud. It's not real.",
+  "Asks staff about shift changes. Casual-like.",
+  "Wears the same jacket. Different shoes every time.",
+  "Keeps a notebook. Writes in code.",
+  "Buys chips in odd amounts. Never rounds up.",
+  "Tips big on the first visit. Less each time after.",
+  "Stares at the exit every 20 minutes.",
+  "Brings cash in an envelope. Unmarked.",
+];
+
+// ── Data Tables ──
+const ARCHETYPES = [
+  { id:"casual", name:"Casual", spend:0.8, sensitivity:0.6, volatility:0.2, loyaltyRate:0.3, icon:"\u{1F3B2}" },
+  { id:"bargain", name:"Bargain Hunter", spend:0.5, sensitivity:1.0, volatility:0.1, loyaltyRate:0.5, icon:"\u{1F3F7}" },
+  { id:"social", name:"Social Butterfly", spend:0.7, sensitivity:0.4, volatility:0.3, loyaltyRate:0.6, icon:"\u{1F98B}" },
+  { id:"competitor", name:"Competitor", spend:1.2, sensitivity:0.2, volatility:0.7, loyaltyRate:0.4, icon:"\u{1F3C6}" },
+  { id:"highroller", name:"High Roller", spend:2.5, sensitivity:0.1, volatility:0.9, loyaltyRate:0.2, icon:"\u{1F48E}" },
+  { id:"collector", name:"Collector", spend:1.0, sensitivity:0.5, volatility:0.3, loyaltyRate:0.7, icon:"\u{1F4E6}" },
+  { id:"drifter", name:"Drifter", spend:0.6, sensitivity:0.3, volatility:0.5, loyaltyRate:0.1, icon:"\u{1F319}" },
+  { id:"superstitious", name:"Superstitious", spend:1.1, sensitivity:0.7, volatility:0.6, loyaltyRate:0.5, icon:"\u{1F52E}" },
+];
+
+const TABLE_DEFS = [
+  { id:"slots_basic", name:"Penny Slots", cost:60, avgSpend:4, payoutVol:0.15, attraction:2, speed:3, incidentRisk:0.01, maint:3, desc:"Cheap thrills. Reliable traffic.", emoji:"\u{1F3B0}" },
+  { id:"slots_deluxe", name:"Deluxe Slots", cost:160, avgSpend:8, payoutVol:0.25, attraction:3, speed:3, incidentRisk:0.02, maint:6, desc:"Flashier. Louder. More volatile.", emoji:"\u2728" },
+  { id:"blackjack", name:"Blackjack Table", cost:130, avgSpend:14, payoutVol:0.30, attraction:3, speed:2, incidentRisk:0.03, maint:5, desc:"The classic. Skilled players linger.", emoji:"\u{1F0CF}" },
+  { id:"poker", name:"Poker Table", cost:200, avgSpend:22, payoutVol:0.40, attraction:4, speed:1.5, incidentRisk:0.05, maint:7, desc:"High tension. High margin. High drama.", emoji:"\u2660\uFE0F" },
+  { id:"roulette", name:"Roulette Wheel", cost:150, avgSpend:12, payoutVol:0.35, attraction:4, speed:2, incidentRisk:0.03, maint:8, desc:"The crowd-pleaser. Everyone watches.", emoji:"\u{1F3A1}" },
+  { id:"craps", name:"Craps Table", cost:180, avgSpend:16, payoutVol:0.38, attraction:3, speed:2, incidentRisk:0.04, maint:6, desc:"Loud, social, volatile.", emoji:"\u{1F3B2}" },
+  { id:"baccarat", name:"Baccarat Salon", cost:350, avgSpend:45, payoutVol:0.45, attraction:2, speed:1, incidentRisk:0.02, maint:12, desc:"Whales only. Quiet money.", emoji:"\u{1F451}" },
+  { id:"keno", name:"Keno Lounge", cost:80, avgSpend:5, payoutVol:0.20, attraction:2, speed:4, incidentRisk:0.005, maint:2, desc:"Low effort. Background revenue.", emoji:"\u{1F4FA}" },
+];
+
+const PROMO_DEFS = [
+  { id:"happy_hour", name:"Happy Hour", cat:"clean", trafficBoost:3, conversionMod:0.05, profitMod:0.95, heatMod:1, discChance:0, cost:10, desc:"Reduced buy-ins. Safe traffic bump." },
+  { id:"loyalty_card", name:"Loyalty Punchcard", cat:"clean", trafficBoost:1, conversionMod:0.10, profitMod:1.0, heatMod:0, discChance:0, cost:8, desc:"Builds regulars over time." },
+  { id:"referral", name:"Referral Bonus", cat:"clean", trafficBoost:4, conversionMod:0.02, profitMod:0.95, heatMod:2, discChance:0, cost:15, desc:"Bring a friend, get chips." },
+  { id:"vip_fast", name:"VIP Fast-Track", cat:"aggressive", trafficBoost:1, conversionMod:0.15, profitMod:1.1, heatMod:4, discChance:0, cost:25, desc:"Accelerate whale development." },
+  { id:"credit_tab", name:"\"On the House\" Tabs", cat:"aggressive", trafficBoost:2, conversionMod:0.08, profitMod:1.2, heatMod:6, discChance:0.02, cost:30, desc:"Let them play on credit." },
+  { id:"limited_rules", name:"Limited-Time Rules", cat:"aggressive", trafficBoost:3, conversionMod:0.05, profitMod:1.15, heatMod:5, discChance:0, cost:20, desc:"\"Tonight only\" game variants." },
+  { id:"targeted_comp", name:"Targeted Comps", cat:"predatory", trafficBoost:0, conversionMod:0.20, profitMod:1.3, heatMod:8, discChance:0.05, cost:35, desc:"Personalized hooks for regulars." },
+  { id:"pressure_offer", name:"Pressure Offers", cat:"predatory", trafficBoost:0, conversionMod:0.12, profitMod:1.4, heatMod:12, discChance:0.08, cost:25, desc:"\"One more round on us.\"" },
+];
+
+const STAFF_ROLES = [
+  { id:"floor", name:"Floor Staff", wage:18, effect:"+15% throughput, minor incident reduction", icon:"\u{1F464}" },
+  { id:"security", name:"Security", wage:25, effect:"Incident \u221230%, heat dampening \u22125/day", icon:"\u{1F6E1}\uFE0F" },
+  { id:"vip_host", name:"VIP Host", wage:30, effect:"Whale conversion +20%", icon:"\u{1F3A9}" },
+  { id:"tech", name:"Technician", wage:22, effect:"Breakdown \u221240%, can investigate anomalies", icon:"\u{1F527}" },
+];
+
+const ITEM_DEFS = [
+  { id:"rubber_mat", name:"Anti-Fatigue Mats", rarity:"common", cost:25, effect:"+5% staff efficiency", tag:"ops", lore:"Your floor staff's feet thank you." },
+  { id:"led_signs", name:"LED Signage", rarity:"common", cost:30, effect:"+2 daily foot traffic", tag:"marketing", lore:"Bright lights, small investment." },
+  { id:"card_shuffler", name:"Auto Card Shuffler", rarity:"common", cost:25, effect:"\u221210% incident chance", tag:"ops", lore:"Removes the human error. And the human touch." },
+  { id:"tip_jar", name:"Staff Tip Jars", rarity:"common", cost:15, effect:"-5% staff stress gain", tag:"ops", lore:"A little dignity goes a long way." },
+  { id:"budget_cameras", name:"Budget Cameras", rarity:"common", cost:35, effect:"-3 heat per day", tag:"security", lore:"They work. Mostly." },
+  { id:"cheap_chips", name:"Cheap Chip Set", rarity:"common", cost:20, effect:"-10% table maintenance cost", tag:"ops", lore:"They feel lighter somehow." },
+  { id:"velvet_rope", name:"Velvet Rope System", rarity:"uncommon", cost:70, effect:"+10% VIP revenue", tag:"vip", lore:"Psychology is cheap at this price." },
+  { id:"comp_drinks", name:"Complimentary Drinks Program", rarity:"uncommon", cost:55, effect:"+8% regular loyalty gain", tag:"marketing", lore:"The oldest trick. Still works." },
+  { id:"staff_training", name:"Staff Training Manual", rarity:"uncommon", cost:75, effect:"+15% all staff efficiency", tag:"ops", lore:"Chapter 7: 'De-escalation Techniques.'" },
+  { id:"sound_system", name:"Ambience Sound System", rarity:"uncommon", cost:60, effect:"+3 attraction on all tables", tag:"marketing", lore:"The right frequency makes people stay." },
+  { id:"incident_kit", name:"Incident Response Kit", rarity:"uncommon", cost:50, effect:"-20% incident severity", tag:"security", lore:"Contains: forms, bandages, NDAs." },
+  { id:"loyalty_sw", name:"Loyalty Tracking Software", rarity:"uncommon", cost:70, effect:"+15% regular conversion rate", tag:"marketing", lore:"Now you know their names. And their habits." },
+  { id:"high_table", name:"High-Limit Table Mod", rarity:"rare", cost:150, effect:"+20% revenue on all tables", tag:"vip", lore:"For when \"enough\" stops meaning anything." },
+  { id:"facial_rec", name:"Facial Recognition System", rarity:"rare", cost:170, effect:"-6 heat/day, +10% tracking", tag:"security", lore:"It knows them before they sit down." },
+  { id:"whale_algo", name:"Whale Detection Algorithm", rarity:"rare", cost:180, effect:"+25% whale conversion rate", tag:"vip", lore:"Patterns in the data. Dollar signs in the margins." },
+  { id:"dampener", name:"Noise Dampener Array", rarity:"rare", cost:130, effect:"-30% incident chance", tag:"security", lore:"Quieter than you'd expect. In every way." },
+  { id:"ai_floor", name:"AI Floor Optimization", rarity:"epic", cost:280, effect:"+25% all revenue, +4 heat/day", tag:"ops", lore:"It reorganizes the floor at 3AM. You didn't ask it to." },
+  { id:"vip_suite", name:"Private VIP Suite", rarity:"epic", cost:320, effect:"+50% whale spend", tag:"vip", lore:"What happens in the suite stays in the suite. Usually." },
+  { id:"crisis_team", name:"Crisis Management Team", rarity:"epic", cost:250, effect:"-50% heat from incidents", tag:"security", lore:"They arrive fast. They leave no trace." },
+  { id:"black_chip", name:"Unmarked Black Chips", rarity:"relic", cost:120, effect:"+35% revenue, +15 discrepancy", tag:"relic", lore:"No serial numbers. No questions. Where did these come from?" },
+  { id:"ledger_ghost", name:"Ghost Ledger Software", rarity:"relic", cost:200, effect:"-50% overhead, +20 discrepancy", tag:"relic", lore:"Two sets of books. One for you. One for... someone." },
+  { id:"mirror_room", name:"The Mirror Room", rarity:"relic", cost:400, effect:"+60% whale revenue, +25 discrepancy", tag:"relic", lore:"They go in wealthy. They come out... changed." },
+];
+
+const INCIDENT_DEFS = [
+  { id:"conflict", name:"Customer Conflict", severity:1, options:[
+    { label:"Security intervenes", need:"security", heatMod:-2, cashMod:-8, manualCheck:{type:"deescalation",difficulty:2,onPerfect:{heatMod:-5,cashMod:0},onFail:{heatMod:3,cashMod:-15}} },
+    { label:"Let it resolve", need:null, heatMod:3, cashMod:0 },
+  ]},
+  { id:"equip_fail", name:"Equipment Malfunction", severity:1, options:[
+    { label:"Tech fixes it", need:"tech", heatMod:0, cashMod:-12, manualCheck:{type:"tech",difficulty:2,onPerfect:{heatMod:-1,cashMod:-4},onFail:{heatMod:2,cashMod:-22}} },
+    { label:"Shut table down", need:null, heatMod:1, cashMod:-20 },
+  ]},
+  { id:"cheating", name:"Cheating Accusation", severity:2, options:[
+    { label:"Investigate formally", need:"security", heatMod:-2, cashMod:-15, manualCheck:{type:"compliance",difficulty:3,onPerfect:{heatMod:-5,cashMod:-5},onFail:{heatMod:4,cashMod:-25}} },
+    { label:"Brush it off", need:null, heatMod:5, cashMod:0 },
+  ]},
+  { id:"staff_err", name:"Staff Mistake", severity:1, options:[
+    { label:"Apologize + comp", need:null, heatMod:-1, cashMod:-20 },
+    { label:"Ignore it", need:null, heatMod:4, cashMod:0 },
+  ]},
+  { id:"vip_complaint", name:"VIP Complaint", severity:2, options:[
+    { label:"Personal attention", need:"vip_host", heatMod:-3, cashMod:-18, manualCheck:{type:"vip",difficulty:3,onPerfect:{heatMod:-6,cashMod:-5},onFail:{heatMod:2,cashMod:-30}} },
+    { label:"Standard response", need:null, heatMod:3, cashMod:-5 },
+  ]},
+  { id:"fight", name:"Floor Fight", severity:3, options:[
+    { label:"Full security response", need:"security", heatMod:-4, cashMod:-12, manualCheck:{type:"deescalation",difficulty:4,onPerfect:{heatMod:-8,cashMod:-4},onFail:{heatMod:5,cashMod:-25}} },
+    { label:"Call police", need:null, heatMod:8, cashMod:-5 },
+  ]},
+  { id:"power_out", name:"Partial Power Outage", severity:2, options:[
+    { label:"Tech emergency fix", need:"tech", heatMod:-1, cashMod:-15, manualCheck:{type:"tech",difficulty:3,onPerfect:{heatMod:-2,cashMod:-6},onFail:{heatMod:3,cashMod:-28}} },
+    { label:"Close early", need:null, heatMod:2, cashMod:-35 },
+  ]},
+  { id:"camera_glitch", name:"Camera Glitch", severity:1, options:[
+    { label:"Investigate footage", need:"tech", heatMod:0, cashMod:-8, discMod:3, manualCheck:{type:"compliance",difficulty:2,onPerfect:{heatMod:-1,cashMod:-3,discMod:0},onFail:{heatMod:2,cashMod:-12,discMod:5}} },
+    { label:"Reset and ignore", need:null, heatMod:1, cashMod:0, discMod:1 },
+  ]},
+];
+
+const RARITY = {
+  common:{ color:"#8b9dad", bg:"#1a2332", weight:45, label:"COMMON" },
+  uncommon:{ color:"#4ade80", bg:"#0f2918", weight:30, label:"UNCOMMON" },
+  rare:{ color:"#60a5fa", bg:"#0f1a2e", weight:15, label:"RARE" },
+  epic:{ color:"#c084fc", bg:"#1a0f2e", weight:8, label:"EPIC" },
+  relic:{ color:"#f43f5e", bg:"#2e0f18", weight:2, label:"RELIC" },
+};
+
+// ── Morning Brief Definitions ──
+const BRIEF_DEFS = {
+  ops: [
+    { id:"tight", name:"Tight Shift", desc:"Incident \u221210%, heat \u22122/day, traffic \u22121", mods:{incidentMod:-10, heatPerDay:-2, trafficMod:-1} },
+    { id:"standard", name:"Standard Shift", desc:"No modifiers. Play it safe.", mods:{} },
+    { id:"loose", name:"Loose Shift", desc:"Traffic +2, profit +5%, incident +10%, heat +2/day", mods:{trafficMod:2, profitMult:0.05, incidentMod:10, heatPerDay:2} },
+  ],
+  marketing: [
+    { id:"community", name:"Community Push", desc:"Traffic +2, conv +3%, profit \u22125%", mods:{trafficMod:2, conversionMod:0.03, profitMult:-0.05} },
+    { id:"vip_spot", name:"VIP Spotlight", desc:"Traffic +1, conv +8%, heat +4/day", mods:{trafficMod:1, conversionMod:0.08, heatPerDay:4} },
+    { id:"pressure", name:"Pressure Day", desc:"Conv +12%, profit +10%, heat +8/day, disc chance \u2191", mods:{conversionMod:0.12, profitMult:0.10, heatPerDay:8, discChanceMod:0.03} },
+  ],
+  compliance: [
+    { id:"record", name:"Record Everything", desc:"Disc chance \u2193, heat +1/day", mods:{discChanceMod:-0.02, heatPerDay:1} },
+    { id:"blind", name:"Selective Blind Spots", desc:"Profit +5%, disc chance \u2191, heat +2/day", mods:{profitMult:0.05, discChanceMod:0.02, heatPerDay:2} },
+    { id:"noquestion", name:"No Questions", desc:"Profit +10%, disc chance \u2191\u2191, rare requests faster", mods:{profitMult:0.10, discChanceMod:0.04, requestBoost:true} },
+  ],
+};
+
+// ── Objective Templates ──
+const OBJECTIVE_TEMPLATES = [
+  { id:"heat_low", title:"Cool Operator", desc:"End day with Heat \u2264 30", cat:"stability", check:(gs)=>gs.heat<=30?1:0, goal:1, reward:{type:"heat",val:-5} },
+  { id:"resolve_clean", title:"Clean Sweep", desc:"Resolve 2 incidents without comps", cat:"stability", goal:2, reward:{type:"cash",val:40}, track:"incidentsClean" },
+  { id:"no_incidents", title:"Smooth Sailing", desc:"End day with 0 unresolved incidents", cat:"stability", check:(gs)=>!gs.pendingIncident?1:0, goal:1, reward:{type:"cash",val:25} },
+  { id:"revenue_300", title:"Revenue Target", desc:"Earn \u2265$300 revenue during uptime", cat:"growth", goal:300, reward:{type:"cash",val:30}, track:"revenue" },
+  { id:"revenue_600", title:"Big Day", desc:"Earn \u2265$600 revenue during uptime", cat:"growth", goal:600, reward:{type:"cash",val:60}, track:"revenue" },
+  { id:"new_regular", title:"Fresh Face", desc:"Convert 1 new Regular", cat:"growth", goal:1, reward:{type:"cash",val:35}, track:"newRegulars" },
+  { id:"tables_4", title:"Full House", desc:"End day with \u22654 active tables", cat:"growth", check:(gs)=>gs.zones.flatMap(z=>z.tables).length>=4?1:0, goal:1, reward:{type:"cash",val:30} },
+  { id:"aggro_promo", title:"Gray Area", desc:"Run 1 aggressive/predatory promo for 50%+ of uptime", cat:"greed", goal:1, reward:{type:"cash",val:50}, track:"aggroPromoUptime" },
+  { id:"vip_revenue", title:"Whale Watch", desc:"Earn \u2265$200 from VIP-tier tables", cat:"greed", goal:200, reward:{type:"cash",val:45}, track:"vipRevenue" },
+  { id:"accept_request", title:"Accommodating", desc:"Accept 1 Regular request", cat:"greed", goal:1, reward:{type:"favor",val:1}, track:"requestsAccepted" },
+  { id:"skill_attempt", title:"Hands On", desc:"Attempt 1 manual skill check", cat:"maintenance", goal:1, reward:{type:"skillxp",val:2}, track:"skillAttempts" },
+  { id:"profit_positive", title:"In The Black", desc:"End day with positive net profit", cat:"stability", check:(gs)=>{ const l=gs.ledgerHistory[gs.ledgerHistory.length-1]; return l&&l.net>0?1:0; }, goal:1, reward:{type:"cash",val:20} },
+  { id:"five_regulars", title:"Building a Crowd", desc:"Have 5+ Regulars", cat:"growth", check:(gs)=>gs.regulars.length>=5?1:0, goal:1, reward:{type:"cash",val:40} },
+  { id:"buy_item", title:"Equipped", desc:"Purchase 1 item from Procurement", cat:"maintenance", goal:1, reward:{type:"cash",val:15}, track:"itemsBought" },
+];
+
+// ── Regular Beats ──
+const REGULAR_BEATS = [
+  { trigger:{daysKnown:2}, from:"%NAME%", subject:"Getting used to this place", body:"I keep coming back. Something about the way you run things. Don't change.", cat:"customer" },
+  { trigger:{daysKnown:4}, from:"%NAME%", subject:"A thought", body:"I've been thinking about what kind of place this is. I think I know.\n\nDon't worry. I approve.", cat:"customer" },
+  { trigger:{daysKnown:7}, from:"%NAME%", subject:"You should know", body:"I've seen things here that most people miss. Small details. I'm paying attention.\n\nSo should you.", cat:"customer" },
+  { trigger:{loyalty:60}, from:"%NAME%", subject:"Loyal customer", body:"I'm here more than my own apartment. That should tell you something.\n\nMaybe put my name on a chair.", cat:"customer" },
+  { trigger:{loyalty:80}, from:"%NAME%", subject:"Trust", body:"I trust you. That's rare for me.\n\nDon't make me regret it.", cat:"customer" },
+  { trigger:{volatility:70}, from:"%NAME%", subject:"(no subject)", body:"Things are getting intense. I can feel it.\n\nI need to go bigger or go home. What do you think?", cat:"customer" },
+];
+
+// ── Regular Requests ──
+const REGULAR_REQUEST_DEFS = [
+  { id:"comp_night", text:"Comp me tonight. I'm bringing three friends.", approve:{cashMod:-30,loyaltyMod:12,heatMod:2}, deny:{loyaltyMod:-8,churnChance:10}, counter:{cashMod:-15,loyaltyMod:5,heatMod:1} },
+  { id:"rule_exception", text:"I want a rule exception on the blackjack table. Just for tonight.", approve:{cashMod:-10,loyaltyMod:8,heatMod:5,discMod:2}, deny:{loyaltyMod:-6,churnChance:5}, counter:{cashMod:-5,loyaltyMod:3,heatMod:3} },
+  { id:"back_room", text:"I heard you have a back room. I'd like... access.", approve:{cashMod:0,loyaltyMod:15,heatMod:8,discMod:5}, deny:{loyaltyMod:-10,churnChance:15}, counter:{cashMod:20,loyaltyMod:8,heatMod:4,discMod:3} },
+  { id:"cameras_off", text:"Turn off cameras for eight minutes. I'll make it worth your while.", approve:{cashMod:50,loyaltyMod:10,heatMod:6,discMod:8}, deny:{loyaltyMod:-5,churnChance:8}, counter:{cashMod:25,loyaltyMod:5,heatMod:3,discMod:4} },
+  { id:"private_game", text:"Set up a private game. Invite only. High stakes.", approve:{cashMod:-40,loyaltyMod:14,heatMod:4,profitBoost:80}, deny:{loyaltyMod:-7,churnChance:6}, counter:{cashMod:-20,loyaltyMod:7,heatMod:2,profitBoost:40} },
+  { id:"credit_line", text:"I need a credit line. Temporary. I'm good for it.", approve:{cashMod:-60,loyaltyMod:10,heatMod:3,discMod:3}, deny:{loyaltyMod:-8,churnChance:12}, counter:{cashMod:-30,loyaltyMod:5,heatMod:2} },
+];
+
+// ── Anomaly Files ──
+const ANOMALY_FILES = [
+  { threshold:5, id:"anom_1", title:"File #001: Rounding Errors", body:"The books are off by small amounts. Too small to flag, too consistent to be random.\n\nSomeone — or something — is skimming fractions." },
+  { threshold:12, id:"anom_2", title:"File #002: Camera Blind Spot", body:"There's a 4-second gap in the camera feeds every night at 2:47 AM.\n\nNo technical explanation. It just... happens." },
+  { threshold:20, id:"anom_3", title:"File #003: The Repeater", body:"One customer appears in the logs three times on the same night. Different tables. Same timestamp.\n\nThat's not possible." },
+  { threshold:30, id:"anom_4", title:"File #004: Ghost in the Machine", body:"The slot machines ran a diagnostic cycle at 4 AM. Nobody authorized it.\n\nThe results were sent somewhere. We don't know where." },
+  { threshold:45, id:"anom_5", title:"File #005: The Mirror Room Report", body:"What happens in the Mirror Room stays in the Mirror Room.\n\nExcept the money. The money goes... elsewhere." },
+  { threshold:60, id:"anom_6", title:"File #006: FINAL AUDIT", body:"All discrepancies converge on a single point.\n\nYou.\n\nOr someone wearing your name." },
+];
+
+// ── Skill Definitions ──
+const SKILL_DEFS = {
+  deescalation: { name:"De-escalation", color:"#fbbf24" },
+  tech: { name:"Technical", color:"#60a5fa" },
+  vip: { name:"VIP Handling", color:"#c084fc" },
+  compliance: { name:"Compliance", color:"#4ade80" },
+};
+
+// ── Inbox seed messages ──
+const INBOX_MSGS = [
+  { day:1, from:"City Licensing Board", subject:"Welcome \u2014 License Confirmation", body:"Your gaming hall license has been approved for the current season. Maintain compliance. Inspections are random.\n\nGood luck out there.", cat:"official" },
+  { day:3, from:"Regular \u2014 ???", subject:"Nice place", body:"Hey. Heard about your hall from a friend. Might stop by.\n\nI like places that know when to look the other way.", cat:"customer" },
+  { day:5, from:"Procurement Weekly", subject:"New vendor catalog available", body:"This week's featured items are now live. Some interesting pieces from overseas suppliers. Check Procurement.\n\nNote: Some items may not appear in standard catalogs.", cat:"vendor" },
+  { day:7, from:"Anonymous", subject:"(no subject)", body:"You're doing well. We've noticed.\n\nSome opportunities require a certain... tolerance for ambiguity. Keep your Procurement page open.", cat:"anomaly" },
+  { day:10, from:"City Licensing Board", subject:"Routine Review Notice", body:"Your operation has been flagged for routine review based on recent activity metrics. This is standard procedure.\n\nPlease ensure all records are current.", cat:"official" },
+  { day:12, from:"Unknown Sender", subject:"A proposal", body:"Reserve your back room. Tuesday. No cameras.\n\nCompensation will be generous. You won't find this in any catalog.\n\nDecline and we understand. Accept and we remember.", cat:"anomaly" },
+  { day:15, from:"Procurement Weekly", subject:"RELIC-class items detected", body:"Our suppliers have flagged unusual inventory. Items tagged [RELIC] are now entering rotation.\n\nWe cannot verify their origin. Purchase at your discretion.\n\nThey are... effective.", cat:"vendor" },
+  { day:18, from:"???", subject:"The ledger doesn't add up", body:"Check your numbers. There are rounding errors you didn't create.\n\nSomeone is taking a cut. Not us.\n\nOr maybe it IS us. Hard to say.\n\nKeep going.", cat:"anomaly" },
+];
+
+// ── Zones ──
+const INIT_ZONES = [
+  { id:"main", name:"Main Floor", maxTables:4, maxStaff:3, tables:[], desc:"Your bread and butter." },
+  { id:"vip", name:"VIP Corner", maxTables:2, maxStaff:2, tables:[], locked:true, unlockCost:400, desc:"Exclusive. Profitable. Dangerous." },
+  { id:"back", name:"Back Room", maxTables:2, maxStaff:1, tables:[], locked:true, unlockCost:900, desc:"What happens here stays here." },
+];
+
+// ═══════════════════════════════════════════
+// ENGINE
+// ═══════════════════════════════════════════
+
+function generateRegular(archetypeId) {
+  const arch = ARCHETYPES.find(a => a.id === archetypeId) || pick(ARCHETYPES);
+  const nickname = pct(30) ? ` \u201C${pick(NICKNAMES)}\u201D` : "";
+  return {
+    id: uid(), name: `${pick(FIRST)}${nickname} ${pick(LAST)}`,
+    archetype: arch.id, loyalty: rng(15, 35),
+    volatility: Math.round(arch.volatility * 100 * (0.7 + Math.random() * 0.6)),
+    attachment: rng(5, 20), avgSpend: Math.round(arch.spend * 18 * (0.8 + Math.random() * 0.4)),
+    condition: "normal", daysKnown: 0, totalSpent: 0, icon: arch.icon,
+    tell: pick(TELLS), notes: [], threadId: null,
+    flags: {}, lastRequestDay: -10,
+  };
+}
+
+function rollShop(owned) {
+  const pool = ITEM_DEFS.filter(i => !owned.includes(i.id));
+  if (!pool.length) return [];
+  const items = [];
+  const totalWeight = Object.values(RARITY).reduce((s,r)=>s+r.weight,0);
+  for (let i = 0; i < Math.min(SHOP_SIZE, pool.length); i++) {
+    let roll = Math.random() * totalWeight, tier = "common";
+    for (const [k,v] of Object.entries(RARITY)) { roll -= v.weight; if (roll <= 0) { tier = k; break; } }
+    const tp = pool.filter(it => it.rarity===tier && !items.find(x=>x.id===it.id));
+    if (tp.length) items.push(pick(tp));
+    else { const fb = pool.filter(it => !items.find(x=>x.id===it.id)); if (fb.length) items.push(pick(fb)); }
+  }
+  return items;
+}
+
+function generateTableNPCs(zones) {
+  const npcs = {};
+  zones.forEach(z => {
+    if (z.locked) return;
+    z.tables.forEach((tid, idx) => {
+      const count = rng(1, 3);
+      const names = [];
+      for (let i = 0; i < count; i++) names.push(pick(NPC_FIRST));
+      npcs[`${z.id}-${idx}`] = names;
+    });
+  });
+  return npcs;
+}
+
+function getEffMod(s) {
+  let e = 1.0;
+  const rc = (role) => s.staff.filter(st => st.role === role).length;
+  if (rc("floor") > 0) e += 0.15 * rc("floor");
+  if (s.ownedItems.includes("rubber_mat")) e += 0.05;
+  if (s.ownedItems.includes("staff_training")) e += 0.15;
+  if (s.ownedItems.includes("ai_floor")) e += 0.25;
+  return e;
+}
+
+function getRevMod(s) {
+  let m = 1.0;
+  s.activePromos.forEach(pid => { const p = PROMO_DEFS.find(x=>x.id===pid); if(p) m *= p.profitMod; });
+  if (s.ownedItems.includes("velvet_rope")) m *= 1.1;
+  if (s.ownedItems.includes("high_table")) m *= 1.2;
+  if (s.ownedItems.includes("black_chip")) m *= 1.35;
+  if (s.ownedItems.includes("mirror_room")) m *= 1.3;
+  if (s.ownedItems.includes("vip_suite")) m *= 1.15;
+  // Day mods
+  if (s.dayMods && s.dayMods.profitMult) m *= (1 + s.dayMods.profitMult);
+  return m;
+}
+
+function getHeatPerDay(s) {
+  let h = 0;
+  s.activePromos.forEach(pid => { const p = PROMO_DEFS.find(x=>x.id===pid); if(p) h += p.heatMod; });
+  if (s.ownedItems.includes("ai_floor")) h += 4;
+  if (s.ownedItems.includes("budget_cameras")) h -= 3;
+  if (s.ownedItems.includes("facial_rec")) h -= 6;
+  h -= s.staff.filter(st => st.role === "security").length * 4;
+  if (s.ownedItems.includes("crisis_team")) h = Math.round(h * 0.5);
+  if (s.dayMods && s.dayMods.heatPerDay) h += s.dayMods.heatPerDay;
+  return h;
+}
+
+function calcDailyCosts(s) {
+  let wages = 0, overhead = BASE_OVERHEAD, maint = 0;
+  s.staff.forEach(st => { const r = STAFF_ROLES.find(x=>x.id===st.role); wages += r ? r.wage : 18; });
+  s.zones.flatMap(z=>z.tables).forEach(tid => { const t = TABLE_DEFS.find(x=>x.id===tid); if(t) maint += t.maint; });
+  if (s.ownedItems.includes("cheap_chips")) maint *= 0.9;
+  if (s.ownedItems.includes("ledger_ghost")) overhead *= 0.5;
+  if (s.staff.some(st=>st.role==="tech")) maint *= (1 - 0.2 * s.staff.filter(st=>st.role==="tech").length);
+  const w = Math.round(wages), o = Math.round(overhead), mn = Math.round(Math.max(0, maint));
+  return { wages:w, overhead:o, maint:mn, total:w+o+mn };
+}
+
+function generateDailyObjectives(gs) {
+  // Pick 3 from different categories
+  const pool = [...OBJECTIVE_TEMPLATES];
+  const cats = ["stability","growth","greed","maintenance"];
+  const chosen = [];
+  // Shuffle categories
+  const shuffled = cats.sort(() => Math.random() - 0.5);
+  for (const cat of shuffled) {
+    if (chosen.length >= 3) break;
+    const catPool = pool.filter(o => o.cat === cat && !chosen.find(c=>c.id===o.id));
+    if (catPool.length) {
+      const obj = pick(catPool);
+      chosen.push({ ...obj, progress:0, complete:false, claimed:false });
+    }
+  }
+  // Fill remaining if needed
+  while (chosen.length < 3) {
+    const remaining = pool.filter(o => !chosen.find(c=>c.id===o.id));
+    if (!remaining.length) break;
+    const obj = pick(remaining);
+    chosen.push({ ...obj, progress:0, complete:false, claimed:false });
+  }
+  return chosen;
+}
+
+function generateDailyRequests(gs) {
+  if (gs.regulars.length === 0) return [];
+  const requests = [];
+  const numReqs = gs.regulars.length >= 5 ? rng(0,2) : gs.regulars.length >= 2 ? rng(0,1) : (pct(30)?1:0);
+  for (let i = 0; i < numReqs; i++) {
+    const eligible = gs.regulars.filter(r => r.daysKnown >= 2 && (gs.day - r.lastRequestDay) >= 3);
+    if (!eligible.length) break;
+    const reg = pick(eligible);
+    const def = pick(REGULAR_REQUEST_DEFS);
+    requests.push({ id:uid(), regularId:reg.id, regularName:reg.name, defId:def.id, text:def.text, approve:def.approve, deny:def.deny, counter:def.counter, resolved:false });
+    reg.lastRequestDay = gs.day;
+  }
+  return requests;
+}
+
+function checkRegularBeats(gs) {
+  const newMsgs = [];
+  gs.regulars.forEach(r => {
+    REGULAR_BEATS.forEach(beat => {
+      const trig = beat.trigger;
+      let match = false;
+      if (trig.daysKnown && r.daysKnown === trig.daysKnown) match = true;
+      if (trig.loyalty && r.loyalty >= trig.loyalty && r.loyalty < trig.loyalty + 5) match = true;
+      if (trig.volatility && r.volatility >= trig.volatility) match = true;
+      if (match) {
+        const key = `beat_${r.id}_${JSON.stringify(trig)}`;
+        if (!gs._beatsSent.has(key)) {
+          gs._beatsSent.add(key);
+          const msg = {
+            day: gs.day, from: beat.from.replace("%NAME%", r.name),
+            subject: beat.subject, body: beat.body, cat: beat.cat,
+          };
+          newMsgs.push(msg);
+          if (!r.notes) r.notes = [];
+          r.notes.push(`Day ${gs.day}: ${beat.subject}`);
+        }
+      }
+    });
+  });
+  return newMsgs;
+}
+
+function checkAnomalies(gs) {
+  const newAnoms = [];
+  ANOMALY_FILES.forEach(af => {
+    if (gs.discrepancy >= af.threshold && !gs.blackBook.anomalyFiles.find(a=>a.id===af.id)) {
+      newAnoms.push({ ...af, unlockedDay: gs.day });
+    }
+  });
+  return newAnoms;
+}
+
+function getSkillBand(skillLevel, difficulty) {
+  // Returns {successStart, successEnd, perfectStart, perfectEnd} as % of bar
+  const base = Math.max(15, 40 - difficulty * 6);
+  const bonus = skillLevel * 3;
+  const successWidth = Math.min(60, base + bonus);
+  const perfectWidth = Math.min(20, 6 + bonus * 0.5);
+  const center = 50;
+  return {
+    successStart: center - successWidth/2,
+    successEnd: center + successWidth/2,
+    perfectStart: center - perfectWidth/2,
+    perfectEnd: center + perfectWidth/2,
+  };
+}
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+
+function initState() {
+  return {
+    day: 1, phase: "downtime", subPhase: "brief", // brief | planning | uptime | wrap
+    cash: START_CASH, heat: 0, discrepancy: 0,
+    footTraffic: BASE_TRAFFIC,
+    zones: INIT_ZONES.map(z => ({ ...z, tables:[...z.tables] })),
+    staff: [], ownedTables: [], ownedItems: [], activePromos: [],
+    regulars: [], shopItems: rollShop([]), rerollsUsed: 0,
+    inbox: [INBOX_MSGS[0]], readInbox: [], ledgerHistory: [],
+    uptimeTick: 0, uptimeRunning: false,
+    accRevenue: 0, accPayouts: 0,
+    dailyIncidents: [], pendingIncident: null, eventLog: [],
+    tableNPCs: {}, tableLastEarn: {},
+    seasonComplete: false, gameOver: false, gameOverReason: "",
+    // New systems
+    dayBrief: { done:false, picks:{ops:null,marketing:null,compliance:null} },
+    dayMods: {},
+    dailyObjectives: [],
+    objTracking: { revenue:0, newRegulars:0, incidentsClean:0, aggroPromoUptime:0, vipRevenue:0, requestsAccepted:0, skillAttempts:0, itemsBought:0 },
+    skills: { deescalation:0, tech:0, vip:0, compliance:0 },
+    favorTokens: 0,
+    requests: [],
+    blackBook: {
+      tablesSeen: [], promosSeen: [], itemsSeen: [],
+      incidentsSeen: [], regularsMet: [],
+      anomalyFiles: [], newFlags: {},
+    },
+    _beatsSent: new Set(),
+    // Table condition
+    tableConditions: {}, // key: zoneId-idx -> {condition:100, broken:false}
+  };
+}
+
+// ═══════════════════════════════════════════
+// GAME CONTROLLER
+// ═══════════════════════════════════════════
+
+let gs = initState();
+let ui = { tab:"dashboard", selected:null, modal:null, skillCheck:null, cashAnims:{} };
+let tickInterval = null;
+
+function setState(newGs) {
+  gs = newGs;
+  render();
+}
+
+function setUI(updates) {
+  Object.assign(ui, updates);
+  render();
+}
+
+// ── Actions ──
+
+function confirmBrief() {
+  const p = gs.dayBrief.picks;
+  if (!p.ops || !p.marketing || !p.compliance) return;
+  const mods = {};
+  [BRIEF_DEFS.ops.find(o=>o.id===p.ops), BRIEF_DEFS.marketing.find(o=>o.id===p.marketing), BRIEF_DEFS.compliance.find(o=>o.id===p.compliance)].forEach(def => {
+    if (!def) return;
+    Object.entries(def.mods).forEach(([k,v]) => {
+      if (typeof v === 'boolean') mods[k] = v;
+      else mods[k] = (mods[k]||0) + v;
+    });
+  });
+  gs.dayBrief.done = true;
+  gs.dayMods = mods;
+  gs.subPhase = "planning";
+  // Generate objectives
+  gs.dailyObjectives = generateDailyObjectives(gs);
+  gs.objTracking = { revenue:0, newRegulars:0, incidentsClean:0, aggroPromoUptime:0, vipRevenue:0, requestsAccepted:0, skillAttempts:0, itemsBought:0 };
+  // Generate requests
+  gs.requests = generateDailyRequests(gs);
+  // Check for regular beats
+  const beatMsgs = checkRegularBeats(gs);
+  gs.inbox = [...gs.inbox, ...beatMsgs];
+  render();
+}
+
+function startDay() {
+  if (!gs.zones.flatMap(z=>z.tables).length) return;
+  if (!gs.dayBrief.done) return;
+  gs.phase = "uptime";
+  gs.subPhase = "uptime";
+  gs.uptimeRunning = true;
+  gs.uptimeTick = 0;
+  gs.accRevenue = 0;
+  gs.accPayouts = 0;
+  gs.dailyIncidents = [];
+  gs.pendingIncident = null;
+  gs.tableNPCs = generateTableNPCs(gs.zones);
+  gs.tableLastEarn = {};
+  // Initialize table conditions for new tables
+  gs.zones.forEach((z,zi) => {
+    z.tables.forEach((tid,ti) => {
+      const key = `${z.id}-${ti}`;
+      if (!gs.tableConditions[key]) gs.tableConditions[key] = { condition:100, broken:false };
+    });
+  });
+  // Track tables/promos in black book
+  gs.zones.flatMap(z=>z.tables).forEach(tid => {
+    if (!gs.blackBook.tablesSeen.includes(tid)) { gs.blackBook.tablesSeen.push(tid); gs.blackBook.newFlags['table_'+tid]=true; }
+  });
+  gs.activePromos.forEach(pid => {
+    if (!gs.blackBook.promosSeen.includes(pid)) { gs.blackBook.promosSeen.push(pid); gs.blackBook.newFlags['promo_'+pid]=true; }
+  });
+  ui.tab = "floor";
+  startTicking();
+  render();
+}
+
+function startTicking() {
+  stopTicking();
+  tickInterval = setInterval(doTick, TICK_MS);
+}
+
+function stopTicking() {
+  if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+}
+
+function doTick() {
+  if (!gs.uptimeRunning || gs.phase !== "uptime") { stopTicking(); return; }
+  gs.uptimeTick++;
+
+  // END OF DAY
+  if (gs.uptimeTick >= UPTIME_TICKS) {
+    closeDay();
+    return;
+  }
+
+  // Revenue accumulation
+  const placedTables = gs.zones.flatMap(z=>z.tables);
+  const effMod = getEffMod(gs);
+  const revMod = getRevMod(gs);
+  let tickRev = 0, tickPay = 0;
+  const newEarns = {};
+  let globalIdx = 0;
+
+  gs.zones.forEach(z => {
+    if (z.locked) return;
+    z.tables.forEach((tid,idx) => {
+      const t = TABLE_DEFS.find(x=>x.id===tid);
+      if (!t) return;
+      const key = `${z.id}-${idx}`;
+      const cond = gs.tableConditions[key];
+      if (cond && cond.broken) { globalIdx++; return; }
+      const condMod = cond ? cond.condition / 100 : 1;
+      const base = t.avgSpend * t.speed * effMod * condMod;
+      const rev = base * (0.85 + Math.random()*0.3) * revMod;
+      const pay = base * t.payoutVol * (0.3 + Math.random()*0.5);
+      tickRev += rev;
+      tickPay += pay;
+      newEarns[`t${globalIdx}`] = Math.round(rev - pay);
+      // VIP tracking
+      if (z.id === "vip" || t.id === "baccarat") {
+        gs.objTracking.vipRevenue += rev;
+      }
+      globalIdx++;
+    });
+  });
+
+  gs.accRevenue += tickRev;
+  gs.accPayouts += tickPay;
+  gs.tableLastEarn = newEarns;
+  gs.objTracking.revenue = gs.accRevenue;
+
+  // Aggro promo uptime tracking
+  const hasAggro = gs.activePromos.some(pid => {
+    const p = PROMO_DEFS.find(x=>x.id===pid);
+    return p && (p.cat === "aggressive" || p.cat === "predatory");
+  });
+  if (hasAggro) gs.objTracking.aggroPromoUptime++;
+
+  // Refresh NPCs
+  if (gs.uptimeTick % 10 === 1) gs.tableNPCs = generateTableNPCs(gs.zones);
+
+  // Incident roll
+  const incRisk = placedTables.reduce((sum,tid) => { const t=TABLE_DEFS.find(x=>x.id===tid); return sum+(t?t.incidentRisk:0); }, 0);
+  let incChance = 0.8 + incRisk * 12 + gs.heat * 0.05;
+  if (gs.ownedItems.includes("dampener")) incChance *= 0.7;
+  if (gs.ownedItems.includes("card_shuffler")) incChance *= 0.9;
+  if (gs.dayMods.incidentMod) incChance *= (1 + gs.dayMods.incidentMod / 100);
+  if (!gs.pendingIncident && pct(incChance)) {
+    const inc = { ...pick(INCIDENT_DEFS), tickAppeared:gs.uptimeTick };
+    gs.pendingIncident = inc;
+    if (!gs.blackBook.incidentsSeen.includes(inc.id)) {
+      gs.blackBook.incidentsSeen.push(inc.id);
+      gs.blackBook.newFlags['inc_'+inc.id] = true;
+    }
+  }
+
+  ui.cashAnims = { ...newEarns, _t: Date.now() };
+  render();
+}
+
+function closeDay() {
+  gs.phase = "downtime";
+  gs.subPhase = "wrap";
+  gs.uptimeRunning = false;
+  stopTicking();
+
+  const costs = calcDailyCosts(gs);
+  const net = gs.accRevenue - gs.accPayouts - costs.total;
+  gs.cash += net;
+
+  const hMod = getHeatPerDay(gs);
+  gs.heat = clamp(gs.heat + hMod - 2, 0, MAX_HEAT);
+
+  // Traffic calc
+  let trafficMod = 0;
+  gs.zones.flatMap(z=>z.tables).forEach(tid => { const t=TABLE_DEFS.find(x=>x.id===tid); if(t) trafficMod+=t.attraction; });
+  gs.activePromos.forEach(pid => { const p=PROMO_DEFS.find(x=>x.id===pid); if(p) trafficMod+=p.trafficBoost; });
+  if (gs.ownedItems.includes("led_signs")) trafficMod += 2;
+  if (gs.ownedItems.includes("sound_system")) trafficMod += 3;
+  if (gs.dayMods.trafficMod) trafficMod += gs.dayMods.trafficMod;
+  gs.footTraffic = Math.max(8, Math.round(BASE_TRAFFIC + trafficMod + gs.day * 0.8));
+
+  // Ledger
+  gs.ledgerHistory.push({
+    day:gs.day, revenue:Math.round(gs.accRevenue), payouts:Math.round(gs.accPayouts),
+    wages:costs.wages, overhead:costs.overhead, maint:costs.maint,
+    totalCost:costs.total, net:Math.round(net), heatGen:hMod, traffic:gs.footTraffic,
+  });
+
+  // Table condition degradation
+  gs.zones.forEach(z => {
+    z.tables.forEach((tid,idx) => {
+      const key = `${z.id}-${idx}`;
+      if (!gs.tableConditions[key]) gs.tableConditions[key] = { condition:100, broken:false };
+      const tc = gs.tableConditions[key];
+      const t = TABLE_DEFS.find(x=>x.id===tid);
+      const degradation = rng(2, 6) + (gs.heat > 50 ? 2 : 0) + (gs.dailyIncidents.length > 0 ? 1 : 0);
+      tc.condition = clamp(tc.condition - degradation, 0, 100);
+      if (tc.condition < 35 && pct(20 + (35 - tc.condition))) tc.broken = true;
+    });
+  });
+
+  // Regulars
+  let newRegCount = 0;
+  gs.regulars = gs.regulars.map(r => {
+    r = { ...r }; r.daysKnown++; r.loyalty = clamp(r.loyalty + rng(-1, 4), 0, 100); r.totalSpent += r.avgSpend;
+    if (r.loyalty < 8 && pct(15)) return null;
+    if (r.volatility > 60 && pct(12)) r.condition = "agitated";
+    if (r.volatility > 80 && pct(6)) { r.condition = "spiraling"; gs.heat = clamp(gs.heat+2, 0, MAX_HEAT); }
+    if (gs.discrepancy > 30 && pct(5)) { r.condition = "strange"; gs.discrepancy += 2; }
+    if (r.condition === "agitated" && pct(30)) r.condition = "normal";
+    return r;
+  }).filter(Boolean);
+
+  // New regulars
+  let convB = 0.10;
+  gs.activePromos.forEach(pid => { const p=PROMO_DEFS.find(x=>x.id===pid); if(p) convB+=p.conversionMod; });
+  if (gs.ownedItems.includes("loyalty_sw")) convB += 0.15;
+  if (gs.ownedItems.includes("comp_drinks")) convB += 0.08;
+  if (gs.dayMods.conversionMod) convB += gs.dayMods.conversionMod;
+  const nc = Math.floor(gs.footTraffic * convB * 0.3);
+  for (let i = 0; i < Math.min(nc, 3); i++) {
+    if (gs.regulars.length < 25) {
+      const newR = generateRegular(pick(ARCHETYPES).id);
+      gs.regulars.push(newR);
+      if (!gs.blackBook.regularsMet.includes(newR.id)) gs.blackBook.regularsMet.push(newR.id);
+      gs.eventLog.push(`Day ${gs.day}: A new regular walks in.`);
+      newRegCount++;
+    }
+  }
+  gs.objTracking.newRegulars += newRegCount;
+
+  // Disc from promos
+  gs.activePromos.forEach(pid => {
+    const p = PROMO_DEFS.find(x=>x.id===pid);
+    let dc = p ? p.discChance : 0;
+    if (gs.dayMods.discChanceMod) dc += gs.dayMods.discChanceMod;
+    if (dc > 0 && pct(dc * 100)) {
+      gs.discrepancy += rng(1, 4);
+      gs.eventLog.push(`Day ${gs.day}: Something feels off in the numbers...`);
+    }
+  });
+
+  // Check anomalies
+  const newAnoms = checkAnomalies(gs);
+  newAnoms.forEach(a => {
+    gs.blackBook.anomalyFiles.push(a);
+    gs.blackBook.newFlags['anom_'+a.id] = true;
+    gs.inbox.push({ day:gs.day, from:"SYSTEM", subject:`Anomaly detected: ${a.title}`, body:"A new file has been added to your Black Book. Review it when you can.", cat:"anomaly" });
+  });
+
+  // Inbox
+  const newMail = INBOX_MSGS.filter(m => m.day === gs.day + 1 && !gs.inbox.find(x => x.subject === m.subject));
+  gs.inbox = [...gs.inbox, ...newMail];
+
+  // Objectives final check
+  gs.dailyObjectives.forEach(obj => {
+    if (obj.check && !obj.complete) {
+      obj.progress = obj.check(gs);
+      if (obj.progress >= obj.goal) obj.complete = true;
+    }
+    if (obj.track && !obj.complete) {
+      obj.progress = gs.objTracking[obj.track] || 0;
+      // Special: aggroPromoUptime needs 50%+ of ticks
+      if (obj.id === "aggro_promo") obj.progress = gs.objTracking.aggroPromoUptime >= UPTIME_TICKS*0.5 ? 1 : 0;
+      if (obj.progress >= obj.goal) obj.complete = true;
+    }
+  });
+
+  // Apply objective rewards
+  gs.dailyObjectives.forEach(obj => {
+    if (obj.complete && !obj.claimed) {
+      obj.claimed = true;
+      if (obj.reward.type === "cash") gs.cash += obj.reward.val;
+      if (obj.reward.type === "heat") gs.heat = clamp(gs.heat + obj.reward.val, 0, MAX_HEAT);
+      if (obj.reward.type === "favor") gs.favorTokens = (gs.favorTokens||0) + obj.reward.val;
+      if (obj.reward.type === "skillxp") {
+        Object.keys(gs.skills).forEach(k => gs.skills[k] += obj.reward.val);
+      }
+    }
+  });
+
+  // Advance day
+  gs.day += 1;
+  gs.shopItems = rollShop(gs.ownedItems);
+  gs.rerollsUsed = 0;
+  gs.uptimeTick = 0;
+  gs.pendingIncident = null;
+  gs.dailyIncidents = [];
+  gs.accRevenue = 0;
+  gs.accPayouts = 0;
+  gs.tableNPCs = {};
+  gs.tableLastEarn = {};
+
+  // Check end conditions
+  if (gs.cash < 0) { gs.gameOver = true; gs.gameOverReason = "BANKRUPT \u2014 You ran out of money."; }
+  if (gs.heat >= MAX_HEAT) { gs.gameOver = true; gs.gameOverReason = "SHUTDOWN \u2014 Heat reached critical. Regulators closed you down."; }
+  if (gs.day > SEASON_DAYS) gs.seasonComplete = true;
+
+  // Show wrap modal
+  ui.modal = "wrap";
+  autoSave();
+  render();
+}
+
+function dismissWrap() {
+  ui.modal = null;
+  gs.subPhase = "brief";
+  gs.dayBrief = { done:false, picks:{ops:null,marketing:null,compliance:null} };
+  gs.dayMods = {};
+  gs.requests = [];
+  render();
+}
+
+function resolveIncident(optIdx) {
+  if (!gs.pendingIncident) return;
+  const opt = gs.pendingIncident.options[optIdx];
+  const has = !opt.need || gs.staff.some(s => s.role === opt.need);
+
+  if (opt.manualCheck && has) {
+    // Show skill check modal
+    ui.skillCheck = { optIdx, opt, incident: gs.pendingIncident };
+    ui.modal = "skillcheck";
+    render();
+    return;
+  }
+
+  applyIncidentResolution(opt, has, "auto");
+}
+
+function applyIncidentResolution(opt, hasStaff, result) {
+  let hMod = hasStaff ? (opt.heatMod||0) : (opt.heatMod||0)+4;
+  let cMod = hasStaff ? (opt.cashMod||0) : (opt.cashMod||0)-10;
+  let dMod = opt.discMod || 0;
+
+  if (result === "perfect" && opt.manualCheck) {
+    hMod = opt.manualCheck.onPerfect.heatMod || 0;
+    cMod = opt.manualCheck.onPerfect.cashMod || 0;
+    dMod = opt.manualCheck.onPerfect.discMod || 0;
+  } else if (result === "fail" && opt.manualCheck) {
+    hMod = opt.manualCheck.onFail.heatMod || 0;
+    cMod = opt.manualCheck.onFail.cashMod || 0;
+    dMod = opt.manualCheck.onFail.discMod || 0;
+  }
+
+  if (gs.ownedItems.includes("crisis_team")) hMod = Math.round(hMod * 0.5);
+  if (gs.ownedItems.includes("incident_kit") && hMod > 0) hMod = Math.round(hMod * 0.8);
+
+  gs.heat = clamp(gs.heat + hMod, 0, MAX_HEAT);
+  gs.cash += cMod;
+  gs.discrepancy += dMod;
+  gs.dailyIncidents.push(gs.pendingIncident.name);
+  gs.eventLog.push(`Day ${gs.day}: ${gs.pendingIncident.name} \u2014 ${opt.label} [${result}]${!hasStaff?" (no staff!)":""}`);
+
+  // Objective tracking
+  if (cMod >= 0) gs.objTracking.incidentsClean++;
+
+  gs.pendingIncident = null;
+  ui.modal = null;
+  ui.skillCheck = null;
+  render();
+}
+
+function resolveRequest(reqId, action) {
+  const req = gs.requests.find(r=>r.id===reqId);
+  if (!req || req.resolved) return;
+  req.resolved = true;
+
+  const reg = gs.regulars.find(r=>r.id===req.regularId);
+  const mods = req[action]; // approve, deny, or counter
+
+  if (reg) {
+    if (mods.loyaltyMod) reg.loyalty = clamp(reg.loyalty + mods.loyaltyMod, 0, 100);
+    if (mods.churnChance && pct(mods.churnChance)) {
+      gs.regulars = gs.regulars.filter(r => r.id !== reg.id);
+      gs.eventLog.push(`Day ${gs.day}: ${reg.name} left. They didn't look back.`);
+    }
+  }
+  if (mods.cashMod) gs.cash += mods.cashMod;
+  if (mods.heatMod) gs.heat = clamp(gs.heat + mods.heatMod, 0, MAX_HEAT);
+  if (mods.discMod) gs.discrepancy += mods.discMod;
+
+  if (action === "approve") gs.objTracking.requestsAccepted++;
+
+  gs.eventLog.push(`Day ${gs.day}: Request from ${req.regularName} \u2014 ${action}`);
+  render();
+}
+
+function buyTable(tid) {
+  const t = TABLE_DEFS.find(x=>x.id===tid);
+  if (!t || gs.cash < t.cost) return;
+  gs.cash -= t.cost;
+  gs.ownedTables.push(tid);
+  if (!gs.blackBook.tablesSeen.includes(tid)) { gs.blackBook.tablesSeen.push(tid); gs.blackBook.newFlags['table_'+tid]=true; }
+  render();
+}
+
+function placeTable(zid, tid) {
+  const zone = gs.zones.find(z=>z.id===zid);
+  if (!zone || zone.tables.length >= zone.maxTables) return;
+  zone.tables.push(tid);
+  const idx = gs.ownedTables.indexOf(tid);
+  if (idx > -1) gs.ownedTables.splice(idx, 1);
+  render();
+}
+
+function removeTable(zid, ti) {
+  const zone = gs.zones.find(z=>z.id===zid);
+  const tid = zone.tables[ti];
+  zone.tables.splice(ti, 1);
+  // Remove condition entry
+  delete gs.tableConditions[`${zid}-${ti}`];
+  // Reindex conditions
+  const newConds = {};
+  zone.tables.forEach((t,i) => {
+    const oldKey = `${zid}-${i >= ti ? i+1 : i}`;
+    const newKey = `${zid}-${i}`;
+    if (gs.tableConditions[oldKey]) newConds[newKey] = gs.tableConditions[oldKey];
+  });
+  Object.keys(gs.tableConditions).forEach(k => { if (k.startsWith(zid)) delete gs.tableConditions[k]; });
+  Object.assign(gs.tableConditions, newConds);
+  gs.ownedTables.push(tid);
+  render();
+}
+
+function sellTable(zid, ti) {
+  const zone = gs.zones.find(z=>z.id===zid);
+  const tid = zone.tables[ti];
+  const t = TABLE_DEFS.find(x=>x.id===tid);
+  const tc = gs.tableConditions[`${zid}-${ti}`];
+  const condPct = tc ? tc.condition / 100 : 1;
+  const sellPrice = Math.round(t.cost * 0.4 * condPct);
+  gs.cash += sellPrice;
+  zone.tables.splice(ti, 1);
+  delete gs.tableConditions[`${zid}-${ti}`];
+  gs.eventLog.push(`Sold ${t.name} for ${fmt(sellPrice)}`);
+  render();
+}
+
+function repairTable(zid, ti) {
+  const key = `${zid}-${ti}`;
+  const tc = gs.tableConditions[key];
+  if (!tc) return;
+  const cost = Math.round((100 - tc.condition) * 0.5);
+  const techDiscount = gs.staff.some(s=>s.role==="tech") ? 0.6 : 1;
+  const finalCost = Math.round(cost * techDiscount);
+  if (gs.cash < finalCost) return;
+  gs.cash -= finalCost;
+  tc.condition = 100;
+  tc.broken = false;
+  render();
+}
+
+function unlockZone(zid) {
+  const z = gs.zones.find(z=>z.id===zid);
+  if (!z || !z.locked || gs.cash < z.unlockCost) return;
+  gs.cash -= z.unlockCost;
+  z.locked = false;
+  render();
+}
+
+function hireStaff(rid) {
+  const r = STAFF_ROLES.find(x=>x.id===rid);
+  if (gs.cash < r.wage*2) return;
+  gs.cash -= r.wage * 2;
+  gs.staff.push({ id:uid(), role:rid });
+  render();
+}
+
+function fireStaff(sid) {
+  gs.staff = gs.staff.filter(s => s.id !== sid);
+  render();
+}
+
+function togglePromo(pid) {
+  if (gs.activePromos.includes(pid)) {
+    gs.activePromos = gs.activePromos.filter(x=>x!==pid);
+  } else {
+    const pr = PROMO_DEFS.find(x=>x.id===pid);
+    if (gs.cash < pr.cost) return;
+    gs.cash -= pr.cost;
+    gs.activePromos.push(pid);
+    if (!gs.blackBook.promosSeen.includes(pid)) { gs.blackBook.promosSeen.push(pid); gs.blackBook.newFlags['promo_'+pid]=true; }
+  }
+  render();
+}
+
+function buyItem(iid) {
+  const item = ITEM_DEFS.find(i=>i.id===iid);
+  if (!item || gs.cash < item.cost || gs.ownedItems.includes(iid)) return;
+  gs.cash -= item.cost;
+  gs.ownedItems.push(iid);
+  gs.shopItems = gs.shopItems.filter(i=>i.id!==iid);
+  if (item.rarity==="relic") gs.discrepancy += rng(10,25);
+  if (!gs.blackBook.itemsSeen.includes(iid)) { gs.blackBook.itemsSeen.push(iid); gs.blackBook.newFlags['item_'+iid]=true; }
+  gs.objTracking.itemsBought++;
+  render();
+}
+
+function rerollShop() {
+  const cost = 15 + gs.rerollsUsed * 10;
+  if (gs.cash < cost) return;
+  gs.cash -= cost;
+  gs.shopItems = rollShop(gs.ownedItems);
+  gs.rerollsUsed++;
+  if (gs.rerollsUsed > 1) gs.discrepancy++;
+  // Track new items seen
+  gs.shopItems.forEach(item => {
+    if (!gs.blackBook.itemsSeen.includes(item.id)) { gs.blackBook.itemsSeen.push(item.id); gs.blackBook.newFlags['item_'+item.id]=true; }
+  });
+  render();
+}
+
+function newGame() {
+  gs = initState();
+  ui = { tab:"dashboard", selected:null, modal:null, skillCheck:null, cashAnims:{} };
+  stopTicking();
+  render();
+}
+
+// ── Save/Load ──
+function autoSave() {
+  try {
+    const save = { ...gs, _beatsSent: [...gs._beatsSent], _version: SAVE_VERSION };
+    localStorage.setItem('ttycoon_save', JSON.stringify(save));
+  } catch(e) {}
+}
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem('ttycoon_save');
+    if (!raw) return false;
+    const save = JSON.parse(raw);
+    if (save._version !== SAVE_VERSION) return false;
+    save._beatsSent = new Set(save._beatsSent || []);
+    gs = save;
+    return true;
+  } catch(e) { return false; }
+}
+
+function exportSave() {
+  const save = { ...gs, _beatsSent: [...gs._beatsSent], _version: SAVE_VERSION };
+  const blob = new Blob([JSON.stringify(save, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `ttycoon_day${gs.day}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importSave() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const save = JSON.parse(ev.target.result);
+        save._beatsSent = new Set(save._beatsSent || []);
+        gs = save;
+        ui.modal = null;
+        render();
+      } catch(err) { alert("Invalid save file."); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+
+function markInboxRead(idx) {
+  const m = gs.inbox[idx];
+  if (m && !gs.readInbox.includes(m.subject)) {
+    gs.readInbox.push(m.subject);
+    render();
+  }
+}
+
+function render() {
+  const app = document.getElementById('app');
+
+  // Game Over
+  if (gs.gameOver) {
+    app.innerHTML = renderEndgame(false);
+    return;
+  }
+  // Season Complete
+  if (gs.seasonComplete) {
+    app.innerHTML = renderEndgame(true);
+    return;
+  }
+
+  const costs = calcDailyCosts(gs);
+  const estNet = gs.accRevenue - gs.accPayouts - costs.total;
+  const progress = Math.round((gs.uptimeTick / UPTIME_TICKS) * 100);
+  const unreadCount = gs.inbox.filter(m => !gs.readInbox.includes(m.subject)).length;
+  const hasNewBB = Object.keys(gs.blackBook.newFlags).length > 0;
+
+  // Brief chips
+  const briefChips = gs.dayBrief.done ? [
+    BRIEF_DEFS.ops.find(o=>o.id===gs.dayBrief.picks.ops),
+    BRIEF_DEFS.marketing.find(o=>o.id===gs.dayBrief.picks.marketing),
+    BRIEF_DEFS.compliance.find(o=>o.id===gs.dayBrief.picks.compliance),
+  ].filter(Boolean).map(d=>`<span class="chip">${escHtml(d.name)}</span>`).join('') : '';
+
+  const tabs = [
+    { id:"dashboard", label:"\u25C8 Dashboard" },
+    { id:"floor", label:"\u25EB Floor" },
+    { id:"staff", label:"\u25C9 Staff" },
+    { id:"promos", label:"\u25C6 Promos" },
+    { id:"regulars", label:"\u25CE Regulars" },
+    { id:"shop", label:"\u25C7 Procurement" },
+    { id:"ledger", label:"\u25A4 Ledger" },
+    { id:"inbox", label:`\u2709 Inbox` },
+    { id:"blackbook", label:"\u25A3 Black Book" },
+  ];
+
+  let html = '';
+
+  // ── TOPBAR ──
+  html += `<div class="topbar">
+    <div class="flex-row gap-12">
+      <div class="logo">Terminal Tycoon</div>
+      ${gs.phase==="uptime" ? `
+        <div class="flex-row gap-8">
+          <div class="clock">${tickToTime(gs.uptimeTick)}</div>
+          <span class="badge" style="background:rgba(240,192,64,0.2);color:var(--amber)">\u25C9 OPEN</span>
+        </div>
+      ` : `<span class="badge" style="background:var(--border);color:var(--text-dim)">\u25CC CLOSED</span>`}
+      ${briefChips ? `<div class="flex-row gap-4">${briefChips}</div>` : ''}
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Day</div><div class="kpi-val" style="color:var(--amber)">${gs.day}/${SEASON_DAYS}</div></div>
+      <div class="kpi"><div class="kpi-label">Cash</div><div class="kpi-val" style="color:var(--green);${gs.cash<200?'animation:pulse 1s infinite':''}">${fmt(gs.cash)}</div></div>
+      <div class="kpi"><div class="kpi-label">Traffic</div><div class="kpi-val" style="color:var(--blue)">${gs.footTraffic}</div></div>
+      <div class="kpi">
+        <div class="kpi-label">Heat</div>
+        <div class="flex-row gap-4">
+          <div class="kpi-val" style="color:${gs.heat>60?'var(--red)':gs.heat>30?'var(--yellow)':'var(--green)'}">${gs.heat}</div>
+          <div class="heat-bar"><div class="heat-fill" style="width:${Math.min(100,gs.heat)}%;background:${gs.heat>70?'var(--red)':gs.heat>40?'var(--yellow)':'var(--green)'}"></div></div>
+        </div>
+      </div>
+      ${gs.discrepancy>0?`<div class="kpi"><div class="kpi-label">Discrep.</div><div class="kpi-val" style="color:var(--purple)">${gs.discrepancy}</div></div>`:''}
+      <div style="display:flex;gap:4px">
+        <button class="btn-sm" onclick="ui.modal='save';render()" title="Save/Load">\u{1F4BE}</button>
+      </div>
+    </div>
+  </div>`;
+
+  // ── BODY ──
+  html += `<div class="body-wrap">`;
+
+  // Nav
+  html += `<div class="nav">`;
+  tabs.forEach(t => {
+    const isActive = ui.tab === t.id;
+    const dot = (t.id==='inbox'&&unreadCount>0)||(t.id==='blackbook'&&hasNewBB) ? '<span class="new-dot"></span>' : '';
+    html += `<button class="nav-btn${isActive?' active':''}" onclick="setUI({tab:'${t.id}'})">${escHtml(t.label)}${dot}</button>`;
+  });
+  html += `<div style="flex:1"></div>`;
+
+  if (gs.phase === "downtime" && gs.subPhase === "planning") {
+    const canOpen = gs.zones.flatMap(z=>z.tables).length > 0 && gs.dayBrief.done;
+    html += `<div style="padding:8px 12px">
+      <button class="btn btn-filled" style="width:100%;text-align:center" onclick="startDay()" ${canOpen?'':' disabled'}>\u25B6 OPEN DAY ${gs.day}</button>
+    </div>`;
+  }
+  if (gs.phase === "uptime") {
+    html += `<div style="padding:8px 12px">
+      <div class="prog-bar"><div class="prog-fill" style="width:${progress}%;background:linear-gradient(90deg,var(--amber),var(--green))"></div></div>
+      <div style="font-size:9px;color:var(--text-dark);margin-top:4px;text-align:center">${progress}% \u2014 Closes ${tickToTime(UPTIME_TICKS)}</div>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // Main content
+  html += `<div class="main">`;
+
+  // Incident banner
+  if (gs.pendingIncident && gs.phase === "uptime") {
+    html += renderIncidentBanner();
+  }
+
+  // Tab content
+  html += renderTab();
+
+  html += `</div>`; // close main
+
+  // Details panel
+  html += renderDetailsPanel();
+
+  html += `</div>`; // close body-wrap
+
+  app.innerHTML = html;
+
+  // Modal overlay
+  if (ui.modal) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = renderModal();
+    app.appendChild(overlay);
+  }
+}
+
+function renderIncidentBanner() {
+  const inc = gs.pendingIncident;
+  let h = `<div class="incident-panel">
+    <div class="flex-between mb-8">
+      <span style="color:var(--red);font-weight:bold;font-size:14px">\u26A0 ${escHtml(inc.name)}</span>
+      <span class="badge" style="background:rgba(244,63,94,0.2);color:var(--red)">SEV ${inc.severity}</span>
+    </div>
+    <div class="flex-row gap-8">`;
+  inc.options.forEach((opt, i) => {
+    const has = !opt.need || gs.staff.some(s => s.role === opt.need);
+    const mc = opt.manualCheck ? ' \u{1F3AF}' : '';
+    h += `<button class="btn${has?'':' btn-red'}" onclick="resolveIncident(${i})">
+      ${escHtml(opt.label)}${opt.need&&!has?' \u2717':''}${mc}
+      <span style="font-size:9px;margin-left:6px;opacity:0.7">
+        ${opt.heatMod>0?`H+${opt.heatMod}`:opt.heatMod<0?`H${opt.heatMod}`:''}${opt.cashMod?` ${fmt(opt.cashMod)}`:''}
+      </span>
+    </button>`;
+  });
+  h += `</div></div>`;
+  return h;
+}
+
+function renderTab() {
+  switch(ui.tab) {
+    case "dashboard": return renderDashboard();
+    case "floor": return renderFloor();
+    case "staff": return renderStaff();
+    case "promos": return renderPromos();
+    case "regulars": return renderRegulars();
+    case "shop": return renderShop();
+    case "ledger": return renderLedger();
+    case "inbox": return renderInbox();
+    case "blackbook": return renderBlackBook();
+    default: return '';
+  }
+}
+
+function renderDashboard() {
+  let h = '';
+
+  // Morning Brief (if in brief sub-phase)
+  if (gs.phase === "downtime" && gs.subPhase === "brief") {
+    h += `<div class="panel" style="border-color:var(--amber)">
+      <div class="panel-title">\u{1F4CB} Morning Brief \u2014 Day ${gs.day}</div>
+      <div style="color:var(--text-dim);margin-bottom:12px;font-size:11px">Set today's operational posture. Choose one from each category.</div>
+      <div class="brief-grid">`;
+
+    ['ops','marketing','compliance'].forEach(cat => {
+      const catLabel = cat === 'ops' ? 'Operations' : cat === 'marketing' ? 'Marketing' : 'Compliance';
+      h += `<div class="brief-col">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--amber);margin-bottom:4px">${catLabel}</div>`;
+      BRIEF_DEFS[cat].forEach(opt => {
+        const picked = gs.dayBrief.picks[cat] === opt.id;
+        h += `<div class="brief-opt${picked?' picked':''}" onclick="gs.dayBrief.picks.${cat}='${opt.id}';render()">
+          <div class="opt-name">${escHtml(opt.name)}</div>
+          <div class="opt-desc">${escHtml(opt.desc)}</div>
+        </div>`;
+      });
+      h += `</div>`;
+    });
+
+    const allPicked = gs.dayBrief.picks.ops && gs.dayBrief.picks.marketing && gs.dayBrief.picks.compliance;
+    h += `</div>
+      <div style="margin-top:14px;text-align:center">
+        <button class="btn btn-filled" onclick="confirmBrief()" ${allPicked?'':' disabled'}>CONFIRM BRIEF</button>
+      </div>
+    </div>`;
+    return h;
+  }
+
+  // Requests (downtime planning)
+  if (gs.phase === "downtime" && gs.requests.length > 0) {
+    const pending = gs.requests.filter(r => !r.resolved);
+    if (pending.length > 0) {
+      h += `<div class="panel" style="border-color:var(--yellow)">
+        <div class="panel-title">\u{1F4AC} Requests</div>`;
+      pending.forEach(req => {
+        h += `<div class="request-card">
+          <div class="request-from">${escHtml(req.regularName)}</div>
+          <div class="request-body">"${escHtml(req.text)}"</div>
+          <div class="flex-row gap-8">
+            <button class="btn btn-green" onclick="resolveRequest('${req.id}','approve')">Approve ${req.approve.cashMod?fmt(req.approve.cashMod):''}</button>
+            <button class="btn" onclick="resolveRequest('${req.id}','counter')">Counter</button>
+            <button class="btn btn-red" onclick="resolveRequest('${req.id}','deny')">Deny</button>
+          </div>
+        </div>`;
+      });
+      h += `</div>`;
+    }
+  }
+
+  // Daily Objectives
+  if (gs.dailyObjectives.length > 0) {
+    h += `<div class="panel">
+      <div class="panel-title">\u{1F3AF} Daily Objectives</div>`;
+    gs.dailyObjectives.forEach(obj => {
+      const pct = obj.goal > 0 ? Math.min(100, Math.round((obj.progress / obj.goal) * 100)) : 0;
+      const rCol = obj.reward.type==='cash'?'var(--green)':obj.reward.type==='heat'?'var(--cyan)':'var(--purple)';
+      const rText = obj.reward.type==='cash'?`+${fmt(obj.reward.val)}`:obj.reward.type==='heat'?`${obj.reward.val} heat`:obj.reward.type==='favor'?'+1 favor':'+XP';
+      h += `<div class="obj-card${obj.complete?' complete':''}">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600;color:${obj.complete?'var(--green)':'var(--text)'}">${obj.complete?'\u2713 ':''}${escHtml(obj.title)}</div>
+          <div class="dim">${escHtml(obj.desc)}</div>
+          <div class="prog-bar mt-8" style="height:5px"><div class="prog-fill" style="width:${pct}%;background:${obj.complete?'var(--green)':'var(--amber)'}"></div></div>
+        </div>
+        <span class="obj-reward" style="background:${rCol}22;color:${rCol}">${rText}</span>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  // Overview
+  h += `<div class="panel">
+    <div class="panel-title">Overview</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">`;
+  [
+    {l:"Cash",v:fmt(gs.cash),c:"var(--green)"},{l:"Day",v:`${gs.day}/${SEASON_DAYS}`,c:"var(--amber)"},
+    {l:"Traffic",v:gs.footTraffic,c:"var(--blue)"},{l:"Heat",v:`${gs.heat}/${MAX_HEAT}`,c:gs.heat>60?"var(--red)":"var(--yellow)"},
+    {l:"Regulars",v:gs.regulars.length,c:"var(--purple)"},{l:"Tables",v:gs.zones.flatMap(z=>z.tables).length,c:"var(--text-dim)"},
+    {l:"Staff",v:gs.staff.length,c:"var(--text-dim)"},{l:"Promos",v:gs.activePromos.length,c:"var(--amber)"},
+  ].forEach(k => {
+    h += `<div class="card"><div style="font-size:9px;text-transform:uppercase;color:var(--text-dark);letter-spacing:1px">${k.l}</div><div style="font-size:18px;font-weight:bold;color:${k.c}">${k.v}</div></div>`;
+  });
+  h += `</div></div>`;
+
+  // Live feed during uptime
+  if (gs.phase === "uptime") {
+    const costs = calcDailyCosts(gs);
+    const estNet = gs.accRevenue - gs.accPayouts - costs.total;
+    h += `<div class="panel">
+      <div class="panel-title">Live Feed \u2014 ${tickToTime(gs.uptimeTick)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px">
+        <div><span class="dim">Revenue: </span><span style="color:var(--green);font-weight:bold">${fmt(gs.accRevenue)}</span></div>
+        <div><span class="dim">Payouts: </span><span style="color:var(--red)">${fmt(gs.accPayouts)}</span></div>
+        <div><span class="dim">Est. Net: </span><span style="color:${estNet>=0?'var(--green)':'var(--red)'};font-weight:bold">${fmt(estNet)}</span></div>
+      </div>
+      <div style="font-size:10px;color:var(--text-dim)">Fixed costs at close: ${fmt(costs.total)} | Incidents: ${gs.dailyIncidents.length}</div>
+    </div>`;
+  }
+
+  // Last day
+  if (gs.ledgerHistory.length > 0) {
+    const l = gs.ledgerHistory[gs.ledgerHistory.length-1];
+    h += `<div class="panel"><div class="panel-title">Last Day</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(85px,1fr));gap:8px">
+        <div><div class="dim">Revenue</div><div style="color:var(--green);font-weight:bold">${fmt(l.revenue)}</div></div>
+        <div><div class="dim">Payouts</div><div style="color:var(--red)">${fmt(l.payouts)}</div></div>
+        <div><div class="dim">Wages</div><div style="color:var(--yellow)">${fmt(l.wages)}</div></div>
+        <div><div class="dim">OH+Maint</div><div style="color:var(--yellow)">${fmt(l.overhead+l.maint)}</div></div>
+        <div><div class="dim">Net</div><div style="color:${l.net>=0?'var(--green)':'var(--red)'};font-weight:bold;font-size:16px">${fmt(l.net)}</div></div>
+      </div></div>`;
+  }
+
+  // Skills
+  const hasSkills = Object.values(gs.skills).some(v=>v>0);
+  if (hasSkills) {
+    h += `<div class="panel"><div class="panel-title">Skills</div><div class="flex-row gap-12">`;
+    Object.entries(SKILL_DEFS).forEach(([k,def]) => {
+      h += `<div style="text-align:center"><div style="font-size:9px;color:${def.color};text-transform:uppercase">${def.name}</div><div style="font-size:16px;font-weight:bold;color:${def.color}">${gs.skills[k]}</div></div>`;
+    });
+    h += `</div></div>`;
+  }
+
+  // Event Log
+  if (gs.eventLog.length > 0) {
+    h += `<div class="panel"><div class="panel-title">Event Log</div>
+      <div style="max-height:100px;overflow-y:auto">`;
+    [...gs.eventLog].reverse().slice(0,8).forEach(e => {
+      h += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:2px">${escHtml(e)}</div>`;
+    });
+    h += `</div></div>`;
+  }
+
+  return h;
+}
+
+function renderFloor() {
+  let h = '';
+  let globalIdx = 0;
+
+  gs.zones.forEach(zone => {
+    if (zone.locked) {
+      h += `<div class="panel"><div class="panel-title">${escHtml(zone.name)} \u{1F512}</div>
+        <div class="dim">${escHtml(zone.desc)}</div>
+        <div class="mt-8"><button class="btn" onclick="unlockZone('${zone.id}')" ${gs.cash<zone.unlockCost||gs.phase==="uptime"?'disabled':''}>Unlock \u2014 ${fmt(zone.unlockCost)}</button></div>
+      </div>`;
+      return;
+    }
+
+    h += `<div class="panel"><div class="panel-title">${escHtml(zone.name)}</div>
+      <div class="dim mb-8">${escHtml(zone.desc)} \u2014 Tables: ${zone.tables.length}/${zone.maxTables}</div>
+      <div class="grid">`;
+
+    zone.tables.forEach((tid, idx) => {
+      const t = TABLE_DEFS.find(x=>x.id===tid);
+      const key = `${zone.id}-${idx}`;
+      const npcs = gs.tableNPCs[key] || [];
+      const isUp = gs.phase === "uptime";
+      const earn = ui.cashAnims[`t${globalIdx}`] || 0;
+      const tc = gs.tableConditions[key];
+      const cond = tc ? tc.condition : 100;
+      const broken = tc ? tc.broken : false;
+      const isSelected = ui.selected && ui.selected.type==='table' && ui.selected.zoneId===zone.id && ui.selected.idx===idx;
+
+      h += `<div class="card${isSelected?' selected':''}" onclick="setUI({selected:{type:'table',zoneId:'${zone.id}',idx:${idx},tid:'${tid}'}})" style="${isUp&&!broken?'animation:revPulse 3s infinite':''}${broken?';border-color:var(--red);opacity:0.6':''}">`;
+
+      // Cash float
+      if (isUp && earn > 0 && !broken) {
+        h += `<div style="position:absolute;top:6px;right:10px;color:var(--green);font-size:11px;font-weight:bold;pointer-events:none;z-index:10;animation:floatUp 1s ease-out forwards;text-shadow:0 0 6px rgba(74,222,128,0.3)">+${fmt(earn)}</div>`;
+      }
+
+      h += `<div class="flex-between mb-8">
+        <span style="font-weight:bold;font-size:13px;color:var(--amber)">${t?.emoji||''} ${escHtml(t?.name||tid)}</span>
+        ${broken?'<span class="badge" style="background:rgba(244,63,94,0.2);color:var(--red)">BROKEN</span>':isUp?`<span style="font-size:10px;color:var(--green);animation:blink 2s infinite">\u25CF LIVE</span>`:''}
+      </div>`;
+
+      // Condition bar
+      const condColor = cond > 70 ? 'var(--green)' : cond > 40 ? 'var(--yellow)' : 'var(--red)';
+      h += `<div class="flex-row gap-4 mb-8"><span class="dim" style="font-size:9px">COND</span><div class="prog-bar" style="flex:1;height:4px"><div class="prog-fill" style="width:${cond}%;background:${condColor}"></div></div><span style="font-size:9px;color:${condColor}">${cond}%</span></div>`;
+
+      h += `<div style="font-size:10px;color:var(--text-dim)">Rev: $${t?.avgSpend}\u00D7${t?.speed}/tick | Vol: ${Math.round((t?.payoutVol||0)*100)}%</div>`;
+
+      // NPCs
+      if (isUp && npcs.length > 0 && !broken) {
+        h += `<div style="margin-top:6px;padding:5px 8px;background:var(--bg-deep);border-radius:3px;border:1px solid rgba(26,39,68,0.5)">
+          <div style="font-size:8px;color:var(--text-dark);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Seated</div>
+          <div class="flex-row gap-4">`;
+        npcs.forEach(name => {
+          h += `<span style="font-size:11px;color:var(--text-dim);padding:1px 5px;background:var(--bg-raised);border-radius:2px;border:1px solid var(--border);animation:slideIn 0.3s ease-out">${escHtml(name)}</span>`;
+        });
+        h += `</div></div>`;
+      }
+
+      // Revenue bar
+      if (isUp && !broken) {
+        h += `<div style="margin-top:6px" class="flex-row gap-4">
+          <div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--amber));width:${clamp(20+earn*2,10,100)}%;transition:width 0.4s"></div></div>
+          <span style="font-size:10px;color:var(--green);font-weight:bold;min-width:35px;text-align:right">+${fmt(earn)}</span>
+        </div>`;
+      }
+
+      // Downtime actions
+      if (gs.phase === "downtime") {
+        h += `<div class="flex-row gap-4 mt-8">`;
+        if (broken) {
+          const repCost = Math.round((100-cond)*0.5*(gs.staff.some(s=>s.role==="tech")?0.6:1));
+          h += `<button class="btn-sm btn-green" onclick="event.stopPropagation();repairTable('${zone.id}',${idx})" ${gs.cash<repCost?'disabled':''}>Repair ${fmt(repCost)}</button>`;
+        }
+        h += `<button class="btn-sm btn-red" onclick="event.stopPropagation();removeTable('${zone.id}',${idx})">Remove</button>`;
+        if (!broken) {
+          const sellP = Math.round(TABLE_DEFS.find(x=>x.id===tid).cost * 0.4 * cond/100);
+          h += `<button class="btn-sm" style="border-color:var(--yellow);color:var(--yellow)" onclick="event.stopPropagation();sellTable('${zone.id}',${idx})">Sell ${fmt(sellP)}</button>`;
+        }
+        h += `</div>`;
+      }
+
+      h += `</div>`;
+      globalIdx++;
+    });
+
+    // Place table slot
+    if (zone.tables.length < zone.maxTables && gs.ownedTables.length > 0 && gs.phase === "downtime") {
+      h += `<div class="card" style="border-style:dashed;display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:10px;color:var(--text-dark);text-transform:uppercase">Place Table</div>`;
+      [...new Set(gs.ownedTables)].forEach(tid => {
+        const t = TABLE_DEFS.find(x=>x.id===tid);
+        h += `<button class="btn-sm btn-green" onclick="placeTable('${zone.id}','${tid}')">+ ${t?.emoji||''} ${escHtml(t?.name||'')}</button>`;
+      });
+      h += `</div>`;
+    }
+
+    if (zone.tables.length === 0 && gs.ownedTables.length === 0 && gs.phase === "downtime") {
+      h += `<div class="card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;min-height:80px"><div class="dim text-center">No tables. Buy some below \u2193</div></div>`;
+    }
+
+    h += `</div></div>`;
+  });
+
+  // Buy tables
+  if (gs.phase === "downtime") {
+    h += `<div class="panel"><div class="panel-title">Buy Tables</div><div class="grid">`;
+    TABLE_DEFS.forEach(t => {
+      h += `<div class="card" onclick="setUI({selected:{type:'tableDef',tid:'${t.id}'}})">
+        <div style="font-weight:bold;color:var(--amber);font-size:12px">${t.emoji} ${escHtml(t.name)}</div>
+        <div class="dim mb-8">${escHtml(t.desc)}</div>
+        <div style="font-size:10px;color:var(--text-dim)">Rev: $${t.avgSpend}\u00D7${t.speed}/tick | Vol: ${Math.round(t.payoutVol*100)}% | Maint: $${t.maint}/day</div>
+        <div class="mt-8"><button class="btn btn-green" onclick="event.stopPropagation();buyTable('${t.id}')" ${gs.cash<t.cost?'disabled':''}>Buy \u2014 ${fmt(t.cost)}</button></div>
+      </div>`;
+    });
+    h += `</div></div>`;
+  }
+
+  return h;
+}
+
+function renderStaff() {
+  let h = `<div class="panel"><div class="panel-title">Current Staff</div>`;
+  if (!gs.staff.length) {
+    h += `<div class="dim">No staff hired. You're running this alone.</div>`;
+  } else {
+    h += `<div class="grid">`;
+    gs.staff.forEach(s => {
+      const r = STAFF_ROLES.find(x=>x.id===s.role);
+      h += `<div class="card" onclick="setUI({selected:{type:'staff',sid:'${s.id}'}})">
+        <div style="font-weight:bold;color:var(--amber)">${r?.icon||''} ${escHtml(r?.name||'')}</div>
+        <div class="dim">${escHtml(r?.effect||'')}</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Wage: $${r?.wage}/day</div>
+        ${gs.phase==="downtime"?`<div class="mt-8"><button class="btn-sm btn-red" onclick="event.stopPropagation();fireStaff('${s.id}')">Fire</button></div>`:''}
+      </div>`;
+    });
+    h += `</div>`;
+  }
+  h += `</div>`;
+
+  if (gs.phase === "downtime") {
+    h += `<div class="panel"><div class="panel-title">Hire Staff</div>
+      <div class="dim mb-8">Hiring cost: 2-day wage deposit</div><div class="grid">`;
+    STAFF_ROLES.forEach(r => {
+      h += `<div class="card">
+        <div style="font-weight:bold;color:var(--amber)">${r.icon} ${escHtml(r.name)}</div>
+        <div class="dim">${escHtml(r.effect)}</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Wage: $${r.wage}/day | Deposit: ${fmt(r.wage*2)}</div>
+        <div class="mt-8"><button class="btn btn-green" onclick="hireStaff('${r.id}')" ${gs.cash<r.wage*2?'disabled':''}>Hire</button></div>
+      </div>`;
+    });
+    h += `</div></div>`;
+  }
+  return h;
+}
+
+function renderPromos() {
+  let h = `<div class="panel"><div class="panel-title">Promotions</div>
+    <div class="dim mb-12">Toggle promos. Aggressive/predatory promos boost revenue but generate heat.</div>
+    <div class="grid">`;
+  PROMO_DEFS.forEach(p => {
+    const active = gs.activePromos.includes(p.id);
+    const cc = p.cat==="clean"?"var(--green)":p.cat==="aggressive"?"var(--yellow)":"var(--red)";
+    h += `<div class="card" style="${active?'border-color:var(--amber)':''}">
+      <div class="flex-between mb-8">
+        <span style="font-weight:bold;color:${active?'var(--amber)':'var(--text)'};font-size:12px">${escHtml(p.name)}</span>
+        <span class="badge" style="background:${cc}22;color:${cc}">${p.cat}</span>
+      </div>
+      <div class="dim mb-8">${escHtml(p.desc)}</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px">
+        Traffic: +${p.trafficBoost} | Conv: +${Math.round(p.conversionMod*100)}% | Rev: \u00D7${p.profitMod} | Heat: +${p.heatMod}
+        ${p.discChance>0?`<span style="color:var(--purple)"> | Disc: ${Math.round(p.discChance*100)}%</span>`:''}
+      </div>
+      <button class="btn${active?' btn-red':' btn-green'}" onclick="togglePromo('${p.id}')" ${!active&&gs.cash<p.cost?'disabled':''}>${active?'Deactivate':`Activate \u2014 ${fmt(p.cost)}`}</button>
+    </div>`;
+  });
+  h += `</div></div>`;
+  return h;
+}
+
+function renderRegulars() {
+  let h = `<div class="panel"><div class="panel-title">Regulars (${gs.regulars.length})</div>`;
+  if (!gs.regulars.length) {
+    h += `<div class="dim">No regulars yet. Run promos and open your doors.</div>`;
+  } else {
+    h += `<div class="grid">`;
+    gs.regulars.forEach(r => {
+      const a = ARCHETYPES.find(x=>x.id===r.archetype);
+      const condColors = {normal:"var(--green)",agitated:"var(--yellow)",spiraling:"var(--red)",obsessed:"var(--purple)",strange:"var(--red)"};
+      const isSelected = ui.selected && ui.selected.type==='regular' && ui.selected.rid===r.id;
+      h += `<div class="card${isSelected?' selected':''}" onclick="setUI({selected:{type:'regular',rid:'${r.id}'}})">
+        <div class="flex-between mb-8">
+          <div style="font-weight:bold;color:var(--text);font-size:12px">${a?.icon||''} ${escHtml(r.name)}</div>
+          <span class="cond-badge" style="background:${(condColors[r.condition]||'var(--green)')}22;color:${condColors[r.condition]||'var(--green)'}">${r.condition}</span>
+        </div>
+        <div class="dim">${escHtml(a?.name||'')}</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px">
+          <span>Loyalty: ${r.loyalty}</span><span>Vol: ${r.volatility}</span>
+          <span>Spend: $${r.avgSpend}</span><span>Total: ${fmt(r.totalSpent)}</span>
+          <span>Days: ${r.daysKnown}</span><span>Attach: ${r.attachment}</span>
+        </div>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+  h += `</div>`;
+  return h;
+}
+
+function renderShop() {
+  let h = `<div class="panel"><div class="panel-title">Procurement</div>
+    <div class="flex-between mb-12">
+      <div class="dim">Daily catalog \u2014 ${gs.shopItems.length} items</div>
+      ${gs.day>=4?`<button class="btn btn-purple" onclick="rerollShop()" ${gs.cash<15+gs.rerollsUsed*10?'disabled':''}>\u21BB Reroll \u2014 ${fmt(15+gs.rerollsUsed*10)}</button>`:''}
+    </div>
+    <div class="grid">`;
+  gs.shopItems.forEach(item => {
+    const r = RARITY[item.rarity];
+    const isSelected = ui.selected && ui.selected.type==='item' && ui.selected.iid===item.id;
+    h += `<div class="card${isSelected?' selected':''}" style="border-color:${r.color};background:${r.bg}" onclick="setUI({selected:{type:'item',iid:'${item.id}'}})">
+      <div class="flex-between mb-8">
+        <span style="font-weight:bold;color:${r.color};font-size:12px">${escHtml(item.name)}</span>
+        <span class="badge" style="background:${r.color}22;color:${r.color}">${r.label}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text);margin-bottom:4px">${escHtml(item.effect)}</div>
+      <div style="font-size:10px;color:var(--text-dim);font-style:italic;margin-bottom:6px">"${escHtml(item.lore)}"</div>
+      <div class="flex-between">
+        <span class="tag" style="border-color:${r.color};color:${r.color}">${item.tag}</span>
+        <button class="btn" style="border-color:${r.color};color:${r.color}" onclick="event.stopPropagation();buyItem('${item.id}')" ${gs.cash<item.cost||gs.ownedItems.includes(item.id)?'disabled':''}>Buy \u2014 ${fmt(item.cost)}</button>
+      </div>
+    </div>`;
+  });
+  if (!gs.shopItems.length) h += `<div class="dim">Catalog empty.</div>`;
+  h += `</div></div>`;
+
+  if (gs.ownedItems.length > 0) {
+    h += `<div class="panel"><div class="panel-title">Owned Items</div><div class="flex-row gap-4" style="flex-wrap:wrap">`;
+    gs.ownedItems.forEach(id => {
+      const it = ITEM_DEFS.find(i=>i.id===id);
+      const r = RARITY[it?.rarity||"common"];
+      h += `<span class="badge" style="background:${r.color}22;color:${r.color};font-size:10px;cursor:pointer" onclick="setUI({selected:{type:'ownedItem',iid:'${id}'}})">${escHtml(it?.name||id)}</span>`;
+    });
+    h += `</div></div>`;
+  }
+  return h;
+}
+
+function renderLedger() {
+  let h = `<div class="panel"><div class="panel-title">Financial Ledger</div>`;
+  if (!gs.ledgerHistory.length) {
+    h += `<div class="dim">No records yet.</div>`;
+  } else {
+    h += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="border-bottom:1px solid var(--border)">`;
+    ["Day","Revenue","Payouts","Wages","OH","Maint","Net"].forEach(hd => {
+      h += `<th style="text-align:right;padding:6px 8px;color:var(--text-dim);font-weight:normal;text-transform:uppercase;font-size:9px;letter-spacing:1px">${hd}</th>`;
+    });
+    h += `</tr></thead><tbody>`;
+    [...gs.ledgerHistory].reverse().forEach(l => {
+      h += `<tr style="border-bottom:1px solid rgba(15,26,46,0.5)">
+        <td style="padding:5px 8px;text-align:right;color:var(--amber)">${l.day}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--green)">${fmt(l.revenue)}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--red)">${fmt(l.payouts)}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--yellow)">${fmt(l.wages)}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--yellow)">${fmt(l.overhead)}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--yellow)">${fmt(l.maint)}</td>
+        <td style="padding:5px 8px;text-align:right;font-weight:bold;color:${l.net>=0?'var(--green)':'var(--red)'}">${fmt(l.net)}</td>
+      </tr>`;
+    });
+    h += `</tbody></table></div>`;
+    if (gs.discrepancy > 10) {
+      h += `<div style="margin-top:12px;padding:8px;background:rgba(26,10,26,0.5);border:1px solid rgba(192,132,252,0.2);border-radius:4px;font-size:11px;color:var(--purple)">
+        \u26A0 Auditor's note: Rounding errors across ${Math.floor(gs.discrepancy/5)} entries. Discrepancy: ${gs.discrepancy}.
+      </div>`;
+    }
+  }
+  h += `</div>`;
+  return h;
+}
+
+function renderInbox() {
+  let h = `<div class="panel"><div class="panel-title">Inbox</div>`;
+  if (!gs.inbox.length) {
+    h += `<div class="dim">No messages.</div>`;
+  } else {
+    h += `<div class="flex-col gap-8">`;
+    [...gs.inbox].reverse().forEach((m,i) => {
+      const read = gs.readInbox.includes(m.subject);
+      const cc = m.cat==="official"?"var(--blue)":m.cat==="vendor"?"var(--green)":m.cat==="customer"?"var(--yellow)":"var(--purple)";
+      const realIdx = gs.inbox.length - 1 - i;
+      h += `<div class="card" style="${read?'':'border-color:'+cc};opacity:${read?0.7:1};cursor:pointer" onclick="markInboxRead(${realIdx})">
+        <div class="flex-between mb-8">
+          <span style="font-weight:${read?'normal':'bold'};color:${read?'var(--text-dim)':'var(--text)'};font-size:12px">${escHtml(m.subject)}</span>
+          <div class="flex-row gap-4">
+            <span class="badge" style="background:${cc}22;color:${cc}">${m.cat}</span>
+            ${!read?`<span style="width:6px;height:6px;border-radius:50%;background:${cc};display:inline-block;animation:blink 1.5s infinite"></span>`:''}
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--text-dark);margin-bottom:4px">From: ${escHtml(m.from)} \u2014 Day ${m.day}</div>
+        <div style="font-size:11px;color:var(--text-dim);white-space:pre-line">${escHtml(m.body)}</div>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+  h += `</div>`;
+  return h;
+}
+
+function renderBlackBook() {
+  const cats = [
+    { id:'tables', label:'Tables', items:TABLE_DEFS, seen:gs.blackBook.tablesSeen, prefix:'table_' },
+    { id:'promos', label:'Promos', items:PROMO_DEFS, seen:gs.blackBook.promosSeen, prefix:'promo_' },
+    { id:'items', label:'Items', items:ITEM_DEFS, seen:gs.blackBook.itemsSeen, prefix:'item_' },
+    { id:'incidents', label:'Incidents', items:INCIDENT_DEFS, seen:gs.blackBook.incidentsSeen, prefix:'inc_' },
+    { id:'regulars', label:'Regulars', items:gs.regulars, seen:gs.blackBook.regularsMet, prefix:'reg_', dynamic:true },
+    { id:'anomalies', label:'Anomalies', items:ANOMALY_FILES, seen:gs.blackBook.anomalyFiles.map(a=>a.id), prefix:'anom_' },
+  ];
+
+  const activeCat = (ui.selected && ui.selected.type === 'bbcat') ? ui.selected.catId : 'tables';
+
+  let h = `<div class="panel" style="padding:0;overflow:hidden">
+    <div style="display:flex;min-height:400px">
+      <div class="bb-sidebar">
+        <div style="padding:8px 10px;font-size:11px;font-weight:bold;color:var(--amber);text-transform:uppercase;letter-spacing:1px">Black Book</div>`;
+  cats.forEach(cat => {
+    const count = cat.id === 'regulars' ? gs.blackBook.regularsMet.length : cat.seen.length;
+    const total = cat.id === 'regulars' ? gs.blackBook.regularsMet.length : cat.items.length;
+    const hasNew = Object.keys(gs.blackBook.newFlags).some(k => k.startsWith(cat.prefix));
+    h += `<div class="bb-cat${activeCat===cat.id?' active':''}" onclick="setUI({selected:{type:'bbcat',catId:'${cat.id}'}})">
+      ${escHtml(cat.label)} <span style="font-size:9px;color:var(--text-dark)">${count}/${total}</span>
+      ${hasNew?'<span class="new-dot" style="margin-left:4px"></span>':''}
+    </div>`;
+  });
+  h += `</div><div style="flex:1;padding:14px;overflow-y:auto">`;
+
+  const cat = cats.find(c=>c.id===activeCat);
+  if (cat) {
+    // Completion header
+    const count = cat.id === 'regulars' ? gs.blackBook.regularsMet.length : cat.seen.length;
+    const total = cat.id === 'regulars' ? gs.blackBook.regularsMet.length : cat.items.length;
+    h += `<div class="flex-between mb-12">
+      <span style="font-size:14px;font-weight:bold;color:var(--amber)">${escHtml(cat.label)}</span>
+      <span style="font-size:11px;color:var(--text-dim)">${count}/${total} discovered</span>
+    </div>`;
+
+    if (cat.id === 'anomalies') {
+      ANOMALY_FILES.forEach(af => {
+        const unlocked = gs.blackBook.anomalyFiles.find(a=>a.id===af.id);
+        if (unlocked) {
+          h += `<div class="bb-entry" onclick="delete gs.blackBook.newFlags['anom_${af.id}'];render()">
+            <div style="font-weight:bold;color:var(--purple);font-size:12px">${escHtml(af.title)}</div>
+            <div style="font-size:10px;color:var(--text-dark);margin-bottom:4px">Unlocked Day ${unlocked.unlockedDay} | Disc \u2265${af.threshold}</div>
+            <div style="font-size:11px;color:var(--text-dim);white-space:pre-line">${escHtml(af.body)}</div>
+          </div>`;
+        } else {
+          h += `<div class="bb-entry locked"><div style="font-size:12px;color:var(--text-dark)">??? \u2014 Disc \u2265${af.threshold}</div></div>`;
+        }
+      });
+    } else if (cat.id === 'regulars') {
+      gs.regulars.forEach(r => {
+        h += `<div class="bb-entry" onclick="setUI({selected:{type:'regular',rid:'${r.id}'}})">
+          <div style="font-weight:bold;color:var(--text);font-size:12px">${escHtml(r.name)}</div>
+          <div class="dim">${ARCHETYPES.find(a=>a.id===r.archetype)?.name||''} | Days: ${r.daysKnown} | Loyalty: ${r.loyalty}</div>
+        </div>`;
+      });
+    } else {
+      cat.items.forEach(item => {
+        const discovered = cat.seen.includes(item.id);
+        if (discovered) {
+          // Clear new flag on view
+          const flagKey = cat.prefix + item.id;
+          h += `<div class="bb-entry" onclick="delete gs.blackBook.newFlags['${flagKey}'];render()">
+            <div style="font-weight:bold;color:var(--text);font-size:12px">${escHtml(item.name||item.name)}</div>
+            <div class="dim">${escHtml(item.desc||item.effect||'')}</div>
+          </div>`;
+        } else {
+          h += `<div class="bb-entry locked"><div style="font-size:12px;color:var(--text-dark)">???</div></div>`;
+        }
+      });
+    }
+  }
+
+  h += `</div></div></div>`;
+  return h;
+}
+
+function renderDetailsPanel() {
+  if (!ui.selected) return '<div class="details"></div>';
+  let h = '<div class="details open">';
+
+  if (ui.selected.type === 'table') {
+    const zone = gs.zones.find(z=>z.id===ui.selected.zoneId);
+    const tid = zone?.tables[ui.selected.idx];
+    const t = TABLE_DEFS.find(x=>x.id===tid);
+    const tc = gs.tableConditions[`${ui.selected.zoneId}-${ui.selected.idx}`];
+    if (t) {
+      h += `<div style="font-size:14px;font-weight:bold;color:var(--amber);margin-bottom:8px">${t.emoji} ${escHtml(t.name)}</div>
+        <div class="dim mb-8">${escHtml(t.desc)}</div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.8">
+          Avg Spend: $${t.avgSpend}<br>Speed: ${t.speed}/tick<br>Payout Volatility: ${Math.round(t.payoutVol*100)}%<br>
+          Attraction: ${t.attraction}<br>Incident Risk: ${Math.round(t.incidentRisk*100)}%<br>Maintenance: $${t.maint}/day
+          ${tc?`<br>Condition: ${tc.condition}%${tc.broken?' (BROKEN)':''}`:''}
+        </div>`;
+    }
+  } else if (ui.selected.type === 'regular') {
+    const r = gs.regulars.find(x=>x.id===ui.selected.rid);
+    const a = ARCHETYPES.find(x=>x.id===r?.archetype);
+    if (r) {
+      const condColors = {normal:"var(--green)",agitated:"var(--yellow)",spiraling:"var(--red)",obsessed:"var(--purple)",strange:"var(--red)"};
+      h += `<div style="font-size:14px;font-weight:bold;color:var(--text);margin-bottom:4px">${a?.icon||''} ${escHtml(r.name)}</div>
+        <span class="cond-badge" style="background:${(condColors[r.condition]||'var(--green)')}22;color:${condColors[r.condition]||'var(--green)'}">${r.condition}</span>
+        <div class="dim mt-8">${escHtml(a?.name||'')} archetype</div>
+        <div class="dossier-tell">"${escHtml(r.tell)}"</div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.8;margin-top:8px">
+          Loyalty: ${r.loyalty}<br>Volatility: ${r.volatility}<br>Attachment: ${r.attachment}<br>
+          Avg Spend: $${r.avgSpend}<br>Total Spent: ${fmt(r.totalSpent)}<br>Days Known: ${r.daysKnown}
+        </div>`;
+      if (r.notes && r.notes.length) {
+        h += `<div style="margin-top:12px"><div style="font-size:10px;text-transform:uppercase;color:var(--amber);letter-spacing:1px;margin-bottom:6px">Notes</div>`;
+        r.notes.forEach(n => { h += `<div class="dossier-note">${escHtml(n)}</div>`; });
+        h += `</div>`;
+      }
+      if (Object.keys(r.flags||{}).length) {
+        h += `<div class="mt-8 flex-row gap-4">`;
+        Object.keys(r.flags).forEach(f => { h += `<span class="badge" style="background:var(--purple)22;color:var(--purple)">${escHtml(f)}</span>`; });
+        h += `</div>`;
+      }
+    }
+  } else if (ui.selected.type === 'item' || ui.selected.type === 'ownedItem') {
+    const item = ITEM_DEFS.find(i=>i.id===ui.selected.iid);
+    if (item) {
+      const r = RARITY[item.rarity];
+      h += `<div style="font-size:14px;font-weight:bold;color:${r.color};margin-bottom:4px">${escHtml(item.name)}</div>
+        <span class="badge" style="background:${r.color}22;color:${r.color}">${r.label}</span>
+        <div style="font-size:12px;color:var(--text);margin-top:8px">${escHtml(item.effect)}</div>
+        <div style="font-size:11px;color:var(--text-dim);font-style:italic;margin-top:8px">"${escHtml(item.lore)}"</div>
+        <div class="mt-8"><span class="tag" style="border-color:${r.color};color:${r.color}">${item.tag}</span></div>
+        ${gs.ownedItems.includes(item.id)?'<div class="mt-8" style="color:var(--green);font-size:11px">\u2713 Owned</div>':''}`;
+    }
+  } else if (ui.selected.type === 'staff') {
+    const s = gs.staff.find(x=>x.id===ui.selected.sid);
+    const r = STAFF_ROLES.find(x=>x.id===s?.role);
+    if (r) {
+      h += `<div style="font-size:14px;font-weight:bold;color:var(--amber);margin-bottom:8px">${r.icon} ${escHtml(r.name)}</div>
+        <div class="dim">${escHtml(r.effect)}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:8px">Daily wage: $${r.wage}</div>`;
+    }
+  }
+
+  h += `<div class="mt-12"><button class="btn-sm" onclick="setUI({selected:null})">\u2715 Close</button></div>`;
+  h += '</div>';
+  return h;
+}
+
+function renderModal() {
+  if (ui.modal === 'wrap') return renderWrapModal();
+  if (ui.modal === 'skillcheck') return renderSkillCheckModal();
+  if (ui.modal === 'save') return renderSaveModal();
+  return '';
+}
+
+function renderWrapModal() {
+  const lastLedger = gs.ledgerHistory[gs.ledgerHistory.length - 1];
+  let h = `<div class="modal">
+    <div class="modal-title">\u{1F4CA} Daily Wrap \u2014 Day ${gs.day - 1}</div>`;
+
+  if (lastLedger) {
+    h += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+      <div><div class="dim">Revenue</div><div style="color:var(--green);font-weight:bold">${fmt(lastLedger.revenue)}</div></div>
+      <div><div class="dim">Costs</div><div style="color:var(--yellow)">${fmt(lastLedger.totalCost)}</div></div>
+      <div><div class="dim">Net</div><div style="color:${lastLedger.net>=0?'var(--green)':'var(--red)'};font-weight:bold;font-size:16px">${fmt(lastLedger.net)}</div></div>
+    </div>`;
+  }
+
+  // Objectives
+  if (gs.dailyObjectives.length > 0) {
+    h += `<div style="margin-bottom:16px"><div style="font-size:11px;text-transform:uppercase;color:var(--amber);letter-spacing:1px;margin-bottom:8px">Objectives</div>`;
+    gs.dailyObjectives.forEach(obj => {
+      const done = obj.complete;
+      const rText = obj.reward.type==='cash'?`+${fmt(obj.reward.val)}`:obj.reward.type==='heat'?`${obj.reward.val} heat`:obj.reward.type==='favor'?'+1 favor':'+XP';
+      h += `<div class="flex-row gap-8" style="margin-bottom:6px">
+        <span style="color:${done?'var(--green)':'var(--red)'}; font-size:14px">${done?'\u2713':'\u2717'}</span>
+        <span style="flex:1;font-size:12px;color:${done?'var(--text)':'var(--text-dim)'}">${escHtml(obj.title)}</span>
+        ${done?`<span style="font-size:10px;color:var(--green)">${rText}</span>`:''}
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  h += `<div style="text-align:center"><button class="btn btn-filled" onclick="dismissWrap()">Continue to Day ${gs.day}</button></div>
+  </div>`;
+  return h;
+}
+
+function renderSkillCheckModal() {
+  const sc = ui.skillCheck;
+  if (!sc) return '';
+  const mc = sc.opt.manualCheck;
+  const skillLevel = gs.skills[mc.type] || 0;
+  const band = getSkillBand(skillLevel, mc.difficulty);
+  const skillDef = SKILL_DEFS[mc.type];
+
+  let h = `<div class="modal">
+    <div class="modal-title">\u{1F3AF} Skill Check \u2014 ${escHtml(skillDef?.name||mc.type)}</div>
+    <div class="dim mb-8">${escHtml(gs.pendingIncident?.name||'')} \u2014 ${escHtml(sc.opt.label)}</div>
+    <div style="margin-bottom:8px;font-size:11px">
+      <span style="color:var(--green)">Perfect: H${mc.onPerfect.heatMod||0} ${fmt(mc.onPerfect.cashMod||0)}</span> |
+      <span style="color:var(--text)">Success: H${sc.opt.heatMod||0} ${fmt(sc.opt.cashMod||0)}</span> |
+      <span style="color:var(--red)">Fail: H${mc.onFail.heatMod||0} ${fmt(mc.onFail.cashMod||0)}</span>
+    </div>
+    <div style="font-size:10px;color:var(--text-dim);margin-bottom:12px">Skill Level: ${skillLevel} | Difficulty: ${mc.difficulty}</div>
+
+    <div class="skill-bar-track" id="skillBar">
+      <div class="skill-bar-zone" style="left:${band.successStart}%;width:${band.successEnd-band.successStart}%;background:rgba(74,222,128,0.15)"></div>
+      <div class="skill-bar-zone" style="left:${band.perfectStart}%;width:${band.perfectEnd-band.perfectStart}%;background:rgba(240,192,64,0.3)"></div>
+      <div class="skill-bar-cursor" id="skillCursor" style="left:0%"></div>
+    </div>
+
+    <div class="flex-row gap-8" style="justify-content:center">
+      <button class="btn btn-filled" id="skillStopBtn" onclick="stopSkillCheck()">STOP</button>
+      <button class="btn" onclick="autoResolveSkillCheck()">Auto Resolve</button>
+    </div>
+  </div>`;
+
+  // Start cursor animation after render
+  setTimeout(startSkillCursorAnimation, 50);
+
+  return h;
+}
+
+let skillCursorPos = 0;
+let skillCursorDir = 1;
+let skillCursorInterval = null;
+
+function startSkillCursorAnimation() {
+  skillCursorPos = 0;
+  skillCursorDir = 1;
+  if (skillCursorInterval) clearInterval(skillCursorInterval);
+  skillCursorInterval = setInterval(() => {
+    const mc = ui.skillCheck?.opt?.manualCheck;
+    const speed = mc ? 1.5 + mc.difficulty * 0.5 : 2;
+    skillCursorPos += skillCursorDir * speed;
+    if (skillCursorPos >= 100) { skillCursorPos = 100; skillCursorDir = -1; }
+    if (skillCursorPos <= 0) { skillCursorPos = 0; skillCursorDir = 1; }
+    const el = document.getElementById('skillCursor');
+    if (el) el.style.left = skillCursorPos + '%';
+  }, 20);
+}
+
+function stopSkillCheck() {
+  if (skillCursorInterval) { clearInterval(skillCursorInterval); skillCursorInterval = null; }
+  const sc = ui.skillCheck;
+  if (!sc) return;
+  const mc = sc.opt.manualCheck;
+  const skillLevel = gs.skills[mc.type] || 0;
+  const band = getSkillBand(skillLevel, mc.difficulty);
+
+  let result = "fail";
+  if (skillCursorPos >= band.perfectStart && skillCursorPos <= band.perfectEnd) result = "perfect";
+  else if (skillCursorPos >= band.successStart && skillCursorPos <= band.successEnd) result = "success";
+
+  // XP gain
+  gs.skills[mc.type] = (gs.skills[mc.type] || 0) + (result === "perfect" ? 3 : result === "success" ? 1 : 0);
+  gs.objTracking.skillAttempts++;
+
+  const has = !sc.opt.need || gs.staff.some(s => s.role === sc.opt.need);
+
+  // Show result briefly then resolve
+  const cursor = document.getElementById('skillCursor');
+  if (cursor) {
+    cursor.style.background = result === "perfect" ? "var(--amber)" : result === "success" ? "var(--green)" : "var(--red)";
+    cursor.style.width = "6px";
+  }
+  const btn = document.getElementById('skillStopBtn');
+  if (btn) {
+    btn.textContent = result === "perfect" ? "\u2605 PERFECT!" : result === "success" ? "\u2713 SUCCESS" : "\u2717 FAILED";
+    btn.style.borderColor = result === "perfect" ? "var(--amber)" : result === "success" ? "var(--green)" : "var(--red)";
+    btn.style.color = result === "perfect" ? "var(--amber)" : result === "success" ? "var(--green)" : "var(--red)";
+    btn.disabled = true;
+  }
+
+  setTimeout(() => {
+    applyIncidentResolution(sc.opt, has, result);
+  }, 1200);
+}
+
+function autoResolveSkillCheck() {
+  if (skillCursorInterval) { clearInterval(skillCursorInterval); skillCursorInterval = null; }
+  const sc = ui.skillCheck;
+  if (!sc) return;
+  const has = !sc.opt.need || gs.staff.some(s => s.role === sc.opt.need);
+  applyIncidentResolution(sc.opt, has, "auto");
+}
+
+function renderSaveModal() {
+  return `<div class="modal">
+    <div class="modal-title">\u{1F4BE} Save / Load</div>
+    <div class="flex-col gap-12">
+      <div>
+        <button class="btn btn-green" onclick="autoSave();alert('Saved!');ui.modal=null;render()" style="width:100%">Save to Browser</button>
+      </div>
+      <div>
+        <button class="btn btn-blue" onclick="if(loadSave()){ui.modal=null;render()}else{alert('No save found or version mismatch.')}" style="width:100%">Load from Browser</button>
+      </div>
+      <div>
+        <button class="btn btn-purple" onclick="exportSave()" style="width:100%">Export JSON</button>
+      </div>
+      <div>
+        <button class="btn" onclick="importSave()" style="width:100%">Import JSON</button>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <button class="btn btn-red" onclick="if(confirm('Start new season? This cannot be undone.')){newGame()}" style="width:100%">New Season</button>
+      </div>
+      <div><button class="btn-sm" onclick="ui.modal=null;render()">\u2715 Close</button></div>
+    </div>
+  </div>`;
+}
+
+function renderEndgame(isWin) {
+  if (isWin) {
+    const tr = gs.ledgerHistory.reduce((s,l)=>s+l.revenue,0);
+    const tn = gs.ledgerHistory.reduce((s,l)=>s+l.net,0);
+    const completed = gs.dailyObjectives ? gs.dailyObjectives.filter(o=>o.complete).length : 0;
+    const bbTotal = gs.blackBook.tablesSeen.length + gs.blackBook.promosSeen.length + gs.blackBook.itemsSeen.length + gs.blackBook.incidentsSeen.length + gs.blackBook.anomalyFiles.length;
+    return `<div class="endgame">
+      <div class="endgame-box">
+        <div style="font-family:var(--font-display);font-size:28px;color:var(--amber);font-weight:bold;margin-bottom:16px;letter-spacing:3px">SEASON COMPLETE</div>
+        <div style="font-size:14px;color:var(--text);margin-bottom:24px">You survived ${SEASON_DAYS} days.</div>
+        <div style="display:flex;gap:24px;justify-content:center;margin-bottom:24px;flex-wrap:wrap">
+          <div><div class="kpi-label">Cash</div><div style="font-size:20px;color:var(--green);font-weight:bold">${fmt(gs.cash)}</div></div>
+          <div><div class="kpi-label">Revenue</div><div style="font-size:20px;color:var(--blue);font-weight:bold">${fmt(tr)}</div></div>
+          <div><div class="kpi-label">Profit</div><div style="font-size:20px;color:var(--amber);font-weight:bold">${fmt(tn)}</div></div>
+          <div><div class="kpi-label">Regulars</div><div style="font-size:20px;color:var(--purple);font-weight:bold">${gs.regulars.length}</div></div>
+          <div><div class="kpi-label">Black Book</div><div style="font-size:20px;color:var(--cyan);font-weight:bold">${bbTotal}</div></div>
+        </div>
+        <button class="btn btn-filled" onclick="newGame()">\u25B6 NEW SEASON</button>
+      </div>
+    </div>`;
+  } else {
+    return `<div class="endgame">
+      <div class="endgame-box">
+        <div style="font-family:var(--font-display);font-size:28px;color:var(--red);font-weight:bold;margin-bottom:16px;letter-spacing:3px">GAME OVER</div>
+        <div style="font-size:14px;color:var(--text-dim);margin-bottom:24px">${escHtml(gs.gameOverReason)}</div>
+        <div style="font-size:12px;color:var(--text-dark);margin-bottom:8px">Season lasted ${gs.day - 1} days</div>
+        <div style="font-size:16px;color:var(--amber);margin-bottom:24px">Final Cash: ${fmt(Math.max(0,gs.cash))} | Regulars: ${gs.regulars.length}</div>
+        <button class="btn btn-filled" onclick="newGame()">\u25B6 NEW SEASON</button>
+      </div>
+    </div>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+
+// Try loading save
+if (!loadSave()) {
+  gs = initState();
+}
+// Track initial shop items
+gs.shopItems.forEach(item => {
+  if (!gs.blackBook.itemsSeen.includes(item.id)) gs.blackBook.itemsSeen.push(item.id);
+});
+render();
+</script>
+</body>
+</html>
